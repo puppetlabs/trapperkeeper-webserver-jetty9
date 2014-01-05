@@ -1,7 +1,7 @@
-(ns puppetlabs.trapperkeeper.services.webserver.jetty7-config-test
+(ns puppetlabs.trapperkeeper.services.webserver.jetty9-config-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
-            [puppetlabs.trapperkeeper.services.webserver.jetty7-config :refer :all]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-log-output logs-matching]]))
 
 (deftest jetty7-minimum-threads-test

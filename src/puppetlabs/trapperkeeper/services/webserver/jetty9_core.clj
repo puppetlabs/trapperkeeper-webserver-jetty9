@@ -2,7 +2,7 @@
 ;;  It adds some SSL utility functions, and
 ;;  provides the ability to dynamically register ring handlers.
 
-(ns puppetlabs.trapperkeeper.services.webserver.jetty7-core
+(ns puppetlabs.trapperkeeper.services.webserver.jetty9-core
   "Adapter for the Jetty webserver."
   (:import (org.eclipse.jetty.server Handler Server Request)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection ContextHandlerCollection GzipHandler)
@@ -16,7 +16,7 @@
   (:require [ring.util.servlet :as servlet]
             [clojure.string :refer [split trim]]
             [clojure.tools.logging :as log]
-            [puppetlabs.trapperkeeper.services.webserver.jetty7-config :as jetty-config]))
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as jetty-config]))
 
 ;; Work around an issue with OpenJDK's PKCS11 implementation preventing TLSv1
 ;; connections from working correctly

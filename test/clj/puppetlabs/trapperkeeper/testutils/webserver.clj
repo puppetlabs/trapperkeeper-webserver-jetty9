@@ -1,5 +1,5 @@
 (ns puppetlabs.trapperkeeper.testutils.webserver
-  (:require [puppetlabs.trapperkeeper.services.webserver.jetty7-core :as jetty7]))
+  (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty7]))
 
 (defmacro with-test-webserver
   "Constructs and starts an embedded Jetty on a random port, and

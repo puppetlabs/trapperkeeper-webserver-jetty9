@@ -1,8 +1,8 @@
-(ns puppetlabs.trapperkeeper.services.webserver.jetty7-core-test
+(ns puppetlabs.trapperkeeper.services.webserver.jetty9-core-test
   (:require [clojure.test :refer :all]
             [ring.util.response :as rr]
             [clj-http.client :as http-client]
-            [puppetlabs.trapperkeeper.services.webserver.jetty7-core :as jetty]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
             [puppetlabs.trapperkeeper.testutils.webserver :refer [with-test-webserver]]))
 
 (deftest compression

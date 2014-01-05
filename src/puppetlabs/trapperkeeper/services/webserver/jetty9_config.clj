@@ -1,4 +1,4 @@
-(ns puppetlabs.trapperkeeper.services.webserver.jetty7-config
+(ns puppetlabs.trapperkeeper.services.webserver.jetty9-config
   (:import [java.security KeyStore])
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.ssl :as ssl]
