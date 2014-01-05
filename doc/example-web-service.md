@@ -30,13 +30,13 @@ The bootstrap config file contains a list of services that _trapperkeeper_ will 
 listed as fully-qualified Clojure namespaces and service names. For this example the bootstrap.cfg looks like this:
 
 ```
-puppetlabs.trapperkeeper.services.jetty.jetty-service/webserver-service
+puppetlabs.trapperkeeper.services.webserver.jetty9-service/webserver-service
 examples.ring-app.example-services/count-service
 examples.ring-app.example-services/bert-service
 examples.ring-app.example-services/ernie-service
 ```
 
-This configuration indicates that _trapperkeeper's_ bundled webserver-service is to be loaded, as well as the three new
+This configuration indicates that the trapperkeeper webserver-service is to be loaded, as well as the three new
 services defined in the `example_services.clj` file.
 
 ### The `config.ini` configuration file

@@ -15,15 +15,12 @@
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
                  ;; Jetty Webserver
-                 [org.eclipse.jetty/jetty-server "9.0.5.v20130815"
+                 [org.eclipse.jetty/jetty-server "9.1.0.v20131115"
                   :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
-                 [org.eclipse.jetty/jetty-servlet "9.0.5.v20130815"]
-                 [org.eclipse.jetty/jetty-servlets "9.0.5.v20130815"]
+                 [org.eclipse.jetty/jetty-servlet "9.1.0.v20131115"]
+                 [org.eclipse.jetty/jetty-servlets "9.1.0.v20131115"]
 
-                 [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]
-
-                 [clj-http "0.5.3"]
-                 ]
+                 [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
 
 
   ;; By declaring a classifier here and a corresponding profile below we'll get an additional jar

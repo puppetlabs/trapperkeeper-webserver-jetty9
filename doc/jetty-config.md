@@ -1,4 +1,4 @@
-## Configuring The Jetty 7 Webserver
+## Configuring The Jetty 9 Webserver
 
 The `[webserver]` section in an `.ini` configuration file configures an embedded
 Jetty HTTP server inside trapperkeeper.
@@ -111,6 +111,3 @@ For example: `SSLv3, TLSv1, TLSv1.1, TLSv1.2`.
 
 If not supplied, trapperkeeper uses the default SSL protocols for your local
 system.
-
-> **Note:** This setting is only effective when trapperkeeper is running with
-Java version 1.7 or better.
