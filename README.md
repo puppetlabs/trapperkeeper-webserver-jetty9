@@ -7,14 +7,16 @@ project as a dependency in your leinengen project file, and then add the
 webserver service to your [`bootstrap.cfg`](https://github.com/puppetlabs/trapperkeeper#bootstrapping)
 file, via:
 
-    puppetlabs.trapperkeeper.services.webserver.jetty7-service/webserver-service
+    puppetlabs.trapperkeeper.services.webserver.jetty9-service/webserver-service
 
 Note that this implementation of the
-`webserver-service` interface is based on Jetty 7.  However, the interface
-is intended to be agnostic to the underlying web server implementation, which
-will allow us to provide alternate implementations in the future.  Trapperkeeper
-applications will then be able to switch to a different web server implementation
-by changing only their `bootstrap.cfg` file--no code changes.
+`webserver-service` interface is based on Jetty 9, which requires JRE 1.7 or greater.
+However, the interface is intended to be agnostic to the underlying web server
+implementation.  We also provide a
+[Jetty 7 version of the service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty7),
+which can be used interchangeably with this one and will support older JDKs.
+You should only need to change your lein dependencies and your `bootstrap.cfg`
+file--no code changes.
 
 The web server is configured via the
 [trapperkeeper configuration service](https://github.com/puppetlabs/trapperkeeper#configuration-service);
