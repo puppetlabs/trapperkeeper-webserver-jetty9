@@ -10,8 +10,10 @@ file, via:
     puppetlabs.trapperkeeper.services.webserver.jetty9-service/webserver-service
 
 Note that this implementation of the
-`webserver-service` interface is based on Jetty 9, which requires JRE 1.7 or greater.
-However, the interface is intended to be agnostic to the underlying web server
+`webserver-service` interface is based on Jetty 9, which contains performance
+improvements over previous versions of Jetty that may be significant depending on
+your application.  This service requires JRE 1.7 or greater;
+however, the interface is intended to be agnostic to the underlying web server
 implementation.  We also provide a
 [Jetty 7 version of the service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty7),
 which can be used interchangeably with this one and will support older JDKs.
