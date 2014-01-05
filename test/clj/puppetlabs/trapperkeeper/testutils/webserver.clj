@@ -1,5 +1,5 @@
 (ns puppetlabs.trapperkeeper.testutils.webserver
-  (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty7]))
+  (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]))
 
 (defmacro with-test-webserver
   "Constructs and starts an embedded Jetty on a random port, and
@@ -19,8 +19,8 @@
           (http-client/get (format \"http://localhost:%s\" port))))
   "
   [app port-var & body]
-  `(let [srv#      (jetty7/start-webserver {:port 0 :join? false})
-         _#        (jetty7/add-ring-handler srv# ~app "/")
+  `(let [srv#      (jetty9/start-webserver {:port 0 :join? false})
+         _#        (jetty9/add-ring-handler srv# ~app "/")
          ~port-var (-> (:server srv#)
                        (.getConnectors)
                        (first)
@@ -28,4 +28,4 @@
      (try
        ~@body
        (finally
-         (jetty7/shutdown srv#)))))
+         (jetty9/shutdown srv#)))))

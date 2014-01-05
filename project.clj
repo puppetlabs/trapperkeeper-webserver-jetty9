@@ -12,12 +12,18 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
 
-                 ;; Jetty Webserver
-                 [org.eclipse.jetty/jetty-servlet "7.6.1.v20120215"]
-                 [org.eclipse.jetty/jetty-server "7.6.1.v20120215"
-                  :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
+                 [javax.servlet/javax.servlet-api "3.1.0"]
 
-                 [ring/ring-servlet "1.1.8"]]
+                 ;; Jetty Webserver
+                 [org.eclipse.jetty/jetty-server "9.0.5.v20130815"
+                  :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
+                 [org.eclipse.jetty/jetty-servlet "9.0.5.v20130815"]
+                 [org.eclipse.jetty/jetty-servlets "9.0.5.v20130815"]
+
+                 [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]
+
+                 [clj-http "0.5.3"]
+                 ]
 
 
   ;; By declaring a classifier here and a corresponding profile below we'll get an additional jar

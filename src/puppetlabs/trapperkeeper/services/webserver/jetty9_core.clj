@@ -4,15 +4,18 @@
 
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core
   "Adapter for the Jetty webserver."
-  (:import (org.eclipse.jetty.server Handler Server Request)
-           (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection ContextHandlerCollection GzipHandler)
+  (:import (org.eclipse.jetty.server Handler Server Request ServerConnector
+                                     HttpConfiguration HttpConnectionFactory
+                                     ConnectionFactory)
+           (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection ContextHandlerCollection)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
-           (org.eclipse.jetty.server.ssl SslSelectChannelConnector)
-           (org.eclipse.jetty.server.nio SelectChannelConnector)
-           (org.eclipse.jetty.servlet ServletContextHandler ServletHolder)
            (javax.servlet.http HttpServletRequest HttpServletResponse)
-           (java.util.concurrent Executors))
+           (java.util.concurrent Executors)
+           (org.eclipse.jetty.servlets.gzip GzipHandler)
+           (org.eclipse.jetty.servlet ServletContextHandler ServletHolder)
+           (java.util HashSet)
+           (org.eclipse.jetty.http MimeTypes))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :refer [split trim]]
             [clojure.tools.logging :as log]
@@ -73,7 +76,9 @@
       (.setKeyStore context (options :keystore)))
     (.setKeyStorePassword context (options :key-password))
     (when (options :truststore)
-      (.setTrustStore context (options :truststore)))
+      (if (string? (options :truststore))
+        (.setTrustStorePath context (options :truststore))
+        (.setTrustStore context (options :truststore))))
     (when (options :trust-password)
       (.setTrustStorePassword context (options :trust-password)))
     (case (options :client-auth)
@@ -82,41 +87,72 @@
       nil)
     context))
 
+(defn- connection-factory
+  []
+  (let [http-config (doto (HttpConfiguration.)
+                      (.setSendDateHeader true))]
+    (into-array ConnectionFactory
+                [(HttpConnectionFactory. http-config)])))
+
 (defn- ssl-connector
-  "Creates a SslSelectChannelConnector instance."
-  [options]
-  (doto (SslSelectChannelConnector. (ssl-context-factory options))
+  "Creates a ssl ServerConnector instance."
+  [server ssl-ctxt-factory options]
+  (doto (ServerConnector. server ssl-ctxt-factory (connection-factory))
     (.setPort (options :ssl-port 443))
     (.setHost (options :host))))
 
-(defn plaintext-connector
-  [options]
-  (doto (SelectChannelConnector.)
+(defn- plaintext-connector
+  [server options]
+  (doto (ServerConnector. server (connection-factory))
     (.setPort (options :port 80))
     (.setHost (options :host "localhost"))))
+
+(defn- gzip-excluded-mime-types
+  "Build up a list of mime types that should not be candidates for
+  gzip compression in responses."
+  []
+  (->
+    ;; This code is ported from Jetty 9.0.5's GzipFilter class.  In
+    ;; Jetty 7, this behavior was the default for GzipHandler as well
+    ;; as GzipFilter, but in Jetty 9.0.5 the GzipHandler no longer
+    ;; includes this, so we need to do it by hand.
+    (filter #(or (.startsWith % "image/")
+                 (.startsWith % "audio/")
+                 (.startsWith % "video/"))
+            (MimeTypes/getKnownMimeTypes))
+    (conj "application/compress" "application/zip" "application/gzip")
+    (HashSet.)))
+
+(defn- gzip-handler
+  "Given a handler, wrap it with a GzipHandler that will compress the response
+  when appropriate."
+  [handler]
+  (doto (GzipHandler.)
+    (.setHandler handler)
+    (.setMimeTypes (gzip-excluded-mime-types))
+    (.setExcludeMimeTypes true)))
 
 (defn- create-server
   "Construct a Jetty Server instance."
   [options]
-  (let [server (doto (Server.)
-                 (.setSendDateHeader true))]
+  (let [server (Server. (QueuedThreadPool. (options :max-threads 50)))]
     (when (options :port)
-      (.addConnector server (plaintext-connector options)))
-
+      (let [connector (plaintext-connector server options)]
+        (.addConnector server connector)))
     (when (or (options :ssl?) (options :ssl-port))
-      (let [ssl-host  (options :ssl-host (options :host "localhost"))
-            options   (assoc options :host ssl-host)
-            connector (ssl-connector options)
-            ciphers   (if-let [txt (options :cipher-suites)]
-                        (map trim (split txt #","))
-                        acceptable-ciphers)
-            protocols (if-let [txt (options :ssl-protocols)]
-                        (map trim (split txt #",")))]
+      (let [ssl-host          (options :ssl-host (options :host "localhost"))
+            options           (assoc options :host ssl-host)
+            ssl-ctxt-factory  (ssl-context-factory options)
+            connector         (ssl-connector server ssl-ctxt-factory options)
+            ciphers           (if-let [txt (options :cipher-suites)]
+                                (map trim (split txt #","))
+                                acceptable-ciphers)
+            protocols         (if-let [txt (options :ssl-protocols)]
+                                (map trim (split txt #",")))]
         (when ciphers
-          (let [fac (.getSslContextFactory connector)]
-            (.setIncludeCipherSuites fac (into-array ciphers))
-            (when protocols
-              (.setIncludeProtocols fac (into-array protocols)))))
+          (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers))
+          (when protocols
+            (.setIncludeProtocols ssl-ctxt-factory (into-array protocols))))
         (.addConnector server connector)))
     server))
 
@@ -145,9 +181,7 @@
         ^ContextHandlerCollection chc (ContextHandlerCollection.)
         ^HandlerCollection hc         (HandlerCollection.)]
     (.setHandlers hc (into-array Handler [chc]))
-    (->> (doto (GzipHandler.)
-           (.setHandler hc))
-         (.setHandler s))
+    (.setHandler s (gzip-handler hc))
     (when-let [configurator (:configurator options)]
       (configurator s))
     (.start s)
