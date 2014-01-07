@@ -107,6 +107,7 @@
     (.setPort (options :port 80))
     (.setHost (options :host "localhost"))))
 
+;; TODO: make all of this gzip-mime-type stuff configurable
 (defn- gzip-excluded-mime-types
   "Build up a list of mime types that should not be candidates for
   gzip compression in responses."
@@ -120,7 +121,7 @@
                  (.startsWith % "audio/")
                  (.startsWith % "video/"))
             (MimeTypes/getKnownMimeTypes))
-    (conj "application/compress" "application/zip" "application/gzip")
+    (conj "application/compress" "application/zip" "application/gzip" "text/event-stream")
     (HashSet.)))
 
 (defn- gzip-handler
