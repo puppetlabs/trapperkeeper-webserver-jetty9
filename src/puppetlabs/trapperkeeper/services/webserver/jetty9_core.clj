@@ -15,7 +15,8 @@
            (org.eclipse.jetty.servlets.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder)
            (java.util HashSet)
-           (org.eclipse.jetty.http MimeTypes))
+           (org.eclipse.jetty.http MimeTypes)
+           (javax.servlet Servlet))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :refer [split trim]]
             [clojure.tools.logging :as log]
@@ -159,8 +160,19 @@
 
 ;; Functions for trapperkeeper 'webserver' interface
 
-(defn start-webserver
-    "Start a Jetty webserver according to the supplied options:
+(defn webserver?
+  "A predicate that indicates whether or not an object represents a 'webserver',
+  in the form that is used internally by this namespace."
+  [ws]
+  (and
+    (map? ws)
+    (contains? ws :server)
+    (instance? Server (:server ws))
+    (contains? ws :handlers)
+    (instance? ContextHandlerCollection (:handlers ws))))
+
+(defn create-webserver
+    "Create a Jetty webserver according to the supplied options:
 
     :configurator - a function called with the Jetty Server instance
     :port         - the port to listen on (defaults to 8080)
@@ -176,7 +188,8 @@
     :client-auth  - SSL client certificate authenticate, may be set to :need,
                     :want or :none (defaults to :none)"
   [options]
-  {:pre [(map? options)]}
+  {:pre [(map? options)]
+   :post [(webserver? %)]}
   (let [options                       (jetty-config/configure-web-server options)
         ^Server s                     (create-server (dissoc options :configurator))
         ^ContextHandlerCollection chc (ContextHandlerCollection.)
@@ -185,12 +198,21 @@
     (.setHandler s (gzip-handler hc))
     (when-let [configurator (:configurator options)]
       (configurator s))
-    (.start s)
+    #_(.start s)
     {:server   s
      :handlers chc}))
 
+(defn start-webserver
+  "Starts a webserver (as returned by `create-webserver`)"
+  [webserver]
+  {:pre [(webserver? webserver)]}
+  (.start (:server webserver)))
+
 (defn add-ring-handler
   [webserver handler path]
+  {:pre [(webserver? webserver)
+         (ifn? handler)
+         (string? path)]}
   (let [handler-coll (:handlers webserver)
         ctxt-handler (doto (ContextHandler. path)
                        (.setHandler (proxy-handler handler)))]
@@ -200,6 +222,9 @@
 
 (defn add-servlet-handler
   [webserver servlet path]
+  {:pre [(webserver? webserver)
+         (instance? Servlet servlet)
+         (string? path)]}
   (let [handler (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
                   (.setContextPath path)
                   (.addServlet (ServletHolder. servlet) "/*"))]
@@ -209,9 +234,11 @@
 
 (defn join
   [webserver]
+  {:pre [(webserver? webserver)]}
   (.join (:server webserver)))
 
 (defn shutdown
   [webserver]
+  {:pre [(webserver? webserver)]}
   (log/info "Shutting down web server.")
   (.stop (:server webserver)))
