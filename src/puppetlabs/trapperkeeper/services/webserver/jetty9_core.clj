@@ -137,7 +137,7 @@
 (defn- create-server
   "Construct a Jetty Server instance."
   [options]
-  (let [server (Server. (QueuedThreadPool. (options :max-threads 50)))]
+  (let [server (Server. (QueuedThreadPool. (options :max-threads)))]
     (when (options :port)
       (let [connector (plaintext-connector server options)]
         (.addConnector server connector)))
