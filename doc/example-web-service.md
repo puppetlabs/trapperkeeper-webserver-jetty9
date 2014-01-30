@@ -30,25 +30,25 @@ The bootstrap config file contains a list of services that _trapperkeeper_ will 
 listed as fully-qualified Clojure namespaces and service names. For this example the bootstrap.cfg looks like this:
 
 ```
-puppetlabs.trapperkeeper.services.webserver.jetty9-service/webserver-service
+puppetlabs.trapperkeeper.services.webserver.jetty9-service/jetty9-service
 examples.ring-app.example-services/count-service
 examples.ring-app.example-services/bert-service
 examples.ring-app.example-services/ernie-service
 ```
 
-This configuration indicates that the trapperkeeper webserver-service is to be loaded, as well as the three new
-services defined in the `example_services.clj` file.
+This configuration indicates the jetty9 `WebserverService` is to be loaded, as
+well as the three new services defined in the `example_services.clj` file.
 
 ### The `config.ini` configuration file
 
 For the application configuration, a file called `config.ini` provides the most minimal configuration of the
 webserver-service, which is simply the port the service will be listening on and also a `logging-config` key which
-contains a path to a `log4j.properties` file which defines the logging configuration.
+contains a path to a logback config file which defines the logging configuration.
 
 ```ini
 [global]
-# Points to a log4j properties file
-logging-config = examples/ring_app/log4j.properties
+# Points to a logback config file
+logging-config = examples/ring_app/logback.xml
 
 [webserver]
 # Port to listen on for clear-text HTTP.
@@ -67,7 +67,7 @@ lein trampoline run --config examples/ring_app/config.ini \
 ```
 
 When run you will see debug output any time you hit the hit-counting endpoint. This is the equivalent of setting the
-`log4j.rootLogger` to `DEBUG` instead of `INFO`, and will override whatever log level the root logger is set to.
+logback root logger to `DEBUG` instead of `INFO`, and will override whatever log level the root logger is set to.
 
 ## Defining the Services
 
@@ -95,25 +95,31 @@ visitor number they are. It is entirely expressed with this code:
 
     (new-hit-counts endpoint)))
 
+(defprotocol CountService
+  (inc-and-get [this endpoint]))
+
 (defservice count-service
   "This is a simple service which simply keeps a counter. It contains one function, inc-and-get, which
    increments the count and returns it."
+  ;; Here we specify the service's protocol
+  CountService
+  ;; This vector declares the service's dependencies on other services and their functions,
+  []
+  ;; Implement the `init` function from the `Lifecycle` protocol to
 
-  ;; This map declares the service's dependencies on other services and their functions,
-  {:depends []              ; A :depends key is required to be present, even if it is empty.
-   :provides [inc-and-get]} ; This service provides a function called inc-and-get.
-
-  ;; Export the inc-and-get function via the return map.
-  {:inc-and-get inc-and-get})
+  ;; initialize state:
+  (init [this context]
+    (assoc context :hit-counts (atom {})))
+  ;; Implement the inc-and-get function.
+  (inc-and-get [this endpoint]
+    (inc-and-get* ((service-context this) :hit-counts) endpoint)))
 ```
 
 The `defservice` macro is used to define a _trapperkeeper_ service and it is located in the
 `puppetlabs._trapperkeeper_.core` namespace.
 
-After an optional doc-string, the first form needs to be a map containing a `:depends` key and a `:provides` key. These
-are used to inform _trapperkeeper_ of a service's dependencies and the functions publicly available for consumption by
-other services. Since this service has no dependencies, an empty list is provided for the `:depends` key. The
-`:provides` key is a list of a functions this service provides.
+For more info on how the `defservice` macro works, see the
+[`defservice` section of the trapperkeeper docs](https://github.com/puppetlabs/trapperkeeper/tree/0.3.0#defservice)
 
 The `inc-and-get` function will keep a tally of hit counts for a provided endpoint. It
 is later exported with the last form in the service definition which is a map of this service's function names to the
@@ -145,27 +151,28 @@ responses to requests made to specific endpoints, and is defined here:
    responses to an endpoint. It depends on the count-service above to use as a primitive hit counter.
    See https://github.com/ring-clojure/ring for documentation on Ring."
 
-  ;; This service needs functionality from the webserver-service, and the count service.
-  {:depends [[:webserver-service add-ring-handler]
-             [:count-service inc-and-get]]
-   ;; This service provides a shutdown function.
-   :provides [shutdown]}
+  ;; This service needs functionality from the webserver service, and the count service.
+  [[:WebserverService add-ring-handler]
+   [:CountService inc-and-get]]
 
-  (let [endpoint "/bert"]
-    (add-ring-handler (partial ring-handler inc-and-get endpoint) endpoint)
-    ;; Return the service's exposed function map.
-    {:shutdown #(log/info "Bert service shutting down")}))
+  ;; Implement the `init` lifecycle function to register the ring handler
+  (init [this context]
+    (let [endpoint "/bert"]
+      (add-ring-handler (partial ring-handler inc-and-get endpoint) endpoint))
+    context)
+
+  (stop [this context]
+    (log/info "Bert service shutting down")
+    context))
 ```
 
-The general structure of this service is similar to the _hit count_ service; it contains a list of dependencies and
-providers at the top and a map of provided functions at the bottom but this one has more content in the middle, which is
-where service-specific code generally resides.
+The general structure of this service is similar to the _hit count_ service.
 
-Since this service requires the use of functionality from other services, the `:depends` key contains a list of two
+Since this service requires the use of functionality from other services, the dependency list contains two
 dependent services and the functions that are required from each. The element containing
-`[:webserver-service add-ring-handler]` states that the `add-ring-handler` function from the
-`:webserver-service` is needed by this service. And, of course, we also need to pull in the `inc-and-get` function
-from the _hit count_ service previously defined. This is accomplished by the `[:count-service inc-and-get]` dependency
+`[:WebserverService add-ring-handler]` states that the `add-ring-handler` function from the
+`:WebserverService` is needed by this service. And, of course, we also need to pull in the `inc-and-get` function
+from the _hit count_ service previously defined. This is accomplished by the `[:CountService inc-and-get]` dependency
 list item.
 
 #### Ring handlers
@@ -183,7 +190,7 @@ See https://github.com/ring-clojure/ring for further documentation on the Ring A
 ### Define the _ernie_ service
 
 The _ernie_ service is very similar to the _bert_ service, but also leverages
-another bit of built-in _trapperkeeper_ functionality: the `config-service`.
+another bit of built-in _trapperkeeper_ functionality: the `:ConfigService`.
 
 This service can be specified as a dependency, and provides functions that can be
 used to retrieve user-specified configuration values.  In this case, we've added an `[example]`
@@ -206,17 +213,20 @@ the ring handler.
 
 (defservice ernie-service
   "This is the ernie service which operates on the /ernie endpoint. It is essentially identical to the bert service."
+  [[:WebserverService add-ring-handler]
+   [:CountService inc-and-get]
+   [:ConfigService get-in-config]]
 
-  {:depends [[:webserver-service add-ring-handler]
-             [:count-service inc-and-get]
-             [:config-service get-in-config]]
-   :provides [shutdown]}
+  (init [this context]
+    (let [endpoint (get-in-config [:example :ernie-url-prefix])
+          ring-handler (-> (partial ring-handler inc-and-get endpoint)
+                           (debug-middleware (get-in-config [:debug])))]
+      (add-ring-handler ring-handler endpoint))
+    context)
 
-  (let [endpoint      (get-in-config [:example :ernie-url-prefix])
-        ring-handler  (-> (partial ring-handler inc-and-get endpoint)
-                          (debug-middleware (get-in-config [:debug])))]
-    (add-ring-handler ring-handler endpoint)
-    {:shutdown #(log/info "Ernie service shutting down") }))
+  (stop [this context]
+    (log/info "Ernie service shutting down")
+    context))
 ```
 
 This means that you can change the URL of the `ernie-service` simply by editing
@@ -224,20 +234,27 @@ the configuration file.
 
 ## Logging
 
-At startup, _trapperkeeper_ will configure the logging system based on a log4j.properties
+At startup, _trapperkeeper_ will configure the logging system based on a logback configuration
 file.  This means that your services can all just dive run it and call the
 logging functions available in `clojure.tools.logging` without worrying about configuration.
 
-### The `log4j.properties` file
+### The `logback.xml` file
 
-A minimal `log4j.properties` file is provided in this example to demonstrate how to configure logging in
+A minimal `logback.xml` file is provided in this example to demonstrate how to configure logging in
 _trapperkeeper_.
 
-```properties
-log4j.rootLogger=INFO, A1
-log4j.appender.A1=org.apache.log4j.ConsoleAppender
-log4j.appender.A1.layout=org.apache.log4j.PatternLayout
-log4j.appender.A1.layout.ConversionPattern=%d %-5p [%c{2}] %m%n
+```xml
+<configuration scan="true">
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d %-5p [%c{2}] %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
 ```
 
-See http://logging.apache.org/log4j/1.2/manual.html for documentation on how to configure log4j.
+See http://logback.qos.ch/manual/configuration.html for documentation on how to configure logback.

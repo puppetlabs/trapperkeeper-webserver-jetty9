@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty7.png?branch=master)](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty7)
+
 ## Trapperkeeper Webserver Service
 
 This project provides a webserver service for use with the
@@ -7,10 +9,10 @@ project as a dependency in your leinengen project file, and then add the
 webserver service to your [`bootstrap.cfg`](https://github.com/puppetlabs/trapperkeeper#bootstrapping)
 file, via:
 
-    puppetlabs.trapperkeeper.services.webserver.jetty9-service/webserver-service
+    puppetlabs.trapperkeeper.services.webserver.jetty9-service/jetty9-service
 
 Note that this implementation of the
-`webserver-service` interface is based on Jetty 9, which contains performance
+`:WebserverService` interface is based on Jetty 9, which contains performance
 improvements over previous versions of Jetty that may be significant depending on
 your application.  This service requires JRE 1.7 or greater;
 however, the interface is intended to be agnostic to the underlying web server
@@ -40,10 +42,18 @@ Two examples are included with this project:
    [source code](./examples/ring_app))
 * A Java servlet example ([source code](./examples/servlet_app))
 
-### Provided functions
+### Service Protocol
 
-The current implementation of the `webserver-service` provides three functions:
-`add-ring-handler`, `add-servlet-handler`, and `join`.
+This is the protocol for the current implementation of the `:WebserverService`:
+
+```clj
+(defprotocol WebserverService
+  (add-ring-handler [this handler path])
+  (add-servlet-handler [this servlet path])
+  (join [this]))
+```
+
+Here is a bit more info about each of these functions:
 
 #### `add-ring-handler`
 
@@ -64,16 +74,15 @@ Then your routes will be served at `/my-app/foo` and `my-app/bar`.
 You may specify `""` as the value for `path` if you are only registering a single
 handler and do not need to prefix the URL.
 
-Here's an example of how to use the `:webserver-service`:
+Here's an example of how to use the `:WebserverService`:
 
 ```clj
-(defservice my-web-service
-   {:depends [[:webserver-service add-ring-handler]]
-    :provides []}
+(defservice MyWebService
+   [[:WebserverService add-ring-handler]]
    ;; initialization
-   (add-ring-handler my-app "/my-app")
-   ;; return service function map
-   {})
+   (init [this context]
+      (add-ring-handler my-app "/my-app")
+      context))
 ```
 
 *NOTE FOR COMPOJURE APPS*: If you are using compojure, it's important to note
@@ -87,15 +96,14 @@ you will need to do something like this:
    ;;...
    ))
 
-(defservice my-web-service
-   {:depends [[:webserver-service add-ring-handler]]
-    :provides []}
+(defservice MyWebService
+   [[:WebserverService add-ring-handler]]
    ;; initialization
-   (let [context-path "/my-app"
-         context-app  (context context-path [] my-compojure-app)]
-     (add-ring-handler context-app context-path))
-   ;; return service function map
-   {})
+   (init [this context]
+        (let [context-path "/my-app"
+              context-app  (context context-path [] my-compojure-app)]
+            (add-ring-handler context-app context-path))
+        context))
 ```
 
 #### `add-servlet-handler`
@@ -111,13 +119,12 @@ For example, to host a servlet at `/my-app`:
     ;; ...
     (:import [bar.baz SomeServlet]))
 
-(defservice my-web-service
-  {:depends [[:webserver-service add-servlet-handler]]
-   :provides []}
+(defservice MyWebService
+  [[:WebserverService add-servlet-handler]]
   ;; initialization
-  (add-servlet-handler (SomeServlet. "some config") "/my-app")
-  ;; return service function map
-  {})
+  (init [this context]
+    (add-servlet-handler (SomeServlet. "some config") "/my-app")
+    context))
 ```
 
 For more information see the [example servlet app](examples/servlet_app).
