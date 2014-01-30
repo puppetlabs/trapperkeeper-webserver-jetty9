@@ -4,7 +4,7 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-log-output logs-matching]]))
 
-(deftest jetty7-minimum-threads-test
+#_(deftest jetty7-minimum-threads-test
   (testing "should return the same number when higher than num-cpus"
     (is (= 500 (jetty7-minimum-threads 500 1))))
   (testing "should set the number to min threads when it is higher and return a warning"
@@ -53,11 +53,11 @@
           (is (not (contains? processed-config :ssl-cert)))
           (is (not (contains? processed-config :ssl-ca-cert)))))))
 
-  (testing "should set max-threads"
+  #_(testing "should set max-threads"
     (let [config (configure-web-server {})]
       (is (contains? config :max-threads))))
 
-  (testing "should merge configuration with initial-configs correctly"
+  #_(testing "should merge configuration with initial-configs correctly"
     (let [user-config {:truststore "foo"}
           config      (configure-web-server user-config)]
       (is (= config {:truststore "foo" :max-threads 50 :client-auth :need :port 8080})))
