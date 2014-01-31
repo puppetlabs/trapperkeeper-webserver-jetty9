@@ -1,17 +1,17 @@
 (ns examples.ring-app.example-services
+  (:import (clojure.lang Atom))
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :refer [pprint-to-string]]
             [puppetlabs.trapperkeeper.core :refer [defservice]]))
 
-(def ^{:private true} hit-count (atom {}))
-
-(defn- inc-and-get
+(defn- inc-and-get*
   "Increments the hit count for the provided endpoint and returns the new hit count."
-  [endpoint]
-  {:pre [(string? endpoint)]
+  [hit-counts endpoint]
+  {:pre [(instance? Atom hit-counts)
+         (string? endpoint)]
    :post [(integer? %) (> % 0)]}
 
-  (let [new-hit-counts (swap! hit-count #(assoc % endpoint (cond (contains? % endpoint)
+  (let [new-hit-counts (swap! hit-counts #(assoc % endpoint (cond (contains? % endpoint)
                                                              (inc (% endpoint)) :else 1)))]
 
     (log/debug "Incrementing hit count for" endpoint "from"
@@ -19,16 +19,23 @@
 
     (new-hit-counts endpoint)))
 
+(defprotocol CountService
+  (inc-and-get [this endpoint]))
+
 (defservice count-service
   "This is a simple service which simply keeps a counter. It contains one function, inc-and-get, which
    increments the count and returns it."
-
-  ;; This map declares the service's dependencies on other services and their functions,
-  {:depends []              ; A :depends key is required to be present, even if it is empty.
-   :provides [inc-and-get]} ; This service provides a function called inc-and-get.
-
-  ;; Export the inc-and-get function via the return map.
-  {:inc-and-get inc-and-get})
+  ;; Here we specify the service's protocol
+  CountService
+  ;; This vector declares the service's dependencies on other services and their functions,
+  []
+  ;; Implement the `init` function from the `Lifecycle` protocol to
+  ;; initialize state:
+  (init [this context]
+    (assoc context :hit-counts (atom {})))
+  ;; Implement the inc-and-get function.
+  (inc-and-get [this endpoint]
+    (inc-and-get* ((service-context this) :hit-counts) endpoint)))
 
 (defn- success-response
   "Return a ring response map containing a HTTP response code of 200 (OK) and HTML which displays the hitcount on this
@@ -50,16 +57,19 @@
    responses to an endpoint. It depends on the count-service above to use as a primitive hit counter.
    See https://github.com/ring-clojure/ring for documentation on Ring."
 
-  ;; This service needs functionality from the webserver-service, and the count service.
-  {:depends [[:webserver-service add-ring-handler]
-             [:count-service inc-and-get]]
-   ;; This service provides a shutdown function.
-   :provides [shutdown]}
+  ;; This service needs functionality from the webserver service, and the count service.
+  [[:WebserverService add-ring-handler]
+   [:CountService inc-and-get]]
 
-  (let [endpoint "/bert"]
-    (add-ring-handler (partial ring-handler inc-and-get endpoint) endpoint)
-    ;; Return the service's exposed function map.
-    {:shutdown #(log/info "Bert service shutting down")}))
+  ;; Implement the `init` lifecycle function to register the ring handler
+  (init [this context]
+    (let [endpoint "/bert"]
+      (add-ring-handler (partial ring-handler inc-and-get endpoint) endpoint))
+    context)
+
+  (stop [this context]
+    (log/info "Bert service shutting down")
+    context))
 
 (defn debug-middleware
   "Ring middleware to add the :debug configuration value to the request map."
@@ -69,14 +79,17 @@
 
 (defservice ernie-service
   "This is the ernie service which operates on the /ernie endpoint. It is essentially identical to the bert service."
+  [[:WebserverService add-ring-handler]
+   [:CountService inc-and-get]
+   [:ConfigService get-in-config]]
 
-  {:depends [[:webserver-service add-ring-handler]
-             [:count-service inc-and-get]
-             [:config-service get-in-config]]
-   :provides [shutdown]}
+  (init [this context]
+    (let [endpoint (get-in-config [:example :ernie-url-prefix])
+          ring-handler (-> (partial ring-handler inc-and-get endpoint)
+                           (debug-middleware (get-in-config [:debug])))]
+      (add-ring-handler ring-handler endpoint))
+    context)
 
-  (let [endpoint      (get-in-config [:example :ernie-url-prefix])
-        ring-handler  (-> (partial ring-handler inc-and-get endpoint)
-                          (debug-middleware (get-in-config [:debug])))]
-    (add-ring-handler ring-handler endpoint)
-    {:shutdown #(log/info "Ernie service shutting down") }))
+  (stop [this context]
+    (log/info "Ernie service shutting down")
+    context))

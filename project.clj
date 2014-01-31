@@ -1,7 +1,7 @@
-(def tk-version "0.3.0-SNAPSHOT")
-(def ks-version "0.4.1")
+(def tk-version "0.3.0")
+(def ks-version "0.5.1")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.1.0-SNAPSHOT"
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.3.0-SNAPSHOT"
   :description "We are trapperkeeper.  We are one."
   ;; Abort when version ranges or version conflicts are detected in
   ;; dependencies. Also supports :warn to simply emit warnings.
@@ -34,13 +34,14 @@
   :profiles {:dev {:test-paths ["test-resources"]
                    :source-paths ["examples/ring_app/src"
                                   "examples/servlet_app/src/clj"]
-                   :java-source-paths ["examples/servlet_app/src/java"]}
-
-             :test {:dependencies [[clj-http "0.5.3"]
-                                   [org.slf4j/slf4j-log4j12 "1.7.5" :exclusions [log4j]]
-                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
-                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]]
-                    :java-source-paths ["test/java"]}
+                   :java-source-paths ["examples/servlet_app/src/java"
+                                       "test/java"]
+                   :dependencies [[clj-http "0.5.3"]
+                                  [puppetlabs/kitchensink ~ks-version :classifier "test"]
+                                  [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
+                                  [org.clojure/tools.namespace "0.2.4"]
+                                  [spyscope "0.1.4"]]
+                    :injections [(require 'spyscope.core)]}
 
              :testutils {:source-paths ^:replace ["test/clj"]
                          :java-source-paths ^:replace ["test/java"]}

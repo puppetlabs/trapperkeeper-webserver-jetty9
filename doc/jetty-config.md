@@ -1,7 +1,7 @@
-## Configuring The Jetty 9 Webserver
+## Configuring The Webserver Service
 
 The `[webserver]` section in an `.ini` configuration file configures an embedded
-Jetty HTTP server inside trapperkeeper.
+HTTP server inside trapperkeeper.
 
 ### `host`
 
