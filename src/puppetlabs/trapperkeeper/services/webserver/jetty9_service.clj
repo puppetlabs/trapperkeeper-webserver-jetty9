@@ -9,7 +9,7 @@
 ;; a dependency for all webserver service implementations
 (defprotocol WebserverService
   (add-ring-handler [this handler path])
-  (add-servlet-handler [this servlet path])
+  (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
   (join [this]))
 
 (defservice jetty9-service
@@ -42,6 +42,10 @@
   (add-servlet-handler [this servlet path]
                        (let [s ((service-context this) :jetty9-server)]
                          (core/add-servlet-handler s servlet path)))
+
+  (add-servlet-handler [this servlet path servlet-init-params]
+                       (let [s ((service-context this) :jetty9-server)]
+                         (core/add-servlet-handler s servlet path servlet-init-params)))
 
   (join [this]
         (let [s ((service-context this) :jetty9-server)]

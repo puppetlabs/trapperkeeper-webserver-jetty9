@@ -45,6 +45,43 @@
         (finally
           (shutdown)))))
 
+  (testing "servlet support with empty init param"
+    (let [app                 (bootstrap-services-with-empty-config [jetty9-service])
+          s                   (get-service app :WebserverService)
+          add-servlet-handler (partial add-servlet-handler s)
+          shutdown            (partial stop s (service-context s))
+          body                "Hey there"
+          path                "/hey"
+          servlet             (SimpleServlet. body)]
+      (try
+        (add-servlet-handler servlet path {})
+        (let [response (http-client/get (format "http://localhost:8080/%s" path))]
+          (is (= (:status response) 200))
+          (is (= (:body response) body)))
+        (finally
+          (shutdown)))))
+
+  (testing "servlet support with non-empty init params"
+    (let [app                 (bootstrap-services-with-empty-config [jetty9-service])
+          s                   (get-service app :WebserverService)
+          add-servlet-handler (partial add-servlet-handler s)
+          shutdown            (partial stop s (service-context s))
+          body                "Hey there"
+          path                "/hey"
+          init-param-one      "value of init param one"
+          init-param-two      "value of init param two"
+          servlet             (SimpleServlet. body)]
+      (try
+        (add-servlet-handler servlet path {"init-param-one" init-param-one "init-param-two" init-param-two})
+        (let [response (http-client/get (format "http://localhost:8080/%s/init-param-one" path))]
+          (is (= (:status response) 200))
+          (is (= (:body response) init-param-one)))
+        (let [response (http-client/get (format "http://localhost:8080/%s/init-param-two" path))]
+          (is (= (:status response) 200))
+          (is (= (:body response) init-param-two)))
+        (finally
+          (shutdown)))))
+
   (testing "SSL initialization is supported for both .jks and .pem implementations"
     (doseq [config ["./test-resources/config/jetty/jetty-ssl-jks.ini"
                     "./test-resources/config/jetty/jetty-ssl-pem.ini"]]

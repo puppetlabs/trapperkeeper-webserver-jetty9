@@ -218,16 +218,21 @@
     ctxt-handler))
 
 (defn add-servlet-handler
-  [webserver servlet path]
-  {:pre [(webserver? webserver)
-         (instance? Servlet servlet)
-         (string? path)]}
-  (let [handler (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
-                  (.setContextPath path)
-                  (.addServlet (ServletHolder. servlet) "/*"))]
-    (.addHandler (:handlers webserver) handler)
-    (.start handler)
-    handler))
+  ([webserver servlet path]
+   (add-servlet-handler webserver servlet path {}))
+  ([webserver servlet path servlet-init-params]
+   {:pre [(webserver? webserver)
+          (instance? Servlet servlet)
+          (string? path)
+          (map? servlet-init-params)]}
+   (let [holder   (doto (ServletHolder. servlet)
+                    (.setInitParameters servlet-init-params))
+         handler  (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
+                   (.setContextPath path)
+                   (.addServlet holder "/*"))]
+     (.addHandler (:handlers webserver) handler)
+     (.start handler)
+     handler)))
 
 (defn join
   [webserver]
