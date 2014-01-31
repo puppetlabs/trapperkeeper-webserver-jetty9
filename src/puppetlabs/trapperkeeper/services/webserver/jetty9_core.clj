@@ -166,9 +166,7 @@
   [ws]
   (and
     (map? ws)
-    (contains? ws :server)
     (instance? Server (:server ws))
-    (contains? ws :handlers)
     (instance? ContextHandlerCollection (:handlers ws))))
 
 (defn create-webserver
@@ -198,7 +196,6 @@
     (.setHandler s (gzip-handler hc))
     (when-let [configurator (:configurator options)]
       (configurator s))
-    #_(.start s)
     {:server   s
      :handlers chc}))
 
