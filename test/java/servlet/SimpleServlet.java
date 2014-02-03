@@ -18,22 +18,22 @@ public class SimpleServlet extends HttpServlet {
 
   @Override
   public void init(final ServletConfig config) throws ServletException {
-      this.config = config;
+    this.config = config;
   }
 
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-      response.setContentType("text/html");
-      response.setStatus(HttpServletResponse.SC_OK);
-       String pathInfo = request.getPathInfo();
-      if (pathInfo != null && pathInfo.length() > 1 && pathInfo.charAt(0) == '/' && config != null)
-      {
-          response.getWriter().print(config.getInitParameter(pathInfo.substring(1)));
-      }
-      else
-      {
-          response.getWriter().print(body);
-      }
+    response.setContentType("text/html");
+    response.setStatus(HttpServletResponse.SC_OK);
+     String pathInfo = request.getPathInfo();
+    if (pathInfo != null && pathInfo.length() > 1 && pathInfo.charAt(0) == '/' && config != null)
+    {
+        response.getWriter().print(config.getInitParameter(pathInfo.substring(1)));
+    }
+    else
+    {
+        response.getWriter().print(body);
+    }
   }
 }
 
