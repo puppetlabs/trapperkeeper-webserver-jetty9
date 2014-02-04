@@ -1,7 +1,7 @@
-(def tk-version "0.3.0")
+(def tk-version "0.3.2")
 (def ks-version "0.5.1")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.3.0-SNAPSHOT"
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.3.2-SNAPSHOT"
   :description "We are trapperkeeper.  We are one."
   ;; Abort when version ranges or version conflicts are detected in
   ;; dependencies. Also supports :warn to simply emit warnings.
@@ -22,6 +22,13 @@
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
 
+  :lein-release {:scm         :git
+                 :deploy-via  :lein-deploy}
+
+  :deploy-repositories [["releases" {:url "https://clojars.org/repo"
+                                     :username :env/clojars_username
+                                     :password :env/clojars_password
+                                     :sign-releases false}]]
 
   ;; By declaring a classifier here and a corresponding profile below we'll get an additional jar
   ;; during `lein jar` that has all the code in the test/ directory. Downstream projects can then
