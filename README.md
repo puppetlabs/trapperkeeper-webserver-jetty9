@@ -92,18 +92,18 @@ you will need to do something like this:
 
 ```clj
 (ns foo
-   (:require [compojure.core :refer [context]]
+   (:require [compojure.core :as c]
    ;;...
    ))
 
 (defservice MyWebService
    [[:WebserverService add-ring-handler]]
    ;; initialization
-   (init [this context]
+   (init [this svc-context]
         (let [context-path "/my-app"
-              context-app  (context context-path [] my-compojure-app)]
+              context-app  (c/context context-path [] my-compojure-app)]
             (add-ring-handler context-app context-path))
-        context))
+        svc-context))
 ```
 
 #### `add-servlet-handler`
