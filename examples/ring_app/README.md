@@ -12,7 +12,7 @@ And now, a few quick housekeeping items before we get to the code...
 ## Launching trapperkeeper and running the app
 
 To start up _trapperkeeper_ and launch the sample application, use the following _lein_ command while in the
-_trapperkeeper_ home directory:
+_trapperkeeper-webserver-jetty9_ home directory:
 
 ```sh
 lein trampoline run --config examples/ring_app/config.ini \
