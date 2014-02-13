@@ -39,15 +39,13 @@
 
 (defn configure-web-server
   "Update the supplied config map with information about the HTTP webserver to
-  start. This will specify client auth, and add a default host/port
-  http://localhost:8080 if none are supplied (and SSL is not specified)."
+  start. This will specify client auth."
   [options]
   {:pre  [(map? options)]
    :post [(map? %)
           (missing? % :ssl-key :ssl-cert :ssl-ca-cert)
-          (contains? % :max-threads)
-          (contains? % :port)]}
-  (let [defaults          {:max-threads 100 :port 8080}
+          (contains? % :max-threads)]}
+  (let [defaults          {:max-threads 100}
         options           (merge defaults options)
         pem-required-keys [:ssl-key :ssl-cert :ssl-ca-cert]
         pem-config        (select-keys options pem-required-keys)]

@@ -1,5 +1,6 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
-  (:import  [servlet SimpleServlet])
+  (:import  (java.net ConnectException)
+            [servlet SimpleServlet])
   (:require [clojure.test :refer :all]
             [clj-http.client :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
@@ -13,7 +14,8 @@
 
 (deftest jetty-jetty9-service
   (testing "ring support"
-    (let [app              (bootstrap-services-with-cli-data [jetty9-service] {:config "./test-resources/config/jetty/jetty.ini"})
+    (let [app              (bootstrap-services-with-cli-data [jetty9-service]
+                             {:config "./test-resources/config/jetty/jetty-ssl-jks.ini"})
           s                 (get-service app :WebserverService)
           add-ring-handler  (partial add-ring-handler s)
           shutdown          (partial stop s (service-context s))
@@ -29,8 +31,10 @@
         (finally
           (shutdown)))))
 
-  (testing "servlet support"
-    (let [app                 (bootstrap-services-with-empty-config [jetty9-service])
+  (testing "servlet support with plaintext only port binding"
+    (let [app                 (bootstrap-services-with-cli-data [jetty9-service]
+                                {:config
+                                  "./test-resources/config/jetty/jetty-plaintext-http.ini"})
           s                   (get-service app :WebserverService)
           add-servlet-handler (partial add-servlet-handler s)
           shutdown            (partial stop s (service-context s))
@@ -46,7 +50,9 @@
           (shutdown)))))
 
   (testing "servlet support with empty init param"
-    (let [app                 (bootstrap-services-with-empty-config [jetty9-service])
+    (let [app                 (bootstrap-services-with-cli-data [jetty9-service]
+                                {:config
+                                  "./test-resources/config/jetty/jetty-plaintext-http.ini"})
           s                   (get-service app :WebserverService)
           add-servlet-handler (partial add-servlet-handler s)
           shutdown            (partial stop s (service-context s))
@@ -62,7 +68,9 @@
           (shutdown)))))
 
   (testing "servlet support with non-empty init params"
-    (let [app                 (bootstrap-services-with-empty-config [jetty9-service])
+    (let [app                 (bootstrap-services-with-cli-data [jetty9-service]
+                                {:config
+                                  "./test-resources/config/jetty/jetty-plaintext-http.ini"})
           s                   (get-service app :WebserverService)
           add-servlet-handler (partial add-servlet-handler s)
           shutdown            (partial stop s (service-context s))
@@ -82,10 +90,22 @@
         (finally
           (shutdown)))))
 
+  (testing "no http port bound when no port binding in the config"
+    (let [app                 (bootstrap-services-with-empty-config [jetty9-service])
+          s                   (get-service app :WebserverService)
+          shutdown            (partial stop s (service-context s))]
+      (try
+        (is (thrown? ConnectException
+                     (http-client/get "http://localhost:8080"))
+            "Did not encounter exception connecting when no port should be listening")
+        (finally
+          (shutdown)))))
+
   (testing "SSL initialization is supported for both .jks and .pem implementations"
     (doseq [config ["./test-resources/config/jetty/jetty-ssl-jks.ini"
                     "./test-resources/config/jetty/jetty-ssl-pem.ini"]]
-      (let [app               (bootstrap-services-with-cli-data [jetty9-service] {:config config})
+      (let [app               (bootstrap-services-with-cli-data [jetty9-service]
+                                {:config config})
             s                 (get-service app :WebserverService)
             add-ring-handler  (partial add-ring-handler s)
             shutdown          (partial stop s (service-context s))
@@ -94,11 +114,19 @@
             ring-handler      (fn [req] {:status 200 :body body})]
         (try
           (add-ring-handler ring-handler path)
-          ;; NOTE that we're not entirely testing SSL here since we're not hitting https 8081
-          ;; but this at least tests the initialization. Unfortunately when you are using a
-          ;; self-signed certificate on the server it's really hard to do a client request
-          ;; against it without getting an SSL error.
-          (let [response (http-client/get (format "http://localhost:8080/%s/" path))]
+          (let [response (http-client/get
+                           (format "https://localhost:8081/%s/" path)
+                           {:keystore         "./test-resources/config/jetty/ssl/keystore.jks"
+                            :keystore-type    "JKS"
+                            :keystore-pass    "Kq8lG9LkISky9cDIYysiadxRx"
+                            :trust-store      "./test-resources/config/jetty/ssl/truststore.jks"
+                            :trust-store-type "JKS"
+                            :trust-store-pass "Kq8lG9LkISky9cDIYysiadxRx"
+                            ; The server's cert in this case uses a CN of
+                            ; "localhost-puppetdb" whereas the URL being reached
+                            ; is "localhost".  The insecure? value of true
+                            ; directs the client to ignore the mismatch.
+                            :insecure?        true})]
             (is (= (:status response) 200))
             (is (= (:body response) body)))
           (finally
