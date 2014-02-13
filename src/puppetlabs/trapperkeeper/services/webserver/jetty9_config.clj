@@ -45,6 +45,9 @@
    :post [(map? %)
           (missing? % :ssl-key :ssl-cert :ssl-ca-cert)
           (contains? % :max-threads)]}
+  (if (missing? options :port :ssl-port)
+    (throw (IllegalArgumentException.
+             "Either port or ssl-port must be specified on the config in order for a port binding to be opened")))
   (let [defaults          {:max-threads 100}
         options           (merge defaults options)
         pem-required-keys [:ssl-key :ssl-cert :ssl-ca-cert]

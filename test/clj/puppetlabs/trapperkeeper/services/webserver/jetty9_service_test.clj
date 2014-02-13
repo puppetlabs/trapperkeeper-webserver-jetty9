@@ -90,16 +90,13 @@
         (finally
           (shutdown)))))
 
-  (testing "no http port bound when no port binding in the config"
-    (let [app                 (bootstrap-services-with-empty-config [jetty9-service])
-          s                   (get-service app :WebserverService)
-          shutdown            (partial stop s (service-context s))]
-      (try
-        (is (thrown? ConnectException
-                     (http-client/get "http://localhost:8080"))
-            "Did not encounter exception connecting when no port should be listening")
-        (finally
-          (shutdown)))))
+  (testing "webserver bootstrap throws IllegalArgumentException when neither
+            port nor ssl-port specified in the config"
+    (is (thrown-with-msg?
+          IllegalArgumentException
+          #"Either port or ssl-port must be specified on the config in order for a port binding to be opened"
+          (bootstrap-services-with-empty-config [jetty9-service]))
+      "Did not encounter expected exception when no port specified in config"))
 
   (testing "SSL initialization is supported for both .jks and .pem implementations"
     (doseq [config ["./test-resources/config/jetty/jetty-ssl-jks.ini"
