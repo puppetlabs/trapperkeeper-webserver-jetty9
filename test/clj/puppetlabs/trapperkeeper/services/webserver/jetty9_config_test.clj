@@ -6,17 +6,22 @@
 
 (deftest http-configuration
   (testing "should enable need-client-auth"
-    (let [config (configure-web-server {:client-auth false})]
+    (let [config (configure-web-server {:client-auth false :port 8080})]
       (is (= (get config :client-auth) :need))))
 
   (let [old-config {:keystore       "/some/path"
                     :key-password   "pw"
+                    :port           8080
                     :truststore     "/some/other/path"
                     :trust-password "otherpw"}]
     (testing "should not muck with keystore/truststore settings if PEM-based SSL settings are not provided"
       (let [processed-config (configure-web-server old-config)]
         (is (= old-config
-               (select-keys processed-config [:keystore :key-password :truststore :trust-password])))))
+               (select-keys processed-config [:keystore
+                                              :key-password
+                                              :port
+                                              :truststore
+                                              :trust-password])))))
 
     (testing "should fail if some but not all of the PEM-based SSL settings are found"
       (let [partial-pem-config (merge old-config {:ssl-ca-cert "/some/path"})]
@@ -46,14 +51,20 @@
           (is (not (contains? processed-config :ssl-ca-cert)))))))
 
   (testing "should set max-threads"
-    (let [config (configure-web-server {})]
+    (let [config (configure-web-server {:port 8080})]
       (is (contains? config :max-threads))))
 
   (testing "should merge configuration with initial-configs correctly"
-    (let [user-config {:truststore "foo"}
+    (let [user-config {:port 8080 :truststore "foo"}
           config      (configure-web-server user-config)]
-      (is (= config {:truststore "foo" :max-threads 100 :client-auth :need :port 8080})))
+      (is (= config {:truststore "foo"
+                     :max-threads 100
+                     :port 8080
+                     :client-auth :need})))
     (let [user-config {:max-threads 500 :truststore "foo" :port 8000}
           config      (configure-web-server user-config)]
-      (is (= config {:truststore "foo" :max-threads 500 :client-auth :need :port 8000})))))
+      (is (= config {:truststore "foo"
+                     :max-threads 500
+                     :client-auth :need
+                     :port 8000})))))
 
