@@ -58,4 +58,14 @@
           (throw (IllegalArgumentException.
                    (format "Found SSL config options: %s; If configuring SSL from PEM files, you must provide all of the following options: %s"
                      (keys pem-config) pem-required-keys))))
-      (assoc :client-auth :need))))
+      (assoc :client-auth
+        (condp = (:client-auth options)
+          "need" :need
+          "want" :want
+          "none" :none
+          nil    :need
+          (throw
+            (IllegalArgumentException.
+              (format
+                "Unexpected value found for client auth config option: %s.  Expected need, want, or none."
+                (:client-auth options)))))))))

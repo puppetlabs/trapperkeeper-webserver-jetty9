@@ -5,9 +5,27 @@
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-log-output logs-matching]]))
 
 (deftest http-configuration
-  (testing "should enable need-client-auth"
-    (let [config (configure-web-server {:client-auth false :port 8080})]
+  (testing "configure-web-server should set client-auth to a value of :need
+            if not specified in options"
+    (let [config (configure-web-server {:port 8080})]
       (is (= (get config :client-auth) :need))))
+
+  (testing "configure-web-server should convert client-auth string to
+            appropriate corresponding keyword value in configure-web-server
+            options"
+    (let [config (configure-web-server {:port 8080 :client-auth "need"})]
+      (is (= (get config :client-auth) :need)))
+    (let [config (configure-web-server {:port 8080 :client-auth "want"})]
+      (is (= (get config :client-auth) :want)))
+    (let [config (configure-web-server {:port 8080 :client-auth "none"})]
+      (is (= (get config :client-auth) :none))))
+
+  (testing "configure-web-server should throw IllegalArgumentException if an
+            unsupported value is specified for the client-auth option"
+    (is (thrown-with-msg? java.lang.IllegalArgumentException
+                          #"Unexpected value found for client auth config option: bogus.  Expected need, want, or none."
+                          (configure-web-server
+                            {:port 8080 :client-auth "bogus"}))))
 
   (let [old-config {:keystore       "/some/path"
                     :key-password   "pw"

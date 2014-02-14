@@ -111,3 +111,27 @@ For example: `SSLv3, TLSv1, TLSv1.1, TLSv1.2`.
 
 If not supplied, trapperkeeper uses the default SSL protocols for your local
 system.
+
+### `client-auth`
+
+Optional. This determines the mode that the server uses to validate the
+client's certificate for incoming SSL connections. One of the following
+values may be specified:
+
+* `need` - The server will request the client's certificate and the certificate
+           must be provided and be valid. The certificate must have been issued
+           by a Certificate Authority whose certificate resides in the
+           `truststore`.
+
+* `want` - The server will request the client's certificate. A certificate, if
+           provided by the client, must have been issued by a Certificate
+           Authority whose certificate resides in the `truststore`. If the
+           client does not provide a certificate, the server will still consider
+           the client valid.
+
+* `none` - The server will not request a certificate from the client and will
+           consider the client valid.
+
+If a value is not provided for this setting, `need` will be used as the default
+value.
+
