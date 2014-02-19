@@ -1,5 +1,5 @@
 (def tk-version "0.3.2")
-(def ks-version "0.5.1")
+(def ks-version "0.5.2")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.3.3-SNAPSHOT"
   :description "We are trapperkeeper.  We are one."
@@ -39,6 +39,10 @@
   :classifiers [["test" :testutils]]
 
   :test-paths ["test/clj"]
+
+  ;; this plugin is used by jenkins jobs to interrogate the project version
+  :plugins [[lein-project-version "0.1.0"]
+            [lein-release "1.0.5"]]
 
   :profiles {:dev {:test-paths ["test-resources"]
                    :source-paths ["examples/ring_app/src"
