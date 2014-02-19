@@ -21,6 +21,8 @@
                  [org.eclipse.jetty/jetty-servlets "9.1.0.v20131115"]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
+                   
+  :plugins [[lein-release "1.0.5"]]
 
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
