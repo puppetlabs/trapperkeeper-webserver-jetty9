@@ -14,9 +14,11 @@
            (java.util.concurrent Executors)
            (org.eclipse.jetty.servlets.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder)
+           (org.eclipse.jetty.webapp WebAppContext)
            (java.util HashSet)
            (org.eclipse.jetty.http MimeTypes)
-           (javax.servlet Servlet))
+           (javax.servlet Servlet)
+           (java.io File))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :refer [split trim]]
             [clojure.tools.logging :as log]
@@ -233,6 +235,20 @@
      (.addHandler (:handlers webserver) handler)
      (.start handler)
      handler)))
+
+(defn add-war-handler
+  "Registers a WAR to Jetty. It takes two arguments: `[war path]`.
+  - `war` is the file path or the URL to a WAR file
+  - `path` is the URL prefix at which the WAR will be registered"
+  [webserver war path]
+  {:pre [(string? war)
+         (string? path)]}
+  (let [handler (doto (WebAppContext.)
+                  (.setContextPath path)
+                  (.setWar war))]
+    (.addHandler (:handlers webserver) handler)
+    (.start handler)
+    handler))
 
 (defn join
   [webserver]
