@@ -5,12 +5,14 @@
   (:require [clojure.test :refer :all]
             [clj-http.client :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
+            [puppetlabs.trapperkeeper.core :refer [defservice]]
             [puppetlabs.trapperkeeper.services :refer [stop service-context]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
                :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
                :refer [bootstrap-services-with-empty-config
                        bootstrap-services-with-cli-data]]
+            [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.kitchensink.testutils.fixtures
                :refer [with-no-jvm-shutdown-hooks]]))
 
@@ -57,6 +59,14 @@
            (is (= (:body response) body)))
          (finally
            (shutdown))))))
+
+(defservice hello-test-service
+  [[:WebserverService add-war-handler]]
+  (init [this context]
+        (add-war-handler "test-resources/helloWorld.war" "/test")
+        context)
+  (stop [this context]
+        context))
 
 (deftest jetty-jetty9-service
   (testing "ring request over http succeeds")
@@ -136,6 +146,20 @@
           (is (= (:body response) init-param-two)))
         (finally
           (shutdown)))))
+
+  (testing "WAR support"
+    (let [app (bootstrap-services-with-cli-data [jetty9-service hello-test-service]
+                {:config
+                  (str
+                    test-resources-config-dir
+                    "jetty-plaintext-http.ini")})]
+      (try
+        (let [response (http-client/get "http://localhost:8080/test/hello")]
+          (is (= (:status response) 200))
+          (is (= (:body response)
+                 "<html>\n<head><title>Hello World Servlet</title></head>\n<body>Hello World!!</body>\n</html>\n")))
+        (finally
+          (app/stop app)))))
 
   (testing "webserver bootstrap throws IllegalArgumentException when neither
             port nor ssl-port specified in the config"

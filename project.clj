@@ -19,6 +19,7 @@
                   :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
                  [org.eclipse.jetty/jetty-servlet "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-servlets "9.1.0.v20131115"]
+                 [org.eclipse.jetty/jetty-webapp "9.1.0.v20131115"]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
                    
@@ -42,7 +43,8 @@
 
   :profiles {:dev {:test-paths ["test-resources"]
                    :source-paths ["examples/ring_app/src"
-                                  "examples/servlet_app/src/clj"]
+                                  "examples/servlet_app/src/clj"
+                                  "examples/war_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
                    :dependencies [[clj-http "0.5.3"]

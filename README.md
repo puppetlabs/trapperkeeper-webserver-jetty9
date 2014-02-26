@@ -129,6 +129,22 @@ For example, to host a servlet at `/my-app`:
 
 For more information see the [example servlet app](examples/servlet_app).
 
+#### `add-war-handler`
+
+`add-war-handler` takes two arguments: `[war path]`.
+The `war` is the file path or the URL to a WAR file.
+The `path` is the URL prefix at which the WAR will be registered.
+
+For example, to host `resources/cas.war` WAR at `/cas`:
+
+```clj
+(defservice cas-webservice
+  [[:WebserverService add-war-handler]]
+  (init [this context]
+    (add-war-handler "resources/cas.war" "/cas")
+    context))
+```
+
 #### `join`
 
 This function is not recommended for normal use, but is provided for compatibility
