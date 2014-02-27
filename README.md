@@ -38,8 +38,7 @@ ruby Rack applications via JRuby; for more info, see the
 
 Two examples are included with this project:
 
-* A Ring example ([documentation](./doc/example-web-service.md) /
-   [source code](./examples/ring_app))
+* A Ring example ([source code](./examples/ring_app))
 * A Java servlet example ([source code](./examples/servlet_app))
 
 ### Service Protocol
