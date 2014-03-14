@@ -211,8 +211,8 @@
     (assoc ws :server s)))
 
 (defn create-handlers
-  "Create an empty HandlerCollection which contains a ContextHandlerCollection which can
-   accept the addition of new handlers "
+  "Create a map which contains a HandlerCollection and a ContextHandlerCollection
+  which can accept the addition of new handlers before the webserver is started."
   []
   {:post [(handlers? %)]}
   (let [^ContextHandlerCollection chc (ContextHandlerCollection.)
@@ -229,7 +229,7 @@
 
 (defn add-ring-handler
   [webserver handler path]
-  {:pre [(webserver? webserver)
+  {:pre [(handlers? webserver)
          (ifn? handler)
          (string? path)]}
   (let [handler-coll (:handlers webserver)
@@ -243,7 +243,7 @@
   ([webserver servlet path]
    (add-servlet-handler webserver servlet path {}))
   ([webserver servlet path servlet-init-params]
-   {:pre [(webserver? webserver)
+   {:pre [(handlers? webserver)
           (instance? Servlet servlet)
           (string? path)
           (map? servlet-init-params)]}
@@ -261,13 +261,13 @@
   - `war` is the file path or the URL to a WAR file
   - `path` is the URL prefix at which the WAR will be registered"
   [webserver war path]
-  {:pre [(string? war)
+  {:pre [(handlers? webserver)
+         (string? war)
          (string? path)]}
   (let [handler (doto (WebAppContext.)
                   (.setContextPath path)
                   (.setWar war))]
     (.addHandler (:handlers webserver) handler)
-    (.start handler)
     handler))
 
 (defn join
