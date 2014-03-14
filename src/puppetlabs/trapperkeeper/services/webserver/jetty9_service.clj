@@ -23,7 +23,8 @@
                          ;; Here for backward compatibility with existing projects
                          (get-in-config [:jetty])
                          {})
-              webserver (core/create-webserver config)]
+              hc     (core/create-handlers)
+              webserver (core/create-webserver config hc)]
           (assoc context :jetty9-server webserver)))
 
   (start [this context]

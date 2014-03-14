@@ -169,6 +169,16 @@
   (and
     (map? ws)
     (instance? Server (:server ws))
+    (instance? HandlerCollection (:handler-collection ws))
+    (instance? ContextHandlerCollection (:handlers ws))))
+
+(defn handlers?
+  "A predicate that indicates whether or not an object contains a ContextHandlerCollection
+  which can have handlers attached to it."
+  [ws]
+  (and
+    (map? ws)
+    (instance? HandlerCollection (:handler-collection ws))
     (instance? ContextHandlerCollection (:handlers ws))))
 
 (defn create-webserver
@@ -186,19 +196,29 @@
     :trust-password - the password to the truststore
     :max-threads  - the maximum number of threads to use (default 50)
     :client-auth  - SSL client certificate authenticate, may be set to :need,
-                    :want or :none (defaults to :none)"
-  [options]
-  {:pre [(map? options)]
+                    :want or :none (defaults to :none)
+
+    hc is a previous configured HandlerCollection output by create-handler-collection"
+  [options ws]
+  {:pre [(map? options)
+         (handlers? ws)]
    :post [(webserver? %)]}
-  (let [options                       (jetty-config/configure-web-server options)
-        ^Server s                     (create-server (dissoc options :configurator))
-        ^ContextHandlerCollection chc (ContextHandlerCollection.)
-        ^HandlerCollection hc         (HandlerCollection.)]
-    (.setHandlers hc (into-array Handler [chc]))
-    (.setHandler s (gzip-handler hc))
+  (let [options   (jetty-config/configure-web-server options)
+        ^Server s (create-server (dissoc options :configurator))]
+    (.setHandler s (gzip-handler (:handler-collection ws)))
     (when-let [configurator (:configurator options)]
       (configurator s))
-    {:server   s
+    (assoc ws :server s)))
+
+(defn create-handlers
+  "Create an empty HandlerCollection which contains a ContextHandlerCollection which can
+   accept the addition of new handlers "
+  []
+  {:post [(handlers? %)]}
+  (let [^ContextHandlerCollection chc (ContextHandlerCollection.)
+        ^HandlerCollection hc         (HandlerCollection.)]
+    (.setHandlers hc (into-array Handler [chc]))
+    {:handler-collection hc
      :handlers chc}))
 
 (defn start-webserver
