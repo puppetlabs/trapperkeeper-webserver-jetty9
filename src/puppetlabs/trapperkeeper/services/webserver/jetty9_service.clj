@@ -18,18 +18,20 @@
   WebserverService
   [[:ConfigService get-in-config]]
   (init [this context]
-        (log/info "Initializing web server.")
-        (let [config (or (get-in-config [:webserver])
-                         ;; Here for backward compatibility with existing projects
-                         (get-in-config [:jetty])
-                         {})
-              webserver (core/create-webserver config)]
-          (assoc context :jetty9-server webserver)))
+        context)
 
   (start [this context]
-         (log/info "Starting web server.")
-         (core/start-webserver (context :jetty9-server))
-         context)
+         (log/info "Initializing web server.")
+         (let [config (or (get-in-config [:webserver])
+                          ;; Here for backward compatibility with existing projects
+                          (get-in-config [:jetty])
+                          {})
+               webserver (core/create-webserver config)
+               webserver-context (assoc context :jetty9-server webserver)]
+           (log/info "Starting web server.")
+           (core/start-webserver (webserver-context :jetty9-server))
+           webserver-context))
+
 
   (stop [this context]
         (log/info "Shutting down web server.")
