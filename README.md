@@ -155,3 +155,19 @@ waits for a termination condition before allowing the process to exit.  However,
 if you do need this functionality for some reason, you can simply call `(join)`
 to cause your thread to wait for the Jetty server to shut down.
 
+### Service lifecycle phases
+
+The Trapperkeeper service manipulates the Java Jetty code in the following ways during
+these lifecycle phases.
+
+#### `init`
+
+A `ContextHandlerCollection` is created during the `init` lifecycle which allows for
+consumers to use the `add-ring-handler`, `add-servlet-handler` , and `add-war-handler` functions, but the Jetty server itself has not started yet. This allows the service
+consumer to setup SSL keys and perform other operations needed before the server is started.
+
+#### `start`
+
+In the start lifecycle phase the Jetty server object is created, the `ContextHandlerCollection` is added to it, and the server is then started. Adding handlers 
+after this phase should still work fine, but it is recommended that handlers be added 
+during the consuming service's `init` phase.

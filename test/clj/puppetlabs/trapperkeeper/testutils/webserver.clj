@@ -19,7 +19,7 @@
           (http-client/get (format \"http://localhost:%s\" port))))
   "
   [app port-var & body]
-  `(let [srv#      (jetty9/create-webserver {:port 0 :join? false})
+  `(let [srv#      (jetty9/create-webserver {:port 0 :join? false} (jetty9/create-handlers))
          _#        (jetty9/start-webserver srv#)
          _#        (jetty9/add-ring-handler srv# ~app "/")
          ~port-var (-> (:server srv#)

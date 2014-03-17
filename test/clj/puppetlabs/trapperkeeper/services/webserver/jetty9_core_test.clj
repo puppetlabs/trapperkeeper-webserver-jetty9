@@ -1,9 +1,21 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core-test
+  (:import
+    (org.eclipse.jetty.server.handler ContextHandler ContextHandlerCollection))
   (:require [clojure.test :refer :all]
             [ring.util.response :as rr]
             [clj-http.client :as http-client]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
             [puppetlabs.trapperkeeper.testutils.webserver :refer [with-test-webserver]]))
+
+(deftest handlers
+  (testing "create-handlers should allow for handlers to be added"
+    (let [webserver-context (jetty/create-handlers)
+          handlers          (:handlers webserver-context)]
+      (jetty/add-ring-handler webserver-context
+                              (fn [req] {:status 200
+                                         :body "I am a handler"})
+                              "/")
+      (is (= (count (.getHandlers handlers)) 1)))))
 
 (deftest compression
   (testing "should return"
