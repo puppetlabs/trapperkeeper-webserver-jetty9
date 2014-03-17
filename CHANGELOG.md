@@ -11,3 +11,6 @@
    be valid.  For more information, refer to the [jetty-config.md]
    (doc/jetty-config.md) document.
 
+## 0.3.4
+ * Added support for registering WAR files via the `add-war-handler` service function.
+ * Moved server creation from the `init` life cycle to the `start` life cycles.
