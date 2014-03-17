@@ -15,7 +15,7 @@
                               (fn [req] {:status 200
                                          :body "I am a handler"})
                               "/")
-      (is (= (alength (.getHandlers handlers)) 1)))))
+      (is (= (count (.getHandlers handlers)) 1)))))
 
 (deftest compression
   (testing "should return"
