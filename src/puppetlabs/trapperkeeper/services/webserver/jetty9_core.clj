@@ -162,24 +162,22 @@
 
 ;; Functions for trapperkeeper 'webserver' interface
 
-(defn webserver?
-  "A predicate that indicates whether or not an object represents a 'webserver',
-  in the form that is used internally by this namespace."
-  [ws]
+(defn has-handlers?
+  "A predicate that indicates whether or not the webserver-context contains a
+  ContextHandlerCollection which can have handlers attached to it."
+  [webserver-context]
   (and
-    (map? ws)
-    (instance? Server (:server ws))
-    (instance? HandlerCollection (:handler-collection ws))
-    (instance? ContextHandlerCollection (:handlers ws))))
+    (map? webserver-context)
+    (instance? HandlerCollection (:handler-collection webserver-context))
+    (instance? ContextHandlerCollection (:handlers webserver-context))))
 
-(defn handlers?
-  "A predicate that indicates whether or not an object contains a ContextHandlerCollection
-  which can have handlers attached to it."
-  [ws]
+(defn has-webserver?
+  "A predicate that indicates whether or not the webserver-context contains a Jetty
+  Server object."
+  [webserver-context]
   (and
-    (map? ws)
-    (instance? HandlerCollection (:handler-collection ws))
-    (instance? ContextHandlerCollection (:handlers ws))))
+    (has-handlers? webserver-context)
+    (instance? Server (:server webserver-context))))
 
 (defn create-webserver
     "Create a Jetty webserver according to the supplied options:
@@ -198,23 +196,25 @@
     :client-auth  - SSL client certificate authenticate, may be set to :need,
                     :want or :none (defaults to :none)
 
-    hc is a previous configured HandlerCollection output by create-handler-collection"
-  [options ws]
+    ws is a map containing the :handlers collection which should have been previously
+    created by create-handlers."
+  [options webserver-context]
   {:pre [(map? options)
-         (handlers? ws)]
-   :post [(webserver? %)]}
+         (has-handlers? webserver-context)]
+   :post [(has-webserver? %)]}
   (let [options   (jetty-config/configure-web-server options)
         ^Server s (create-server (dissoc options :configurator))]
-    (.setHandler s (gzip-handler (:handler-collection ws)))
+    (.setHandler s (gzip-handler (:handler-collection webserver-context)))
     (when-let [configurator (:configurator options)]
       (configurator s))
-    (assoc ws :server s)))
+    (assoc webserver-context :server s)))
 
 (defn create-handlers
-  "Create a map which contains a HandlerCollection and a ContextHandlerCollection
-  which can accept the addition of new handlers before the webserver is started."
+  "Create a webserver-context which contains a HandlerCollection and a
+  ContextHandlerCollection which can accept the addition of new handlers
+  before the webserver is started."
   []
-  {:post [(handlers? %)]}
+  {:post [(has-handlers? %)]}
   (let [^ContextHandlerCollection chc (ContextHandlerCollection.)
         ^HandlerCollection hc         (HandlerCollection.)]
     (.setHandlers hc (into-array Handler [chc]))
@@ -222,28 +222,28 @@
      :handlers chc}))
 
 (defn start-webserver
-  "Starts a webserver (as returned by `create-webserver`)"
-  [webserver]
-  {:pre [(webserver? webserver)]}
-  (.start (:server webserver)))
+  "Starts a webserver that has been previously created and added to the
+  webserver-context by `create-webserver`"
+  [webserver-context]
+  {:pre [(has-webserver? webserver-context)]}
+  (.start (:server webserver-context)))
 
 (defn add-ring-handler
-  [webserver handler path]
-  {:pre [(handlers? webserver)
+  [webserver-context handler path]
+  {:pre [(has-handlers? webserver-context)
          (ifn? handler)
          (string? path)]}
-  (let [handler-coll (:handlers webserver)
+  (let [handler-coll (:handlers webserver-context)
         ctxt-handler (doto (ContextHandler. path)
                        (.setHandler (proxy-handler handler)))]
     (.addHandler handler-coll ctxt-handler)
-    (.start ctxt-handler)
     ctxt-handler))
 
 (defn add-servlet-handler
-  ([webserver servlet path]
-   (add-servlet-handler webserver servlet path {}))
+  ([webserver-context servlet path]
+   (add-servlet-handler webserver-context servlet path {}))
   ([webserver servlet path servlet-init-params]
-   {:pre [(handlers? webserver)
+   {:pre [(has-handlers? webserver)
           (instance? Servlet servlet)
           (string? path)
           (map? servlet-init-params)]}
@@ -253,30 +253,29 @@
                    (.setContextPath path)
                    (.addServlet holder "/*"))]
      (.addHandler (:handlers webserver) handler)
-     (.start handler)
      handler)))
 
 (defn add-war-handler
   "Registers a WAR to Jetty. It takes two arguments: `[war path]`.
   - `war` is the file path or the URL to a WAR file
   - `path` is the URL prefix at which the WAR will be registered"
-  [webserver war path]
-  {:pre [(handlers? webserver)
+  [webserver-context war path]
+  {:pre [(has-handlers? webserver-context)
          (string? war)
          (string? path)]}
   (let [handler (doto (WebAppContext.)
                   (.setContextPath path)
                   (.setWar war))]
-    (.addHandler (:handlers webserver) handler)
+    (.addHandler (:handlers webserver-context) handler)
     handler))
 
 (defn join
-  [webserver]
-  {:pre [(webserver? webserver)]}
-  (.join (:server webserver)))
+  [webserver-context]
+  {:pre [(has-webserver? webserver-context)]}
+  (.join (:server webserver-context)))
 
 (defn shutdown
-  [webserver]
-  {:pre [(webserver? webserver)]}
+  [webserver-context]
+  {:pre [(has-webserver? webserver-context)]}
   (log/info "Shutting down web server.")
-  (.stop (:server webserver)))
+  (.stop (:server webserver-context)))
