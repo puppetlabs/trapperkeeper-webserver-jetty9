@@ -1,11 +1,11 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
   (:import  (java.net ConnectException)
             (javax.net.ssl SSLPeerUnverifiedException)
+            (javax.servlet ServletContextListener)
             [servlet SimpleServlet])
   (:require [clojure.test :refer :all]
             [clj-http.client :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
-            [puppetlabs.trapperkeeper.core :refer [defservice]]
             [puppetlabs.trapperkeeper.services :refer [stop service-context]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
                :refer :all]
@@ -18,7 +18,8 @@
 
 (use-fixtures :once with-no-jvm-shutdown-hooks)
 
-(def test-resources-config-dir "./test-resources/config/jetty/")
+(def test-resources-dir        "./test-resources/")
+(def test-resources-config-dir (str test-resources-dir "config/jetty/"))
 
 (def default-keystore-pass     "Kq8lG9LkISky9cDIYysiadxRx")
 
@@ -60,15 +61,52 @@
          (finally
            (shutdown))))))
 
-(defservice hello-test-service
-  [[:WebserverService add-war-handler]]
-  (init [this context]
-        (add-war-handler "test-resources/helloWorld.war" "/test")
-        context)
-  (stop [this context]
-        context))
-
 (deftest jetty-jetty9-service
+  (testing "static content context"
+    (let [app                 (bootstrap-services-with-cli-data [jetty9-service]
+                                {:config
+                                  (str
+                                    test-resources-config-dir
+                                    "jetty-plaintext-http.ini")})
+          s                   (get-service app :WebserverService)
+          add-context-handler (partial add-context-handler s)
+          shutdown            (partial stop s (service-context s))
+          path                "/resources"
+          resource            "logback.xml"]
+      (try
+        (add-context-handler test-resources-dir path)
+        (let [response (http-client/get (str "http://localhost:8080" path "/" resource))]
+          (is (= (:status response) 200))
+          (is (= (:body response) (slurp (str test-resources-dir resource)))))
+        (finally
+          (shutdown)))))
+
+  (testing "customization of static content context"
+    (let [app                 (bootstrap-services-with-cli-data [jetty9-service]
+                                {:config
+                                  (str
+                                    test-resources-config-dir
+                                    "jetty-plaintext-http.ini")})
+          s                   (get-service app :WebserverService)
+          add-context-handler (partial add-context-handler s)
+          shutdown            (partial stop s (service-context s))
+          path                "/resources"
+          body                "Hey there"
+          servlet-path        "/hey"
+          servlet             (SimpleServlet. body)]
+      (try
+        (add-context-handler test-resources-dir path
+                             [(reify ServletContextListener
+                                (contextInitialized [this event]
+                                  (doto (.addServlet (.getServletContext event) "simple" servlet)
+                                    (.addMapping (into-array [servlet-path]))))
+                                (contextDestroyed [this event]))])
+        (let [response (http-client/get (str "http://localhost:8080" path servlet-path))]
+          (is (= (:status response) 200))
+          (is (= (:body response) body)))
+        (finally
+          (shutdown)))))
+
   (testing "ring request over http succeeds")
     (bootstrap-and-validate-ring-handler
       "http://localhost:8080"
@@ -148,18 +186,24 @@
           (shutdown)))))
 
   (testing "WAR support"
-    (let [app (bootstrap-services-with-cli-data [jetty9-service hello-test-service]
-                {:config
-                  (str
-                    test-resources-config-dir
-                    "jetty-plaintext-http.ini")})]
+    (let [app             (bootstrap-services-with-cli-data [jetty9-service]
+                            {:config
+                              (str
+                                test-resources-config-dir
+                                "jetty-plaintext-http.ini")})
+          s               (get-service app :WebserverService)
+          add-war-handler (partial add-war-handler s)
+          shutdown        (partial stop s (service-context s))
+          path            "/test"
+          war             "helloWorld.war"]
       (try
-        (let [response (http-client/get "http://localhost:8080/test/hello")]
+        (add-war-handler (str test-resources-dir war) path)
+        (let [response (http-client/get (str "http://localhost:8080" path "/hello"))]
           (is (= (:status response) 200))
           (is (= (:body response)
                  "<html>\n<head><title>Hello World Servlet</title></head>\n<body>Hello World!!</body>\n</html>\n")))
         (finally
-          (app/stop app)))))
+          (shutdown)))))
 
   (testing "webserver bootstrap throws IllegalArgumentException when neither
             port nor ssl-port specified in the config"
