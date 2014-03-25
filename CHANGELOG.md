@@ -1,3 +1,8 @@
+## 0.3.5
+ * Added a new service function, `add-context-handler`, which supports registering
+   a context handler for static content, with optional support for context listeners
+   via the `javax.servlet.ServletContextListener` interface.
+
 ## 0.3.4
  * Added support for registering WAR files via the `add-war-handler` service function.
  * Moved server creation from the `init` life cycle to the `start` life cycles.
