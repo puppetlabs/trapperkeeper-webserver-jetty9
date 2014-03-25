@@ -8,16 +8,17 @@
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection ContextHandlerCollection)
+           (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
            (javax.servlet.http HttpServletRequest HttpServletResponse)
            (java.util.concurrent Executors)
            (org.eclipse.jetty.servlets.gzip GzipHandler)
-           (org.eclipse.jetty.servlet ServletContextHandler ServletHolder)
+           (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
            (org.eclipse.jetty.webapp WebAppContext)
            (java.util HashSet)
            (org.eclipse.jetty.http MimeTypes)
-           (javax.servlet Servlet)
+           (javax.servlet Servlet ServletContextListener)
            (java.io File))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :refer [split trim]]
@@ -228,32 +229,55 @@
   {:pre [(has-webserver? webserver-context)]}
   (.start (:server webserver-context)))
 
+(defn add-handler
+  [webserver-context handler]
+  {:pre [(has-handlers? webserver-context)
+         (instance? ContextHandler handler)]}
+  (.addHandler (:handlers webserver-context) handler)
+  handler)
+
+(defn add-context-handler
+  "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
+  ([webserver-context base-path context-path]
+   (add-context-handler webserver-context base-path context-path nil))
+  ([webserver-context base-path context-path context-listeners]
+   {:pre [(has-handlers? webserver-context)
+          (string? base-path)
+          (string? context-path)
+          (or (nil? context-listeners)
+              (and (sequential? context-listeners)
+                   (every? #(instance? ServletContextListener %) context-listeners)))]}
+   (let [handler (ServletContextHandler. nil context-path ServletContextHandler/NO_SESSIONS)]
+     (.setBaseResource handler (Resource/newResource base-path))
+     ;; register servlet context listeners (if any)
+     (when-not (nil? context-listeners)
+       (dorun (map #(.addEventListener handler %) context-listeners)))
+     (.addServlet handler (ServletHolder. (DefaultServlet.)) "/")
+     (add-handler webserver-context handler))))
+
 (defn add-ring-handler
   [webserver-context handler path]
   {:pre [(has-handlers? webserver-context)
          (ifn? handler)
          (string? path)]}
-  (let [handler-coll (:handlers webserver-context)
-        ctxt-handler (doto (ContextHandler. path)
+  (let [ctxt-handler (doto (ContextHandler. path)
                        (.setHandler (proxy-handler handler)))]
-    (.addHandler handler-coll ctxt-handler)
-    ctxt-handler))
+    (add-handler webserver-context ctxt-handler)))
 
 (defn add-servlet-handler
   ([webserver-context servlet path]
    (add-servlet-handler webserver-context servlet path {}))
-  ([webserver servlet path servlet-init-params]
-   {:pre [(has-handlers? webserver)
+  ([webserver-context servlet path servlet-init-params]
+   {:pre [(has-handlers? webserver-context)
           (instance? Servlet servlet)
           (string? path)
           (map? servlet-init-params)]}
    (let [holder   (doto (ServletHolder. servlet)
                     (.setInitParameters servlet-init-params))
          handler  (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
-                   (.setContextPath path)
-                   (.addServlet holder "/*"))]
-     (.addHandler (:handlers webserver) handler)
-     handler)))
+                    (.setContextPath path)
+                    (.addServlet holder "/*"))]
+     (add-handler webserver-context handler))))
 
 (defn add-war-handler
   "Registers a WAR to Jetty. It takes two arguments: `[war path]`.
@@ -266,8 +290,7 @@
   (let [handler (doto (WebAppContext.)
                   (.setContextPath path)
                   (.setWar war))]
-    (.addHandler (:handlers webserver-context) handler)
-    handler))
+    (add-handler webserver-context handler)))
 
 (defn join
   [webserver-context]
