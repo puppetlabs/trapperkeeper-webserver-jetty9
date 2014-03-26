@@ -48,7 +48,9 @@ This is the protocol for the current implementation of the `:WebserverService`:
 ```clj
 (defprotocol WebserverService
   (add-ring-handler [this handler path])
-  (add-servlet-handler [this servlet path])
+  (add-context-handler [this base-path context-path] [this base-path context-path context-listeners])
+  (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
+  (add-war-handler [this war path])
   (join [this]))
 ```
 
@@ -105,11 +107,52 @@ you will need to do something like this:
         svc-context))
 ```
 
+#### `add-context-handler`
+
+`add-context-handler` takes two arguments: `[base-path context-path]`.  The `base-path`
+argument is a URL string pointing to a location containing static resources which are
+made accessible at the `context-path` URL prefix.
+
+For example, to make your CSS files stored in the `resources/css` directory available
+at `/css`:
+
+```clj
+(defservice MyWebService
+   [[:WebserverService add-context-handler]]
+   ;; initialization
+   (init [this context]
+      (add-context-handler "resources/css" "/css")
+      context))
+```
+
+There is also a three argument version of the function which takes these arguments:
+`[base-path context-path context-listeners]`, where the first two arguments are the
+same as in the two argument version and the `context-listeners` is a list of objects
+implementing the [ServletContextListener]
+(http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
+interface. These listeners are registered with the context created for serving the
+static content and receive notifications about the lifecycle events in the context
+as defined in the ServletContextListener interface. Of particular interest is the
+`contextInitialized` event notification as it provides access to the configuration
+of the context through the methods defined in the [ServletContext]
+(http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContext.html)
+interface. This opens up wide possibilities for customizing the context - in an
+extreme case the context originally capable of serving just the static content can
+be changed through this mechanism to a fully dynamic web application (in fact this
+very mechanism is used in the [trapperkeeper-ruby]
+(https://github.com/puppetlabs/trapperkeeper-ruby) project to turn the context into
+a container for hosting an arbitrary ruby rack application - see [here]
+(https://github.com/puppetlabs/trapperkeeper-ruby/blob/master/src/clojure/puppetlabs/trapperkeeper/services/rack_jetty/rack_jetty_service.clj)).
+
 #### `add-servlet-handler`
 
 `add-servlet-handler` takes two arguments: `[servlet path]`.  The `servlet` argument
 is a normal Java [Servlet](http://docs.oracle.com/javaee/7/api/javax/servlet/Servlet.html).
-The `path` is the URL prefix at which the servlet will be registered.
+The `path` is the URL prefix at which the servlet will be registered.  
+There is also a three argument version of the function which takes these arguments:
+`[servlet path servlet-init-params]`, where the first two arguments are the same as
+in the two argument version and the `servlet-init-params` is a map of servlet init
+parameters.
 
 For example, to host a servlet at `/my-app`:
 
