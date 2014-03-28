@@ -8,7 +8,7 @@ on by using a classifier in your project dependencies.
 ```clojure
   (defproject yourproject "1.0.0"
     ...
-    :profiles {:dev {:dependencies [[puppetlabs/trapperkeeper-webserver-jetty7 "x.y.z" :classifier "test"]]}})
+    :profiles {:dev {:dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 "x.y.z" :classifier "test"]]}})
 ```
 
 The test jar contains a macro to assist in testing the functionality of a ring application.
