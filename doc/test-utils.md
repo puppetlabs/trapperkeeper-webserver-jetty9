@@ -1,7 +1,7 @@
 # TrapperKeeper Webserver Service Test Utils
 
 The trapperkeeper webserver service library provides some
-[utility code](../test/puppetlabs/trapperkeeper/testutils)
+[utility code](../test/clj/puppetlabs/trapperkeeper/testutils)
 for use in tests. The code is available in a separate "test" jar that you may depend
 on by using a classifier in your project dependencies.
 
