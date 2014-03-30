@@ -31,6 +31,26 @@
    ; insecure? value of true directs the client to ignore the mismatch.
    :insecure?        true})
 
+(defmacro with-target-and-proxy-servers
+  [{:keys [target proxy proxy-config]} & body]
+  `(with-app-with-config proxy-target-app#
+      [jetty9-service]
+      {:webserver ~target}
+      (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
+        (add-ring-handler
+          target-webserver#
+          (fn [req#]
+            (if (= "/hello/world" (:uri req#))
+              {:status 200 :body "Hello, World!"}
+              {:status 404 :body "D'oh"}))
+          "/hello"))
+      (with-app-with-config proxy-app#
+        [jetty9-service]
+        {:webserver ~proxy}
+        (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
+          (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy"))
+        ~@body)))
+
 (defn validate-ring-handler
   ([base-url config-file-name]
     (validate-ring-handler base-url config-file-name {}))
@@ -298,36 +318,21 @@
         :keystore nil))))
 
 (deftest test-proxy-servlet
-  (testing "proxy support"
-    (with-app-with-config proxy-target-app
-      [jetty9-service]
-      {:webserver {:host "0.0.0.0"
-                   :port 9000}}
-      (let [target-webserver (get-service proxy-target-app :WebserverService)]
-        (add-ring-handler
-          target-webserver
-          (fn [req]
-            (if (= "/hello/world" (:uri req))
-              {:status 200 :body "Hello, World!"}
-              {:status 404 :body "D'oh"}))
-          "/hello"))
+  (testing "basic proxy support"
+    (with-target-and-proxy-servers
+      {:target {:host "0.0.0.0"
+                :port 9000}
+       :proxy  {:host "0.0.0.0"
+                :port 10000}
+       :proxy-config {:host    "localhost"
+                      :port    9000
+                      :path   "/hello"}}
       (let [response (http-client/get "http://localhost:9000/hello/world")]
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))
-
-      (with-app-with-config proxy-app
-        [jetty9-service]
-        {:webserver {:host "0.0.0.0"
-                     :port 10000}}
-        (let [proxy-webserver (get-service proxy-app :WebserverService)]
-          (add-proxy-route proxy-webserver
-                           {:host    "localhost"
-                            :port    9000
-                            :path   "/hello"}
-                           "/hello-proxy"))
-        (let [response (http-client/get "http://localhost:10000/hello-proxy/world")]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!"))))))
+      (let [response (http-client/get "http://localhost:10000/hello-proxy/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))))
 
   #_(testing "ssl proxy support"
     (is (not true))))
