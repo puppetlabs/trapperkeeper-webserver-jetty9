@@ -191,7 +191,7 @@
             (with-app-with-empty-config app [jetty9-service])))
       "Did not encounter expected exception when no port specified in config")))
 
-(deftest ssl-test
+(deftest ssl-success-test
   (testing "ring request over SSL successful for both .jks and .pem
             implementations with the server's client-auth setting not set and
             the client configured provide a certificate which the CA can
@@ -206,6 +206,47 @@
           config
           default-options-for-https)))
 
+  (testing "ring request over SSL succeeds with a server client-auth setting
+            of 'need' and the client configured to provide a certificate which
+            the CA can validate"
+    (validate-ring-handler
+      "https://localhost:8081"
+      "jetty-ssl-pem-client-auth-need.ini"
+      default-options-for-https))
+
+  (testing "ring request over SSL succeeds with a server client-auth setting
+            of 'want' and the client configured to provide a certificate which
+            the CA can validate"
+    (validate-ring-handler
+      "https://localhost:8081"
+      "jetty-ssl-pem-client-auth-want.ini"
+      default-options-for-https))
+
+  (testing "ring request over SSL succeeds with a server client-auth setting
+            of 'want' and the client configured to not provide a certificate"
+    (validate-ring-handler
+      "https://localhost:8081"
+      "jetty-ssl-pem-client-auth-want.ini"
+      (assoc default-options-for-https
+        :keystore nil)))
+
+  (testing "ring request over SSL succeeds with a server client-auth setting
+            of 'none' and the client configured to provide a certificate which
+            the CA can validate"
+    (validate-ring-handler
+      "https://localhost:8081"
+      "jetty-ssl-pem-client-auth-none.ini"
+      default-options-for-https))
+
+  (testing "ring request over SSL succeeds with a server client-auth setting
+            of 'none' and the client configured to not provide a certificate"
+    (validate-ring-handler
+      "https://localhost:8081"
+      "jetty-ssl-pem-client-auth-none.ini"
+      (assoc default-options-for-https
+        :keystore nil))))
+
+(deftest ssl-failure-test
   (testing "ring request over SSL fails with the server's client-auth setting
             not set and the client configured to provide a certificate which
             the CA cannot validate"
@@ -235,14 +276,6 @@
             "https://localhost:8081"
             "jetty-ssl-pem.ini"))))
 
-  (testing "ring request over SSL succeeds with a server client-auth setting
-            of 'need' and the client configured to provide a certificate which
-            the CA can validate"
-    (validate-ring-handler
-      "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-need.ini"
-      default-options-for-https))
-
   (testing "ring request over SSL fails with a server client-auth setting
             of 'need' and the client configured to provide a certificate which
             the CA cannot validate"
@@ -264,14 +297,6 @@
             "https://localhost:8081"
             "jetty-ssl-pem-client-auth-need.ini"))))
 
-  (testing "ring request over SSL succeeds with a server client-auth setting
-            of 'want' and the client configured to provide a certificate which
-            the CA can validate"
-    (validate-ring-handler
-      "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-want.ini"
-      default-options-for-https))
-
   (testing "ring request over SSL fails with a server client-auth setting
             of 'want' and the client configured to provide a certificate which
             the CA cannot validate"
@@ -285,22 +310,6 @@
                    (str test-resources-config-dir
                         "ssl/certs/unauthorized.pem"))))))
 
-  (testing "ring request over SSL succeeds with a server client-auth setting
-            of 'want' and the client configured to not provide a certificate"
-    (validate-ring-handler
-      "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-want.ini"
-      (assoc default-options-for-https
-             :keystore nil)))
-
-  (testing "ring request over SSL succeeds with a server client-auth setting
-            of 'none' and the client configured to provide a certificate which
-            the CA can validate"
-    (validate-ring-handler
-      "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-none.ini"
-      default-options-for-https))
-
   (testing "ring request over SSL fails with a server client-auth setting
             of 'none' and the client configured to provide a certificate which
             the CA cannot validate"
@@ -310,15 +319,7 @@
       (assoc default-options-for-https
              :keystore
              (str test-resources-config-dir
-                  "ssl/unauthorized_keystore.jks"))))
-
-  (testing "ring request over SSL succeeds with a server client-auth setting
-            of 'none' and the client configured to not provide a certificate"
-    (validate-ring-handler
-      "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-none.ini"
-      (assoc default-options-for-https
-        :keystore nil))))
+                  "ssl/unauthorized_keystore.jks")))))
 
 (deftest test-proxy-servlet
   (let [common-ssl-config {:ssl-cert    "./test-resources/config/jetty/ssl/certs/localhost.pem"
