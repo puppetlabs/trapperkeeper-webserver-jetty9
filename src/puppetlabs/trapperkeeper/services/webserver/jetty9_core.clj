@@ -26,6 +26,7 @@
            (org.eclipse.jetty.client HttpClient))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as jetty-config]))
@@ -86,6 +87,18 @@
   (and
     (has-handlers? webserver-context)
     (instance? Server (:server webserver-context))))
+
+(defn proxy-target?
+  "A predicate that validates the format of a proxy target configuration map"
+  [target]
+  ;; TODO: should probably be using prismatic schema here
+  (and
+    (map? target)
+    (empty? (set/difference (ks/keyset target) #{:host :port :path :scheme :ssl-config}))
+    (contains? #{nil :orig :http :https} (:scheme target))
+    ((some-fn nil? map? #(= :use-server-config)) (:ssl-config target))
+    (or (not (map? (:ssl-config target)))
+        (= #{:ssl-ca-cert :ssl-cert :ssl-key} (ks/keyset (:ssl-config target))))))
 
 (defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
@@ -169,23 +182,34 @@
   a given context to another host."
   [webserver-context target path]
   {:pre [(has-handlers? webserver-context)
-         (map? target)
-         (= #{:host :port :path} (ks/keyset target))]}
-  (proxy [ProxyServlet] []
-    (rewriteURI [req]
-      (let [query         (.getQueryString req)
-            scheme        (.getScheme req)
-            context-path  (.getPathInfo req)
-            uri           (str scheme "://" (:host target) ":" (:port target)
-                               "/" (:path target) context-path)]
-        (when query
-          (.append uri "?")
-          (.append uri query))
-        (URI/create (.toString uri))))
-    (newHttpClient []
-      (if-let [ssl-ctxt-factory (:ssl-context-factory @(:config webserver-context))]
-        (HttpClient. ssl-ctxt-factory)
-        (HttpClient.)))))
+         (proxy-target? target)]}
+  (let [custom-ssl-ctxt-factory (when (map? (:ssl-config target))
+                                  (-> (:ssl-config target)
+                                      jetty-config/configure-web-server-ssl-from-pems
+                                      ssl-context-factory))]
+    (proxy [ProxyServlet] []
+      (rewriteURI [req]
+        (let [query (.getQueryString req)
+              scheme (let [target-scheme (:scheme target)]
+                       (condp = target-scheme
+                         nil (.getScheme req)
+                         :orig (.getScheme req)
+                         :http "http"
+                         :https "https"))
+              context-path (.getPathInfo req)
+              uri (str scheme "://" (:host target) ":" (:port target)
+                       "/" (:path target) context-path)]
+          (when query
+            (.append uri "?")
+            (.append uri query))
+          (URI/create (.toString uri))))
+
+      (newHttpClient []
+        (if custom-ssl-ctxt-factory
+          (HttpClient. custom-ssl-ctxt-factory)
+          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:config webserver-context))]
+            (HttpClient. ssl-ctxt-factory)
+            (HttpClient.)))))))
 
 (defn- create-server
   "Construct a Jetty Server instance."
@@ -334,8 +358,7 @@
   :path specifies the URL prefix to proxy to on the target host."
   [webserver-context target path]
   {:pre [(has-handlers? webserver-context)
-         (map? target)
-         (= #{:host :port :path} (ks/keyset target))
+         (proxy-target? target)
          (string? path)]}
   (let [target (update-in target [:path] remove-leading-slash)]
     (add-servlet-handler webserver-context

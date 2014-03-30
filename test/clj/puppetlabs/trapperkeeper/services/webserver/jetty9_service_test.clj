@@ -357,8 +357,45 @@
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))))
 
-  #_(testing "http->https proxy support with explicit ssl config for proxy"
-    (is (not true)))
+  (testing "http->https proxy support with explicit ssl config for proxy"
+    (with-target-and-proxy-servers
+      {:target {:ssl-host "0.0.0.0"
+                :ssl-port 9000
+                :ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
+                :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
+                :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}
+       :proxy  {:host "0.0.0.0"
+                :port 10000}
+       :proxy-config {:host    "localhost"
+                      :port    9000
+                      :path   "/hello"
+                      :scheme :https
+                      :ssl-config {:ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
+                                   :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
+                                   :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}}}
+      (let [response (http-client/get "https://localhost:9000/hello/world" default-options-for-https)]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))
+      (let [response (http-client/get "http://localhost:10000/hello-proxy/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))))
 
-  #_(testing "https->http proxy support"
-    (is (not true))))
+  (testing "https->http proxy support"
+    (with-target-and-proxy-servers
+      {:target {:host "0.0.0.0"
+                :port 9001}
+       :proxy  {:ssl-host "0.0.0.0"
+                :ssl-port 10001
+                :ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
+                :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
+                :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}
+       :proxy-config {:host    "localhost"
+                      :port    9001
+                      :path   "/hello"
+                      :scheme :http}}
+      (let [response (http-client/get "http://localhost:9001/hello/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))
+      (let [response (http-client/get "https://localhost:10001/hello-proxy/world" default-options-for-https)]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!"))))))
