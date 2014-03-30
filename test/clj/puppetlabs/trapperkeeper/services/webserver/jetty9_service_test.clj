@@ -4,6 +4,7 @@
             (servlet SimpleServlet))
   (:require [clojure.test :refer :all]
             [clj-http.client :as http-client]
+            [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
                :refer :all]
@@ -334,5 +335,30 @@
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))))
 
-  #_(testing "ssl proxy support"
+  (testing "basic https proxy support (pass-through https config)"
+    (with-target-and-proxy-servers
+      {:target {:ssl-host "0.0.0.0"
+                :ssl-port 9001
+                :ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
+                :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
+                :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}
+       :proxy  {:ssl-host "0.0.0.0"
+                :ssl-port 10001
+                :ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
+                :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
+                :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}
+       :proxy-config {:host    "localhost"
+                      :port    9001
+                      :path   "/hello"}}
+      (let [response (http-client/get "https://localhost:9001/hello/world" default-options-for-https)]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))
+      (let [response (http-client/get "https://localhost:10001/hello-proxy/world" default-options-for-https)]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))))
+
+  #_(testing "http->https proxy support with explicit ssl config for proxy"
+    (is (not true)))
+
+  #_(testing "https->http proxy support"
     (is (not true))))

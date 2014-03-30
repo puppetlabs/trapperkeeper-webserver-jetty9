@@ -22,7 +22,8 @@
            (java.io File)
            (org.eclipse.jetty.proxy ProxyServlet)
            (java.net URI)
-           (java.security Security))
+           (java.security Security)
+           (org.eclipse.jetty.client HttpClient))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -67,6 +68,24 @@
 (defn- remove-leading-slash
   [s]
   (str/replace s #"^\/" ""))
+
+(defn has-handlers?
+  "A predicate that indicates whether or not the webserver-context contains a
+  ContextHandlerCollection which can have handlers attached to it."
+  [webserver-context]
+  (and
+    (map? webserver-context)
+    (instance? HandlerCollection (:handler-collection webserver-context))
+    (instance? ContextHandlerCollection (:handlers webserver-context))
+    (map? @(:config webserver-context))))
+
+(defn has-webserver?
+  "A predicate that indicates whether or not the webserver-context contains a Jetty
+  Server object."
+  [webserver-context]
+  (and
+    (has-handlers? webserver-context)
+    (instance? Server (:server webserver-context))))
 
 (defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
@@ -148,8 +167,9 @@
 (defn- proxy-servlet
   "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
   a given context to another host."
-  [target path]
-  {:pre [(map? target)
+  [webserver-context target path]
+  {:pre [(has-handlers? webserver-context)
+         (map? target)
          (= #{:host :port :path} (ks/keyset target))]}
   (proxy [ProxyServlet] []
     (rewriteURI [req]
@@ -161,11 +181,15 @@
         (when query
           (.append uri "?")
           (.append uri query))
-        (URI/create (.toString uri))))))
+        (URI/create (.toString uri))))
+    (newHttpClient []
+      (if-let [ssl-ctxt-factory (:ssl-context-factory @(:config webserver-context))]
+        (HttpClient. ssl-ctxt-factory)
+        (HttpClient.)))))
 
 (defn- create-server
   "Construct a Jetty Server instance."
-  [options]
+  [webserver-context options]
   (let [server (Server. (QueuedThreadPool. (options :max-threads)))]
     (when (options :port)
       (let [connector (plaintext-connector server options)]
@@ -184,27 +208,11 @@
           (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers))
           (when protocols
             (.setIncludeProtocols ssl-ctxt-factory (into-array protocols))))
-        (.addConnector server connector)))
+        (.addConnector server connector)
+        (swap! (:config webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
     server))
 
 ;; Functions for trapperkeeper 'webserver' interface
-
-(defn has-handlers?
-  "A predicate that indicates whether or not the webserver-context contains a
-  ContextHandlerCollection which can have handlers attached to it."
-  [webserver-context]
-  (and
-    (map? webserver-context)
-    (instance? HandlerCollection (:handler-collection webserver-context))
-    (instance? ContextHandlerCollection (:handlers webserver-context))))
-
-(defn has-webserver?
-  "A predicate that indicates whether or not the webserver-context contains a Jetty
-  Server object."
-  [webserver-context]
-  (and
-    (has-handlers? webserver-context)
-    (instance? Server (:server webserver-context))))
 
 (defn create-webserver
     "Create a Jetty webserver according to the supplied options:
@@ -230,7 +238,7 @@
          (has-handlers? webserver-context)]
    :post [(has-webserver? %)]}
   (let [options   (jetty-config/configure-web-server options)
-        ^Server s (create-server (dissoc options :configurator))]
+        ^Server s (create-server webserver-context (dissoc options :configurator))]
     (.setHandler s (gzip-handler (:handler-collection webserver-context)))
     (when-let [configurator (:configurator options)]
       (configurator s))
@@ -246,7 +254,8 @@
         ^HandlerCollection hc         (HandlerCollection.)]
     (.setHandlers hc (into-array Handler [chc]))
     {:handler-collection hc
-     :handlers chc}))
+     :handlers chc
+     :config (atom {})}))
 
 (defn start-webserver
   "Starts a webserver that has been previously created and added to the
@@ -330,7 +339,7 @@
          (string? path)]}
   (let [target (update-in target [:path] remove-leading-slash)]
     (add-servlet-handler webserver-context
-                         (proxy-servlet target path)
+                         (proxy-servlet webserver-context target path)
                          path
                          {"async-supported" true})))
 
