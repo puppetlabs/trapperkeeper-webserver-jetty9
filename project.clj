@@ -1,4 +1,4 @@
-(def tk-version "0.3.8")
+(def tk-version "0.3.9-SNAPSHOT")
 (def ks-version "0.5.3")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.3.6-SNAPSHOT"
@@ -20,6 +20,7 @@
                  [org.eclipse.jetty/jetty-servlet "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-servlets "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-webapp "9.1.0.v20131115"]
+                 [org.eclipse.jetty/jetty-proxy "9.1.0.v20131115"]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
                    

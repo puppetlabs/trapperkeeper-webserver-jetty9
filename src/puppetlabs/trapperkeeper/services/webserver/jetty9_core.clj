@@ -19,10 +19,14 @@
            (java.util HashSet)
            (org.eclipse.jetty.http MimeTypes)
            (javax.servlet Servlet ServletContextListener)
-           (java.io File))
+           (java.io File)
+           (org.eclipse.jetty.proxy ProxyServlet)
+           (java.net URI)
+           (java.security Security))
   (:require [ring.util.servlet :as servlet]
-            [clojure.string :refer [split trim]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as jetty-config]))
 
 ;; Work around an issue with OpenJDK's PKCS11 implementation preventing TLSv1
@@ -33,10 +37,10 @@
 (if (re-find #"OpenJDK" (System/getProperty "java.vm.name"))
   (try
     (let [klass     (Class/forName "sun.security.pkcs11.SunPKCS11")
-          blacklist (filter #(instance? klass %) (java.security.Security/getProviders))]
+          blacklist (filter #(instance? klass %) (Security/getProviders))]
       (doseq [provider blacklist]
         (log/info (str "Removing buggy security provider " provider))
-        (java.security.Security/removeProvider (.getName provider))))
+        (Security/removeProvider (.getName provider))))
     (catch ClassNotFoundException e)
     (catch Throwable e
       (log/error e "Could not remove security providers; HTTPS may not work!"))))
@@ -60,7 +64,11 @@
    "SSL_RSA_WITH_3DES_EDE_CBC_SHA"
    "SSL_RSA_WITH_RC4_128_MD5"])
 
-(defn- proxy-handler
+(defn- remove-leading-slash
+  [s]
+  (str/replace s #"^\/" ""))
+
+(defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
   [handler]
   (proxy [AbstractHandler] []
@@ -137,6 +145,24 @@
     (.setMimeTypes (gzip-excluded-mime-types))
     (.setExcludeMimeTypes true)))
 
+(defn- proxy-servlet
+  "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
+  a given context to another host."
+  [target path]
+  {:pre [(map? target)
+         (= #{:host :port :path} (ks/keyset target))]}
+  (proxy [ProxyServlet] []
+    (rewriteURI [req]
+      (let [query         (.getQueryString req)
+            scheme        (.getScheme req)
+            context-path  (.getPathInfo req)
+            uri           (str scheme "://" (:host target) ":" (:port target)
+                               "/" (:path target) context-path)]
+        (when query
+          (.append uri "?")
+          (.append uri query))
+        (URI/create (.toString uri))))))
+
 (defn- create-server
   "Construct a Jetty Server instance."
   [options]
@@ -150,10 +176,10 @@
             ssl-ctxt-factory  (ssl-context-factory options)
             connector         (ssl-connector server ssl-ctxt-factory options)
             ciphers           (if-let [txt (options :cipher-suites)]
-                                (map trim (split txt #","))
+                                (map str/trim (str/split txt #","))
                                 acceptable-ciphers)
             protocols         (if-let [txt (options :ssl-protocols)]
-                                (map trim (split txt #",")))]
+                                (map str/trim (str/split txt #",")))]
         (when ciphers
           (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers))
           (when protocols
@@ -261,7 +287,7 @@
          (ifn? handler)
          (string? path)]}
   (let [ctxt-handler (doto (ContextHandler. path)
-                       (.setHandler (proxy-handler handler)))]
+                       (.setHandler (ring-handler handler)))]
     (add-handler webserver-context ctxt-handler)))
 
 (defn add-servlet-handler
@@ -291,6 +317,22 @@
                   (.setContextPath path)
                   (.setWar war))]
     (add-handler webserver-context handler)))
+
+(defn add-proxy-route
+  "Configures the Jetty server to proxy a given URL path to another host.
+
+  `target` should be a map containing the keys :host, :port, and :path; where
+  :path specifies the URL prefix to proxy to on the target host."
+  [webserver-context target path]
+  {:pre [(has-handlers? webserver-context)
+         (map? target)
+         (= #{:host :port :path} (ks/keyset target))
+         (string? path)]}
+  (let [target (update-in target [:path] remove-leading-slash)]
+    (add-servlet-handler webserver-context
+                         (proxy-servlet target path)
+                         path
+                         {"async-supported" true})))
 
 (defn join
   [webserver-context]

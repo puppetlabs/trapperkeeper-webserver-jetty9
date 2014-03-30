@@ -9,7 +9,8 @@
                :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
                :refer [with-app-with-empty-config
-                       with-app-with-cli-data]]
+                       with-app-with-cli-data
+                       with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
                :refer [with-test-logging]]))
 
@@ -295,3 +296,38 @@
       "jetty-ssl-pem-client-auth-none.ini"
       (assoc default-options-for-https
         :keystore nil))))
+
+(deftest test-proxy-servlet
+  (testing "proxy support"
+    (with-app-with-config proxy-target-app
+      [jetty9-service]
+      {:webserver {:host "0.0.0.0"
+                   :port 9000}}
+      (let [target-webserver (get-service proxy-target-app :WebserverService)]
+        (add-ring-handler
+          target-webserver
+          (fn [req]
+            (if (= "/hello/world" (:uri req))
+              {:status 200 :body "Hello, World!"}
+              {:status 404 :body "D'oh"}))
+          "/hello"))
+      (let [response (http-client/get "http://localhost:9000/hello/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))
+
+      (with-app-with-config proxy-app
+        [jetty9-service]
+        {:webserver {:host "0.0.0.0"
+                     :port 10000}}
+        (let [proxy-webserver (get-service proxy-app :WebserverService)]
+          (add-proxy-route proxy-webserver
+                           {:host    "localhost"
+                            :port    9000
+                            :path   "/hello"}
+                           "/hello-proxy"))
+        (let [response (http-client/get "http://localhost:10000/hello-proxy/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!"))))))
+
+  #_(testing "ssl proxy support"
+    (is (not true))))
