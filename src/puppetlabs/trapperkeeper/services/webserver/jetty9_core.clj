@@ -94,9 +94,10 @@
   ;; TODO: should probably be using prismatic schema here
   (and
     (map? target)
+    (every? #(contains? (ks/keyset target) %) #{:host :port :path})
     (empty? (set/difference (ks/keyset target) #{:host :port :path :scheme :ssl-config}))
     (contains? #{nil :orig :http :https} (:scheme target))
-    ((some-fn nil? map? #(= :use-server-config)) (:ssl-config target))
+    ((some-fn nil? map? #(= :use-server-config %)) (:ssl-config target))
     (or (not (map? (:ssl-config target)))
         (= #{:ssl-ca-cert :ssl-cert :ssl-key} (ks/keyset (:ssl-config target))))))
 
@@ -363,8 +364,7 @@
   (let [target (update-in target [:path] remove-leading-slash)]
     (add-servlet-handler webserver-context
                          (proxy-servlet webserver-context target path)
-                         path
-                         {"async-supported" true})))
+                         path)))
 
 (defn join
   [webserver-context]

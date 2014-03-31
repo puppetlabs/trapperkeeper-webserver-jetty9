@@ -1,4 +1,4 @@
-(def tk-version "0.3.9-SNAPSHOT")
+(def tk-version "0.3.9")
 (def ks-version "0.5.3")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.3.6-SNAPSHOT"
