@@ -190,8 +190,8 @@ For example, to host `resources/cas.war` WAR at `/cas`:
 
 #### `add-proxy-route`
 
-`add-proxy-route` is used to configure certain routes to be proxied to another
-host.  This function will accept two or three arguments: `[target path]`, or
+`add-proxy-route` is used to configure certain the server as a reverse proxy for
+certain routes.  This function will accept two or three arguments: `[target path]`, or
 `[target path options]`.
 
 `path` is the URL prefix for requests that you wish to proxy.
