@@ -191,15 +191,22 @@ For example, to host `resources/cas.war` WAR at `/cas`:
 #### `add-proxy-route`
 
 `add-proxy-route` is used to configure certain routes to be proxied to another
-host.  This function takes two arguments: `[target path]`.  `path` is the URL prefix
-for requests that you wish to proxy.  `target` is a map that controls how matching
-requests will be proxied; here are the keys that you may include in the `target`
-map:
+host.  This function will accept two or three arguments: `[target path]`, or
+`[target path options]`.
+
+`path` is the URL prefix for requests that you wish to proxy.
+
+`target` is a map that controls how matching requests will be proxied; here are
+the keys required in the `target` map:
 
 * `:host`: required; a string representing the host or IP to proxy requests to.
 * `:port`: required; an integer representing the port on the remote host that requests
   should be proxied to.
 * `:path`: required; the URL prefix that should be prepended to all proxied requests.
+
+`options`, if provided, is a map containing optional configuration for the proxy
+route:
+
 * `:scheme`: optional; legal values are `:orig`, `:http`, and `:https`.  If you
   specify `:http` or `:https`, then all proxied requests will use the specified
   scheme.  The default value is `:orig`, which means that proxied requests will
@@ -242,12 +249,12 @@ A slightly more complex example:
     (add-proxy-route
         {:host "localhost"
          :port 10000
-         :path "/bar"
-         :scheme :https
+         :path "/bar"}
+        "/foo"
+        {:scheme :https
          :ssl-config {:ssl-cert    "/tmp/cert.pem"
                       :ssl-key     "/tmp/key.pem"
-                      :ssl-ca-cert "/tmp/ca.pem"}}
-        "/foo")
+                      :ssl-ca-cert "/tmp/ca.pem"}})
     context))
 ```
 
