@@ -33,7 +33,7 @@
    :insecure?        true})
 
 (defmacro with-target-and-proxy-servers
-  [{:keys [target proxy proxy-config]} & body]
+  [{:keys [target proxy proxy-config proxy-opts]} & body]
   `(with-app-with-config proxy-target-app#
       [jetty9-service]
       {:webserver ~target}
@@ -49,7 +49,9 @@
         [jetty9-service]
         {:webserver ~proxy}
         (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
-          (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy"))
+          (if ~proxy-opts
+             (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy" ~proxy-opts)
+             (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy")))
         ~@body)))
 
 (defn validate-ring-handler
@@ -344,10 +346,10 @@
                         :port 9000}
          :proxy        {:host "0.0.0.0"
                         :port 10000}
-         :proxy-config {:host   "localhost"
-                        :port   9000
-                        :path   "/hello"
-                        :scheme :orig}}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:scheme :orig}}
         (let [response (http-client/get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -381,10 +383,10 @@
          :proxy        (merge common-ssl-config
                               {:ssl-host    "0.0.0.0"
                                :ssl-port    10001})
-         :proxy-config {:host   "localhost"
-                        :port   9001
-                        :path   "/hello"
-                        :scheme :orig}}
+         :proxy-config {:host "localhost"
+                        :port 9001
+                        :path "/hello"}
+         :proxy-opts   {:scheme :orig}}
         (let [response (http-client/get "https://localhost:9001/hello/world" default-options-for-https)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -400,10 +402,10 @@
          :proxy        (merge common-ssl-config
                               {:ssl-host    "0.0.0.0"
                                :ssl-port    10001})
-         :proxy-config {:host       "localhost"
-                        :port       9001
-                        :path       "/hello"
-                        :ssl-config :use-server-config}}
+         :proxy-config {:host "localhost"
+                        :port 9001
+                        :path "/hello"}
+         :proxy-opts   {:ssl-config :use-server-config}}
         (let [response (http-client/get "https://localhost:9001/hello/world" default-options-for-https)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -418,10 +420,10 @@
                                :ssl-port    9000})
          :proxy        {:host "0.0.0.0"
                         :port 10000}
-         :proxy-config {:host       "localhost"
-                        :port       9000
-                        :path       "/hello"
-                        :scheme     :https
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:scheme     :https
                         :ssl-config common-ssl-config}}
         (let [response (http-client/get "https://localhost:9000/hello/world" default-options-for-https)]
           (is (= (:status response) 200))
@@ -437,10 +439,10 @@
          :proxy        (merge common-ssl-config
                               {:ssl-host    "0.0.0.0"
                                :ssl-port    10001})
-         :proxy-config {:host   "localhost"
-                        :port   9001
-                        :path   "/hello"
-                        :scheme :http}}
+         :proxy-config {:host "localhost"
+                        :port 9001
+                        :path "/hello"}
+         :proxy-opts   {:scheme :http}}
         (let [response (http-client/get "http://localhost:9001/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))

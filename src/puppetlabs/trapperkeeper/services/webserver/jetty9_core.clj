@@ -98,12 +98,18 @@
     (string? (:path target))
     (integer? (:port target))
     (> (:port target) 0)
-    (<= (:port target) 65535)
-    (empty? (set/difference (ks/keyset target) #{:host :port :path :scheme :ssl-config}))
-    (contains? #{nil :orig :http :https} (:scheme target))
-    ((some-fn nil? map? #(= :use-server-config %)) (:ssl-config target))
-    (or (not (map? (:ssl-config target)))
-        (= #{:ssl-ca-cert :ssl-cert :ssl-key} (ks/keyset (:ssl-config target))))))
+    (<= (:port target) 65535)))
+
+(defn proxy-options?
+  "A predicate that validates the format of a proxy options configuration map"
+  [options]
+  ;; TODO: should probably be using prismatic schema here (PE-3409)
+  (and
+    (empty? (set/difference (ks/keyset options) #{:scheme :ssl-config}))
+    (contains? #{nil :orig :http :https} (:scheme options))
+    ((some-fn nil? map? #(= :use-server-config %)) (:ssl-config options))
+    (or (not (map? (:ssl-config options)))
+        (= #{:ssl-ca-cert :ssl-cert :ssl-key} (ks/keyset (:ssl-config options))))))
 
 (defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
@@ -185,17 +191,18 @@
 (defn- proxy-servlet
   "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
   a given context to another host."
-  [webserver-context target path]
+  [webserver-context target path options]
   {:pre [(has-handlers? webserver-context)
-         (proxy-target? target)]}
-  (let [custom-ssl-ctxt-factory (when (map? (:ssl-config target))
-                                  (-> (:ssl-config target)
+         (proxy-target? target)
+         (proxy-options? options)]}
+  (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
+                                  (-> (:ssl-config options)
                                       jetty-config/configure-web-server-ssl-from-pems
                                       ssl-context-factory))]
     (proxy [ProxyServlet] []
       (rewriteURI [req]
         (let [query (.getQueryString req)
-              scheme (let [target-scheme (:scheme target)]
+              scheme (let [target-scheme (:scheme options)]
                        (condp = target-scheme
                          nil (.getScheme req)
                          :orig (.getScheme req)
@@ -360,14 +367,20 @@
   "Configures the Jetty server to proxy a given URL path to another host.
 
   `target` should be a map containing the keys :host, :port, and :path; where
-  :path specifies the URL prefix to proxy to on the target host."
-  [webserver-context target path]
+  :path specifies the URL prefix to proxy to on the target host.
+
+  `options` may contain the keys :scheme (legal values are :orig, :http, and :https)
+  and :ssl-config (value may be :use-server-config or a map containing :ssl-ca-cert,
+  :ssl-cert, and :ssl-key).
+  "
+  [webserver-context target path options]
   {:pre [(has-handlers? webserver-context)
          (proxy-target? target)
+         (proxy-options? options)
          (string? path)]}
   (let [target (update-in target [:path] remove-leading-slash)]
     (add-servlet-handler webserver-context
-                         (proxy-servlet webserver-context target path)
+                         (proxy-servlet webserver-context target path options)
                          path)))
 
 (defn join
