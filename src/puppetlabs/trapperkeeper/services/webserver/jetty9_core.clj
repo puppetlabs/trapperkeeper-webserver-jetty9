@@ -91,7 +91,7 @@
 (defn proxy-target?
   "A predicate that validates the format of a proxy target configuration map"
   [target]
-  ;; TODO: should probably be using prismatic schema here
+  ;; TODO: should probably be using prismatic schema here (PE-3409)
   (and
     (map? target)
     (string? (:host target))
