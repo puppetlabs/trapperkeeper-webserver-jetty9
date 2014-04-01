@@ -397,7 +397,7 @@
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))))
 
-  (testing "basic https proxy support (pass-through https config via explict :use-server-config)"
+  (testing "basic https proxy support (pass-through https config via explicit :use-server-config)"
     (with-target-and-proxy-servers
       {:target {:ssl-host "0.0.0.0"
                 :ssl-port 9001

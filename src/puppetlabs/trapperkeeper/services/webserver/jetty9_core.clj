@@ -94,7 +94,11 @@
   ;; TODO: should probably be using prismatic schema here
   (and
     (map? target)
-    (every? #(contains? (ks/keyset target) %) #{:host :port :path})
+    (string? (:host target))
+    (string? (:path target))
+    (integer? (:port target))
+    (> (:port target) 0)
+    (<= (:port target) 65535)
     (empty? (set/difference (ks/keyset target) #{:host :port :path :scheme :ssl-config}))
     (contains? #{nil :orig :http :https} (:scheme target))
     ((some-fn nil? map? #(= :use-server-config %)) (:ssl-config target))
