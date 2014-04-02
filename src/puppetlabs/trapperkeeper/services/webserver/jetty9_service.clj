@@ -12,6 +12,7 @@
   (add-ring-handler [this handler path])
   (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
   (add-war-handler [this war path])
+  (add-proxy-route [this target path] [this target path options])
   (join [this]))
 
 (defservice jetty9-service
@@ -60,6 +61,14 @@
   (add-war-handler [this war path]
                    (let [s ((service-context this) :jetty9-server)]
                      (core/add-war-handler s war path)))
+
+  (add-proxy-route [this target path]
+                   (let [s ((service-context this) :jetty9-server)]
+                     (core/add-proxy-route s target path {})))
+
+  (add-proxy-route [this target path options]
+                   (let [s ((service-context this) :jetty9-server)]
+                     (core/add-proxy-route s target path options)))
 
   (join [this]
         (let [s ((service-context this) :jetty9-server)]

@@ -51,6 +51,7 @@ This is the protocol for the current implementation of the `:WebserverService`:
   (add-context-handler [this base-path context-path] [this base-path context-path context-listeners])
   (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
   (add-war-handler [this war path])
+  (add-proxy-route [this target path])
   (join [this]))
 ```
 
@@ -187,6 +188,82 @@ For example, to host `resources/cas.war` WAR at `/cas`:
     context))
 ```
 
+#### `add-proxy-route`
+
+`add-proxy-route` is used to configure certain the server as a reverse proxy for
+certain routes.  This function will accept two or three arguments: `[target path]`, or
+`[target path options]`.
+
+`path` is the URL prefix for requests that you wish to proxy.
+
+`target` is a map that controls how matching requests will be proxied; here are
+the keys required in the `target` map:
+
+* `:host`: required; a string representing the host or IP to proxy requests to.
+* `:port`: required; an integer representing the port on the remote host that requests
+  should be proxied to.
+* `:path`: required; the URL prefix that should be prepended to all proxied requests.
+
+`options`, if provided, is a map containing optional configuration for the proxy
+route:
+
+* `:scheme`: optional; legal values are `:orig`, `:http`, and `:https`.  If you
+  specify `:http` or `:https`, then all proxied requests will use the specified
+  scheme.  The default value is `:orig`, which means that proxied requests will
+  use the same scheme as the original request.
+* `:ssl-config`: optional; may be set to either `:use-server-config` (default) or
+  to a map containing the keys `:ssl-cert`, `:ssl-key`, and `:ssl-ca-cert`.  If
+  `:use-server-config`, then any proxied requests that use HTTPS will use the same
+  SSL context/configuration that the web server is configured with.  If you specify
+  a map, then the entries must point to the PEM files that should be used for the
+  SSL context.  These keys have the same meaning as they do for the SSL configuration
+  of the main web server.
+
+Simple example:
+
+```clj
+(defservice foo-service
+  [[:WebserverService add-proxy-route]]
+  (init [this context]
+    (add-proxy-route
+        {:host "localhost"
+         :port 10000
+         :path "/bar"}
+        "/foo")
+    context))
+```
+
+In this example, all incoming requests with a prefix of `/foo` will be proxied
+to `localhost:10000`, with a prefix of `/bar`, using the same scheme (HTTP/HTTPS)
+that the original request used, and using the SSL context of the main webserver.
+
+So, e.g., an HTTPS request to the main webserver at `/foo/hello-world` would be
+proxied to `https://localhost:10000/bar/hello-world`.
+
+A slightly more complex example:
+
+```clj
+(defservice foo-service
+  [[:WebserverService add-proxy-route]]
+  (init [this context]
+    (add-proxy-route
+        {:host "localhost"
+         :port 10000
+         :path "/bar"}
+        "/foo"
+        {:scheme :https
+         :ssl-config {:ssl-cert    "/tmp/cert.pem"
+                      :ssl-key     "/tmp/key.pem"
+                      :ssl-ca-cert "/tmp/ca.pem"}})
+    context))
+```
+
+In this example, all incoming requests with a prefix of `foo` will be proxied
+to `https://localhost:10000/bar`.  We'll proxy using HTTPS even if the original
+request was HTTP, and we'll use the three pem files in `/tmp` to configure the
+HTTPS client, regardless of the SSL configuration of the main web server.
+
+
 #### `join`
 
 This function is not recommended for normal use, but is provided for compatibility
@@ -206,7 +283,8 @@ these lifecycle phases.
 #### `init`
 
 A `ContextHandlerCollection` is created during the `init` lifecycle which allows for
-consumers to use the `add-ring-handler`, `add-servlet-handler` , and `add-war-handler` functions, but the Jetty server itself has not started yet. This allows the service
+consumers to use the `add-*-handler` and `add-proxy-route` functions,
+but the Jetty server itself has not started yet. This allows the service
 consumer to setup SSL keys and perform other operations needed before the server is started.
 
 #### `start`

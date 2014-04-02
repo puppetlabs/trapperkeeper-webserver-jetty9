@@ -19,10 +19,16 @@
            (java.util HashSet)
            (org.eclipse.jetty.http MimeTypes)
            (javax.servlet Servlet ServletContextListener)
-           (java.io File))
+           (java.io File)
+           (org.eclipse.jetty.proxy ProxyServlet)
+           (java.net URI)
+           (java.security Security)
+           (org.eclipse.jetty.client HttpClient))
   (:require [ring.util.servlet :as servlet]
-            [clojure.string :refer [split trim]]
+            [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as jetty-config]))
 
 ;; Work around an issue with OpenJDK's PKCS11 implementation preventing TLSv1
@@ -33,10 +39,10 @@
 (if (re-find #"OpenJDK" (System/getProperty "java.vm.name"))
   (try
     (let [klass     (Class/forName "sun.security.pkcs11.SunPKCS11")
-          blacklist (filter #(instance? klass %) (java.security.Security/getProviders))]
+          blacklist (filter #(instance? klass %) (Security/getProviders))]
       (doseq [provider blacklist]
         (log/info (str "Removing buggy security provider " provider))
-        (java.security.Security/removeProvider (.getName provider))))
+        (Security/removeProvider (.getName provider))))
     (catch ClassNotFoundException e)
     (catch Throwable e
       (log/error e "Could not remove security providers; HTTPS may not work!"))))
@@ -60,7 +66,52 @@
    "SSL_RSA_WITH_3DES_EDE_CBC_SHA"
    "SSL_RSA_WITH_RC4_128_MD5"])
 
-(defn- proxy-handler
+(defn- remove-leading-slash
+  [s]
+  (str/replace s #"^\/" ""))
+
+(defn has-handlers?
+  "A predicate that indicates whether or not the webserver-context contains a
+  ContextHandlerCollection which can have handlers attached to it."
+  [webserver-context]
+  (and
+    (map? webserver-context)
+    (instance? HandlerCollection (:handler-collection webserver-context))
+    (instance? ContextHandlerCollection (:handlers webserver-context))
+    (map? @(:config webserver-context))))
+
+(defn has-webserver?
+  "A predicate that indicates whether or not the webserver-context contains a Jetty
+  Server object."
+  [webserver-context]
+  (and
+    (has-handlers? webserver-context)
+    (instance? Server (:server webserver-context))))
+
+(defn proxy-target?
+  "A predicate that validates the format of a proxy target configuration map"
+  [target]
+  ;; TODO: should probably be using prismatic schema here (PE-3409)
+  (and
+    (map? target)
+    (string? (:host target))
+    (string? (:path target))
+    (integer? (:port target))
+    (> (:port target) 0)
+    (<= (:port target) 65535)))
+
+(defn proxy-options?
+  "A predicate that validates the format of a proxy options configuration map"
+  [options]
+  ;; TODO: should probably be using prismatic schema here (PE-3409)
+  (and
+    (empty? (set/difference (ks/keyset options) #{:scheme :ssl-config}))
+    (contains? #{nil :orig :http :https} (:scheme options))
+    ((some-fn nil? map? #(= :use-server-config %)) (:ssl-config options))
+    (or (not (map? (:ssl-config options)))
+        (= #{:ssl-ca-cert :ssl-cert :ssl-key} (ks/keyset (:ssl-config options))))))
+
+(defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
   [handler]
   (proxy [AbstractHandler] []
@@ -137,9 +188,44 @@
     (.setMimeTypes (gzip-excluded-mime-types))
     (.setExcludeMimeTypes true)))
 
+(defn- proxy-servlet
+  "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
+  a given context to another host."
+  [webserver-context target path options]
+  {:pre [(has-handlers? webserver-context)
+         (proxy-target? target)
+         (proxy-options? options)]}
+  (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
+                                  (-> (:ssl-config options)
+                                      jetty-config/configure-web-server-ssl-from-pems
+                                      ssl-context-factory))]
+    (proxy [ProxyServlet] []
+      (rewriteURI [req]
+        (let [query (.getQueryString req)
+              scheme (let [target-scheme (:scheme options)]
+                       (condp = target-scheme
+                         nil (.getScheme req)
+                         :orig (.getScheme req)
+                         :http "http"
+                         :https "https"))
+              context-path (.getPathInfo req)
+              uri (str scheme "://" (:host target) ":" (:port target)
+                       "/" (:path target) context-path)]
+          (when query
+            (.append uri "?")
+            (.append uri query))
+          (URI/create (.toString uri))))
+
+      (newHttpClient []
+        (if custom-ssl-ctxt-factory
+          (HttpClient. custom-ssl-ctxt-factory)
+          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:config webserver-context))]
+            (HttpClient. ssl-ctxt-factory)
+            (HttpClient.)))))))
+
 (defn- create-server
   "Construct a Jetty Server instance."
-  [options]
+  [webserver-context options]
   (let [server (Server. (QueuedThreadPool. (options :max-threads)))]
     (when (options :port)
       (let [connector (plaintext-connector server options)]
@@ -150,35 +236,19 @@
             ssl-ctxt-factory  (ssl-context-factory options)
             connector         (ssl-connector server ssl-ctxt-factory options)
             ciphers           (if-let [txt (options :cipher-suites)]
-                                (map trim (split txt #","))
+                                (map str/trim (str/split txt #","))
                                 acceptable-ciphers)
             protocols         (if-let [txt (options :ssl-protocols)]
-                                (map trim (split txt #",")))]
+                                (map str/trim (str/split txt #",")))]
         (when ciphers
           (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers))
           (when protocols
             (.setIncludeProtocols ssl-ctxt-factory (into-array protocols))))
-        (.addConnector server connector)))
+        (.addConnector server connector)
+        (swap! (:config webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
     server))
 
 ;; Functions for trapperkeeper 'webserver' interface
-
-(defn has-handlers?
-  "A predicate that indicates whether or not the webserver-context contains a
-  ContextHandlerCollection which can have handlers attached to it."
-  [webserver-context]
-  (and
-    (map? webserver-context)
-    (instance? HandlerCollection (:handler-collection webserver-context))
-    (instance? ContextHandlerCollection (:handlers webserver-context))))
-
-(defn has-webserver?
-  "A predicate that indicates whether or not the webserver-context contains a Jetty
-  Server object."
-  [webserver-context]
-  (and
-    (has-handlers? webserver-context)
-    (instance? Server (:server webserver-context))))
 
 (defn create-webserver
     "Create a Jetty webserver according to the supplied options:
@@ -204,7 +274,7 @@
          (has-handlers? webserver-context)]
    :post [(has-webserver? %)]}
   (let [options   (jetty-config/configure-web-server options)
-        ^Server s (create-server (dissoc options :configurator))]
+        ^Server s (create-server webserver-context (dissoc options :configurator))]
     (.setHandler s (gzip-handler (:handler-collection webserver-context)))
     (when-let [configurator (:configurator options)]
       (configurator s))
@@ -220,7 +290,8 @@
         ^HandlerCollection hc         (HandlerCollection.)]
     (.setHandlers hc (into-array Handler [chc]))
     {:handler-collection hc
-     :handlers chc}))
+     :handlers chc
+     :config (atom {})}))
 
 (defn start-webserver
   "Starts a webserver that has been previously created and added to the
@@ -261,7 +332,7 @@
          (ifn? handler)
          (string? path)]}
   (let [ctxt-handler (doto (ContextHandler. path)
-                       (.setHandler (proxy-handler handler)))]
+                       (.setHandler (ring-handler handler)))]
     (add-handler webserver-context ctxt-handler)))
 
 (defn add-servlet-handler
@@ -291,6 +362,26 @@
                   (.setContextPath path)
                   (.setWar war))]
     (add-handler webserver-context handler)))
+
+(defn add-proxy-route
+  "Configures the Jetty server to proxy a given URL path to another host.
+
+  `target` should be a map containing the keys :host, :port, and :path; where
+  :path specifies the URL prefix to proxy to on the target host.
+
+  `options` may contain the keys :scheme (legal values are :orig, :http, and :https)
+  and :ssl-config (value may be :use-server-config or a map containing :ssl-ca-cert,
+  :ssl-cert, and :ssl-key).
+  "
+  [webserver-context target path options]
+  {:pre [(has-handlers? webserver-context)
+         (proxy-target? target)
+         (proxy-options? options)
+         (string? path)]}
+  (let [target (update-in target [:path] remove-leading-slash)]
+    (add-servlet-handler webserver-context
+                         (proxy-servlet webserver-context target path options)
+                         path)))
 
 (defn join
   [webserver-context]
