@@ -1,3 +1,7 @@
+## 0.4.0
+ * Added new function `add-proxy-route`, which supports configuring the server to
+   work as a reverse proxy for certain routes
+
 ## 0.3.5
  * Added a new service function, `add-context-handler`, which supports registering
    a context handler for static content, with optional support for context listeners
