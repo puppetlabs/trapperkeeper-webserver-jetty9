@@ -70,6 +70,16 @@
   [s]
   (str/replace s #"^\/" ""))
 
+(defn has-config?
+  "A predicate that indicates whether or not the webserver-context contains a
+  ':config' map, used for capturing any configuration settings that can be
+  atomically updated at run-time."
+  [webserver-context]
+  (and
+    (map? webserver-context)
+    (contains? webserver-context :config)
+    (map? @(:config webserver-context))))
+
 (defn has-handlers?
   "A predicate that indicates whether or not the webserver-context contains a
   ContextHandlerCollection which can have handlers attached to it."
@@ -77,8 +87,7 @@
   (and
     (map? webserver-context)
     (instance? HandlerCollection (:handler-collection webserver-context))
-    (instance? ContextHandlerCollection (:handlers webserver-context))
-    (map? @(:config webserver-context))))
+    (instance? ContextHandlerCollection (:handlers webserver-context))))
 
 (defn has-webserver?
   "A predicate that indicates whether or not the webserver-context contains a Jetty
@@ -192,7 +201,8 @@
   "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
   a given context to another host."
   [webserver-context target path options]
-  {:pre [(has-handlers? webserver-context)
+  {:pre [(has-config? webserver-context)
+         (has-handlers? webserver-context)
          (proxy-target? target)
          (proxy-options? options)]}
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
@@ -248,6 +258,18 @@
         (swap! (:config webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
     server))
 
+(defn- merge-webserver-overrides-with-options
+  "Merge any overrides made to the webserver config settings with the supplied
+   options."
+  [options webserver-context]
+  {:pre  [(has-config? webserver-context)]
+   :post [(map? %)]}
+  (let [config-with-overrides-marked-read (swap! (:config webserver-context)
+                                                 assoc
+                                                   :overrides-read-by-webserver
+                                                   true)]
+    (merge options (:overrides config-with-overrides-marked-read))))
+
 ;; Functions for trapperkeeper 'webserver' interface
 
 (defn create-webserver
@@ -271,9 +293,12 @@
     created by create-handlers."
   [options webserver-context]
   {:pre [(map? options)
+         (has-config? webserver-context)
          (has-handlers? webserver-context)]
    :post [(has-webserver? %)]}
-  (let [options   (jetty-config/configure-web-server options)
+  (let [options   (jetty-config/configure-web-server
+                    (merge-webserver-overrides-with-options options
+                                                            webserver-context))
         ^Server s (create-server webserver-context (dissoc options :configurator))]
     (.setHandler s (gzip-handler (:handler-collection webserver-context)))
     (when-let [configurator (:configurator options)]
@@ -383,6 +408,84 @@
                          (proxy-servlet webserver-context target path options)
                          path)))
 
+(defn override-webserver-settings!
+  "Override the settings in the webserver section of the service's config file
+   with the set of options in the supplied overrides map.
+
+   The map should contain a key/value pair for each setting to be overridden.
+   The name of the setting to override should be expressed as a Clojure keyword.
+   For any setting expressed in the service config which is not overridden, the
+   setting value from the config will be used.
+
+   For example, the webserver config may contain:
+
+     [webserver]
+     ssl-host    = 0.0.0.0
+     ssl-port    = 9001
+     ssl-cert    = mycert.pem
+     ssl-key     = mykey.pem
+     ssl-ca-cert = myca.pem
+
+   The following overrides map may be supplied as an argument to the function:
+
+     {:ssl-port 9002
+      :ssl-cert \"myoverriddencert.pem\"
+      :ssl-key  \"myoverriddenkey.pem\"}
+
+   The effective settings used during webserver startup will be:
+
+     {:ssl-host    \"0.0.0.0\"
+      :ssl-port    9002
+      :ssl-cert    \"myoverriddencert.pem\"
+      :ssl-key     \"myoverriddenkey.pem\"
+      :ssl-ca-cert \"myca.pem\"}
+
+   The overridden webserver settings will be considered only at the point the
+   webserver is being started -- during the start lifecycle phase of the
+   webserver service.  For this reason, a call to this function must be made
+   during a service's init lifecycle phase in order for the overridden
+   settings to be considered.
+
+   Only one call from a service may be made to this function during application
+   startup.
+
+   If a call is made to this function after webserver startup or after another
+   call has already been made to this function (e.g., from other service),
+   a java.lang.IllegalStateException will be thrown."
+  [webserver-context overrides]
+  {:pre  [(has-config? webserver-context)
+          (map? overrides)]
+   :post [(map? %)]}
+  ; Might be worth considering an implementation that only fails if the caller
+  ; is trying to override a specific option that has been overridden already
+  ; rather than blindly failing if an attempt is made to override any option.
+  ; Could allow different services to override options that don't conflict with
+  ; one another or for the same service to make multiple calls to this function
+  ; for different settings.  Hard to know, though, when one setting has an
+  ; adverse effect on another without putting a bunch of key-specific semantic
+  ; setting parsing in this implementation.
+  (:overrides
+    (swap! (:config webserver-context)
+           #(cond
+             (:overrides-read-by-webserver %)
+               (if (nil? (:overrides %))
+                 (throw
+                   (IllegalStateException.
+                     (str "overrides cannot be set because webserver has "
+                          "already processed the config")))
+                 (throw
+                   (IllegalStateException.
+                     (str "overrides cannot be set because they have "
+                          "already been set and webserver has already "
+                          "processed the config"))))
+             (nil? (:overrides %))
+               (assoc % :overrides overrides)
+             :else
+               (throw
+                 (IllegalStateException.
+                   (str "overrides cannot be set because they have "
+                        "already been set")))))))
+
 (defn join
   [webserver-context]
   {:pre [(has-webserver? webserver-context)]}
@@ -393,3 +496,4 @@
   {:pre [(has-webserver? webserver-context)]}
   (log/info "Shutting down web server.")
   (.stop (:server webserver-context)))
+
