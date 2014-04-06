@@ -11,7 +11,7 @@
                  [org.clojure/tools.logging "0.2.6"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/certificate-authority "0.1.3"]
+                 [puppetlabs/certificate-authority "0.1.4"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
@@ -49,7 +49,7 @@
                                   "examples/war_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[clj-http "0.5.3"]
+                   :dependencies [[puppetlabs/http-client "0.1.6"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]

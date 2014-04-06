@@ -1,6 +1,6 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-override-webserver-settings-test
   (:require [clojure.test :refer :all]
-            [clj-http.client :as http-client]
+            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
@@ -14,9 +14,9 @@
 
 (def test-resources-config-dir (str test-resources-dir "config/jetty/"))
 
-(def default-keystore-pass     "Kq8lG9LkISky9cDIYysiadxRx")
+#_(def default-keystore-pass     "Kq8lG9LkISky9cDIYysiadxRx")
 
-(def default-options-for-https
+#_(def default-options-for-https
   {:keystore         (str test-resources-config-dir "ssl/keystore.jks")
    :keystore-type    "JKS"
    :keystore-pass    default-keystore-pass
@@ -27,6 +27,18 @@
    ; "localhost-puppetdb" whereas the URL being reached is "localhost".  The
    ; insecure? value of true directs the client to ignore the mismatch.
    :insecure?        true})
+
+(defn http-get
+  ([url]
+   (http-get url {:as :text}))
+  ([url options]
+   (http-client/get url options)))
+
+(def default-options-for-https
+  {:ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
+   :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
+   :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"
+   :as :text})
 
 (deftest test-override-webserver-settings!
   (let [ssl-port  9001
@@ -63,8 +75,8 @@
                   path             "/hi_world"
                   ring-handler     (fn [req] {:status 200 :body body})]
               (add-ring-handler ring-handler path)
-              (let [response (http-client/get
-                               (format "https://localhost:%d/%s" ssl-port path)
+              (let [response (http-get
+                               (format "https://localhost:%d%s/" ssl-port path)
                                default-options-for-https)]
                 (is (= (:status response) 200)
                     "Unsuccessful http response code ring handler response.")
@@ -112,8 +124,8 @@
                 path             "/hi_world"
                 ring-handler     (fn [req] {:status 200 :body body})]
             (add-ring-handler ring-handler path)
-            (let [response (http-client/get
-                             (format "https://localhost:%d/%s" ssl-port path)
+            (let [response (http-get
+                             (format "https://localhost:%d%s/" ssl-port path)
                              default-options-for-https)]
               (is (= (:status response) 200)
                   "Unsuccessful http response code ring handler response.")
@@ -165,8 +177,8 @@
                 path             "/hi_world"
                 ring-handler     (fn [req] {:status 200 :body body})]
             (add-ring-handler ring-handler path)
-            (let [response (http-client/get
-                             (format "https://localhost:%d/%s" ssl-port path)
+            (let [response (http-get
+                             (format "https://localhost:%d%s/" ssl-port path)
                              default-options-for-https)]
               (is (= (:status response) 200)
                   "Unsuccessful http response code ring handler response.")
