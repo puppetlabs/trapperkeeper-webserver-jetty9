@@ -14,20 +14,6 @@
 
 (def test-resources-config-dir (str test-resources-dir "config/jetty/"))
 
-#_(def default-keystore-pass     "Kq8lG9LkISky9cDIYysiadxRx")
-
-#_(def default-options-for-https
-  {:keystore         (str test-resources-config-dir "ssl/keystore.jks")
-   :keystore-type    "JKS"
-   :keystore-pass    default-keystore-pass
-   :trust-store      (str test-resources-config-dir "ssl/truststore.jks")
-   :trust-store-type "JKS"
-   :trust-store-pass default-keystore-pass
-   ; The default server's certificate in this case uses a CN of
-   ; "localhost-puppetdb" whereas the URL being reached is "localhost".  The
-   ; insecure? value of true directs the client to ignore the mismatch.
-   :insecure?        true})
-
 (defn http-get
   ([url]
    (http-get url {:as :text}))
