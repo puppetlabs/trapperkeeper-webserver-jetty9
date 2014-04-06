@@ -1,5 +1,5 @@
-(def tk-version "0.3.9")
-(def ks-version "0.5.3")
+(def tk-version "0.3.10")
+(def ks-version "0.6.0")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.4.1-SNAPSHOT"
   :description "We are trapperkeeper.  We are one."
@@ -11,6 +11,7 @@
                  [org.clojure/tools.logging "0.2.6"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
+                 [puppetlabs/certificate-authority "0.1.3"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
