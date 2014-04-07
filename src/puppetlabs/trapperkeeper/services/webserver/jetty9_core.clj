@@ -264,11 +264,13 @@
   [options webserver-context]
   {:pre  [(has-config? webserver-context)]
    :post [(map? %)]}
-  (let [config-with-overrides-marked-read (swap! (:config webserver-context)
-                                                 assoc
-                                                   :overrides-read-by-webserver
-                                                   true)]
-    (merge options (:overrides config-with-overrides-marked-read))))
+  (let [overrides (:overrides (swap! (:config webserver-context)
+                                     assoc
+                                     :overrides-read-by-webserver
+                                     true))]
+    (doseq [key (keys overrides)]
+      (log/info (str "webserver config overridden for key '" (name key) "'")))
+    (merge options overrides)))
 
 ;; Functions for trapperkeeper 'webserver' interface
 

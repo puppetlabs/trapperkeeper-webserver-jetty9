@@ -6,7 +6,9 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
               :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
-              :refer [with-app-with-cli-data]]))
+              :refer [with-app-with-cli-data]]
+            [puppetlabs.trapperkeeper.testutils.logging
+              :refer [with-test-logging]]))
 
 (def test-resources-dir        "./test-resources/")
 
@@ -51,24 +53,35 @@
                                             (override-webserver-settings!
                                               overrides))
                                     context))]
-        (with-app-with-cli-data
-          app
-          [jetty9-service service1]
-          {:config (str test-resources-config-dir
-                        "jetty-plaintext-http.ini")}
-          (let [s                (get-service app :WebserverService)
-                add-ring-handler (partial add-ring-handler s)
-                body             "Hi World"
-                path             "/hi_world"
-                ring-handler     (fn [req] {:status 200 :body body})]
-            (add-ring-handler ring-handler path)
-            (let [response (http-client/get
-                             (format "https://localhost:%d/%s" ssl-port path)
-                             default-options-for-https)]
-              (is (= (:status response) 200)
-                  "Unsuccessful http response code ring handler response.")
-              (is (= (:body response) body)
-                  "Unexpected body in ring handler response."))))
+        (with-test-logging
+          (with-app-with-cli-data
+            app
+            [jetty9-service service1]
+            {:config (str test-resources-config-dir
+                          "jetty-plaintext-http.ini")}
+            (let [s                (get-service app :WebserverService)
+                  add-ring-handler (partial add-ring-handler s)
+                  body             "Hi World"
+                  path             "/hi_world"
+                  ring-handler     (fn [req] {:status 200 :body body})]
+              (add-ring-handler ring-handler path)
+              (let [response (http-client/get
+                               (format "https://localhost:%d/%s" ssl-port path)
+                               default-options-for-https)]
+                (is (= (:status response) 200)
+                    "Unsuccessful http response code ring handler response.")
+                (is (= (:body response) body)
+                    "Unexpected body in ring handler response."))))
+              (is (logged? #"^webserver config overridden for key 'ssl-port'")
+                (str "Didn't find log message for override of 'ssl-port'"))
+              (is (logged? #"^webserver config overridden for key 'ssl-host'")
+                  (str "Didn't find log message for override of 'ssl-host'"))
+              (is (logged? #"^webserver config overridden for key 'ssl-cert'")
+                  (str "Didn't find log message for override of 'ssl-cert'"))
+              (is (logged? #"^webserver config overridden for key 'ssl-key'")
+                  (str "Didn't find log message for override of 'ssl-key'"))
+              (is (logged? #"^webserver config overridden for key 'ssl-ca-cert'")
+                  (str "Didn't find log message for override of 'ssl-ca-cert'")))
         (is (= overrides @override-result)
             "Unexpected response to override-webserver-settings! call.")))
     (testing "config override of SSL certificate settings before webserver
