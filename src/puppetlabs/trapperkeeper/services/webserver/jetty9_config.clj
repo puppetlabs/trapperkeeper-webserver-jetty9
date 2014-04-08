@@ -1,7 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config
   (:import [java.security KeyStore])
   (:require [clojure.tools.logging :as log]
-            [puppetlabs.kitchensink.ssl :as ssl]
+            [puppetlabs.certificate-authority.core :as ssl]
             [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid]]))
 
 (defn configure-web-server-ssl-from-pems
