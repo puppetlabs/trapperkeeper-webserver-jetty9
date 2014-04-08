@@ -6,7 +6,6 @@
             [clj-http.client :as http-client]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
-            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
                :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap

@@ -28,8 +28,6 @@
    ; insecure? value of true directs the client to ignore the mismatch.
    :insecure?        true})
 
-(defprotocol Service1)
-
 (deftest test-override-webserver-settings!
   (let [ssl-port  9001
         overrides {:ssl-port ssl-port
@@ -46,7 +44,7 @@
     (testing "config override of all SSL settings before webserver starts is
               successful"
       (let [override-result (atom nil)
-            service1        (tk-services/service Service1
+            service1        (tk-services/service
                               [[:WebserverService override-webserver-settings!]]
                               (init [this context]
                                     (reset! override-result
@@ -73,19 +71,19 @@
                 (is (= (:body response) body)
                     "Unexpected body in ring handler response."))))
               (is (logged? #"^webserver config overridden for key 'ssl-port'")
-                (str "Didn't find log message for override of 'ssl-port'"))
+                  "Didn't find log message for override of 'ssl-port'")
               (is (logged? #"^webserver config overridden for key 'ssl-host'")
-                  (str "Didn't find log message for override of 'ssl-host'"))
+                  "Didn't find log message for override of 'ssl-host'")
               (is (logged? #"^webserver config overridden for key 'ssl-cert'")
-                  (str "Didn't find log message for override of 'ssl-cert'"))
+                  "Didn't find log message for override of 'ssl-cert'")
               (is (logged? #"^webserver config overridden for key 'ssl-key'")
-                  (str "Didn't find log message for override of 'ssl-key'"))
+                  "Didn't find log message for override of 'ssl-key'")
               (is (logged? #"^webserver config overridden for key 'ssl-ca-cert'")
-                  (str "Didn't find log message for override of 'ssl-ca-cert'")))
+                  "Didn't find log message for override of 'ssl-ca-cert'"))
         (is (= overrides @override-result)
             "Unexpected response to override-webserver-settings! call.")))
-    (testing "config override of SSL certificate settings before webserver
-              starts is successful"
+    (testing "SSL certificate settings can be overridden while other settings
+              from the config are still honored -- ssl-port and ssl-host"
       (let [override-result (atom nil)
             overrides       {:ssl-cert
                               (str test-resources-config-dir
@@ -96,7 +94,7 @@
                              :ssl-ca-cert
                               (str test-resources-config-dir
                                    "ssl/certs/ca.pem")}
-            service1        (tk-services/service Service1
+            service1        (tk-services/service
                               [[:WebserverService override-webserver-settings!]]
                               (init [this context]
                                     (reset! override-result
@@ -126,8 +124,7 @@
     (testing "attempt to override SSL settings fails when override call made
               after webserver has already started"
       (let [override-result (atom nil)
-            service1        (tk-services/service Service1
-                                                 [])]
+            service1        (tk-services/service [])]
         (with-app-with-cli-data
           app
           [jetty9-service service1]
@@ -141,19 +138,18 @@
                                   #"overrides cannot be set because webserver has already processed the config"
                                   (override-webserver-settings! overrides)))))))
     (testing "second attempt to override SSL settings fails"
-      (let [second-override-throws? (atom nil)
+      (let [second-override-result (atom nil)
             service1                (tk-services/service
-                                      Service1
                                       [[:WebserverService
                                         override-webserver-settings!]]
                                       (init [this context]
                                             (override-webserver-settings!
                                               overrides)
                                             (reset!
-                                              second-override-throws?
+                                              second-override-result
                                               (is
                                                 (thrown-with-msg?
-                                                  java.lang.IllegalStateException
+                                                  IllegalStateException
                                                   #"overrides cannot be set because they have already been set"
                                                   (override-webserver-settings!
                                                     overrides))))
@@ -176,5 +172,5 @@
                   "Unsuccessful http response code ring handler response.")
               (is (= (:body response) body)
                   "Unexpected body in ring handler response."))))
-        (is (not (nil? @second-override-throws?))
-            "Second call to setting overrides not made")))))
+        (is (instance? IllegalStateException @second-override-result)
+            "Second call to setting overrides did not throw expected exception.")))))

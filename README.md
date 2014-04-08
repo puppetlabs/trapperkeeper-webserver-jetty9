@@ -267,7 +267,7 @@ HTTPS client, regardless of the SSL configuration of the main web server.
 
 `override-webserver-settings!` is used to override settings in the `webserver`
 section of the webserver service's config file.  This function will accept one
-argument, `[overrides]`.  `[overrides]` is a map which should contain a
+argument, `[overrides]`.  `overrides` is a map which should contain a
 key/value pair for each setting to be overridden.  The name of the setting to
 override should be expressed as a Clojure keyword.  For any setting expressed in
 the service config which is not overridden, the setting value from the config
