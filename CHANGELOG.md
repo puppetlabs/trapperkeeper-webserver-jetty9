@@ -1,3 +1,9 @@
+## 0.5.0
+ * Added new function `override-webserver-settings!`, which allows another
+   service to provide overridden values for the webserver configuration.
+ * Update to latest version of puppetlabs/kitchensink
+ * Use puppetlabs/certificate-authority for all SSL-related tasks
+
 ## 0.4.0
  * Added new function `add-proxy-route`, which supports configuring the server to
    work as a reverse proxy for certain routes
