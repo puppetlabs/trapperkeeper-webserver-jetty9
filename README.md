@@ -263,6 +263,62 @@ to `https://localhost:10000/bar`.  We'll proxy using HTTPS even if the original
 request was HTTP, and we'll use the three pem files in `/tmp` to configure the
 HTTPS client, regardless of the SSL configuration of the main web server.
 
+#### `override-webserver-settings!`
+
+`override-webserver-settings!` is used to override settings in the `webserver`
+section of the webserver service's config file.  This function will accept one
+argument, `[overrides]`.  `overrides` is a map which should contain a
+key/value pair for each setting to be overridden.  The name of the setting to
+override should be expressed as a Clojure keyword.  For any setting expressed in
+the service config which is not overridden, the setting value from the config
+will be used.
+
+For example, the webserver config may contain:
+
+```INI
+[webserver]
+ssl-host    = 0.0.0.0
+ssl-port    = 9001
+ssl-cert    = mycert.pem
+ssl-key     = mykey.pem
+ssl-ca-cert = myca.pem
+```
+
+Overrides may be supplied from the service using code like the following:
+
+```clj
+(defservice foo-service
+  [[:WebserverService override-webserver-settings!]]
+  (init [this context]
+    (override-webserver-settings!
+      {:ssl-port    9002
+       :ssl-cert    "myoverriddencert.pem"
+       :ssl-key     "myoverriddenkey.pem"})
+    context))
+```
+
+For this example, the effective settings used during webserver startup would be:
+
+```clj
+{:ssl-host    "0.0.0.0"
+ :ssl-port    9002
+ :ssl-cert    "myoverriddencert.pem"
+ :ssl-key     "myoverriddenkey.pem"
+ :ssl-ca-cert "myca.pem"}
+```
+
+The overridden webserver settings will be considered only at the point the
+webserver is being started -- during the start lifecycle phase of the
+webserver service.  For this reason, a call to this function must be made
+during a service's init lifecycle phase in order for the overridden
+settings to be considered.
+
+Only one call from a service may be made to this function during application
+startup.
+
+If a call is made to this function after webserver startup or after another
+call has already been made to this function (e.g., from other service),
+a java.lang.IllegalStateException will be thrown.
 
 #### `join`
 

@@ -78,18 +78,6 @@ for your infrastructure.
 
 This sets the passphrase to use for unlocking the truststore file.
 
-### `certificate-whitelist`
-
-Optional. This describes the path to a file that contains a list of certificate
-names, one per line.  Incoming HTTPS requests will have their certificates
-validated against this list of names and only those with an _exact_ matching
-entry will be allowed through. (For a puppet master, this compares against the
-value of the `certname` setting, rather than the `dns_alt_names` setting.)
-
-If not supplied, trapperkeeper uses standard HTTPS without any additional
-authorization. All HTTPS clients must still supply valid, verifiable SSL client
-certificates.
-
 ### `cipher-suites`
 
 Optional. A comma-separated list of cryptographic ciphers to allow for incoming
