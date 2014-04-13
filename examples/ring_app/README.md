@@ -15,7 +15,7 @@ To start up _trapperkeeper_ and launch the sample application, use the following
 _trapperkeeper-webserver-jetty9_ home directory:
 
 ```sh
-lein trampoline run --config examples/ring_app/config.ini \
+lein trampoline run --config examples/ring_app/ring-example.conf \
                     --bootstrap-config examples/ring_app/bootstrap.cfg
 ```
 
