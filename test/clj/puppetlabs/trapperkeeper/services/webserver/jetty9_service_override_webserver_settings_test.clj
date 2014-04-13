@@ -10,9 +10,9 @@
             [puppetlabs.trapperkeeper.testutils.logging
               :refer [with-test-logging]]))
 
-(def test-resources-dir        "./test-resources/")
+(def dev-resources-dir        "./dev-resources/")
 
-(def test-resources-config-dir (str test-resources-dir "config/jetty/"))
+(def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
 (defn http-get
   ([url]
@@ -28,9 +28,9 @@
                :ssl-port 9001}})
 
 (def default-options-for-https
-  {:ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
-   :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
-   :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"
+  {:ssl-cert "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+   :ssl-key  "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
+   :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"
    :as :text})
 
 (deftest test-override-webserver-settings!
@@ -38,13 +38,13 @@
         overrides {:ssl-port ssl-port
                    :ssl-host "0.0.0.0"
                    :ssl-cert
-                             (str test-resources-config-dir
+                             (str dev-resources-config-dir
                                   "ssl/certs/localhost.pem")
                    :ssl-key
-                             (str test-resources-config-dir
+                             (str dev-resources-config-dir
                                   "ssl/private_keys/localhost.pem")
                    :ssl-ca-cert
-                             (str test-resources-config-dir
+                             (str dev-resources-config-dir
                                   "ssl/certs/ca.pem")}]
     (testing "config override of all SSL settings before webserver starts is
               successful"
@@ -90,13 +90,13 @@
               from the config are still honored -- ssl-port and ssl-host"
       (let [override-result (atom nil)
             overrides       {:ssl-cert
-                              (str test-resources-config-dir
+                              (str dev-resources-config-dir
                                    "ssl/certs/localhost.pem")
                              :ssl-key
-                              (str test-resources-config-dir
+                              (str dev-resources-config-dir
                                    "ssl/private_keys/localhost.pem")
                              :ssl-ca-cert
-                              (str test-resources-config-dir
+                              (str dev-resources-config-dir
                                    "ssl/certs/ca.pem")}
             service1        (tk-services/service
                               [[:WebserverService override-webserver-settings!]]

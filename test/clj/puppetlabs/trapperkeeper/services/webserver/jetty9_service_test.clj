@@ -15,7 +15,7 @@
             [puppetlabs.trapperkeeper.testutils.logging
                :refer [with-test-logging]]))
 
-(def test-resources-dir        "./test-resources/")
+(def dev-resources-dir        "./dev-resources/")
 
 (defn http-get
   ([url]
@@ -30,8 +30,8 @@
   {:webserver {:port            8080
                :ssl-host        "0.0.0.0"
                :ssl-port        8081
-               :keystore        "./test-resources/config/jetty/ssl/keystore.jks"
-               :truststore      "./test-resources/config/jetty/ssl/truststore.jks"
+               :keystore        "./dev-resources/config/jetty/ssl/keystore.jks"
+               :truststore      "./dev-resources/config/jetty/ssl/truststore.jks"
                :key-password    "Kq8lG9LkISky9cDIYysiadxRx"
                :trust-password  "Kq8lG9LkISky9cDIYysiadxRx"}})
 
@@ -39,9 +39,9 @@
   {:webserver {:port        8080
                :ssl-host    "0.0.0.0"
                :ssl-port    8081
-               :ssl-cert    "./test-resources/config/jetty/ssl/certs/localhost.pem"
-               :ssl-key     "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
-               :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}})
+               :ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+               :ssl-key     "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
+               :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"}})
 
 (def jetty-ssl-client-need-config
   (assoc-in jetty-ssl-pem-config [:webserver :client-auth] "need"))
@@ -53,15 +53,15 @@
   (assoc-in jetty-ssl-pem-config [:webserver :client-auth] "none"))
 
 (def default-options-for-https-client
-  {:ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
-   :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
-   :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"
+  {:ssl-cert "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+   :ssl-key  "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
+   :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"
    :as :text})
 
 (def unauthorized-pem-options-for-https
   (-> default-options-for-https-client
-      (assoc :ssl-cert "./test-resources/config/jetty/ssl/certs/unauthorized.pem")
-      (assoc :ssl-key "./test-resources/config/jetty/ssl/private_keys/unauthorized.pem")))
+      (assoc :ssl-cert "./dev-resources/config/jetty/ssl/certs/unauthorized.pem")
+      (assoc :ssl-key "./dev-resources/config/jetty/ssl/private_keys/unauthorized.pem")))
 
 (defmacro with-target-and-proxy-servers
   [{:keys [target proxy proxy-config proxy-opts]} & body]
@@ -113,10 +113,10 @@
             add-context-handler (partial add-context-handler s)
             path                "/resources"
             resource            "logback.xml"]
-        (add-context-handler test-resources-dir path)
+        (add-context-handler dev-resources-dir path)
         (let [response (http-get (str "http://localhost:8080" path "/" resource))]
           (is (= (:status response) 200))
-          (is (= (:body response) (slurp (str test-resources-dir resource))))))))
+          (is (= (:body response) (slurp (str dev-resources-dir resource))))))))
 
   (testing "customization of static content context"
     (with-app-with-config app
@@ -128,7 +128,7 @@
             body                "Hey there"
             servlet-path        "/hey"
             servlet             (SimpleServlet. body)]
-        (add-context-handler test-resources-dir path
+        (add-context-handler dev-resources-dir path
                              [(reify ServletContextListener
                                 (contextInitialized [this event]
                                   (doto (.addServlet (.getServletContext event) "simple" servlet)
@@ -207,7 +207,7 @@
             add-war-handler (partial add-war-handler s)
             path            "/test"
             war             "helloWorld.war"]
-        (add-war-handler (str test-resources-dir war) path)
+        (add-war-handler (str dev-resources-dir war) path)
         (let [response (http-get (str "http://localhost:8080" path "/hello"))]
           (is (= (:status response) 200))
           (is (= (:body response)
@@ -342,9 +342,9 @@
             unauthorized-pem-options-for-https)))))
 
 (deftest test-proxy-servlet
-  (let [common-ssl-config {:ssl-cert    "./test-resources/config/jetty/ssl/certs/localhost.pem"
-                           :ssl-key     "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
-                           :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}]
+  (let [common-ssl-config {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+                           :ssl-key     "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
+                           :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"}]
     (testing "basic proxy support"
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"

@@ -6,7 +6,7 @@
   [[:WebserverService add-war-handler]]
   (init [this context]
         (log/info "Initializing hello web service")
-        (add-war-handler "test-resources/helloWorld.war" "/test")
+        (add-war-handler "dev-resources/helloWorld.war" "/test")
         context)
   (stop [this context]
         (log/info "Shutting down hello web service")
