@@ -1,10 +1,11 @@
-(ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-override-webserver-settings-test
+(ns puppetlabs.trapperkeeper.services.webserver.jetty9_service_override_settings_test
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
               :refer :all]
+            [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
               :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
@@ -14,24 +15,9 @@
 
 (def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
-(defn http-get
-  ([url]
-   (http-get url {:as :text}))
-  ([url options]
-   (http-client/get url options)))
-
-(def jetty-plaintext-config
-  {:webserver {:port 8080}})
-
 (def jetty-ssl-no-certs-config
   {:webserver {:ssl-host "0.0.0.0"
                :ssl-port 9001}})
-
-(def default-options-for-https
-  {:ssl-cert "./dev-resources/config/jetty/ssl/certs/localhost.pem"
-   :ssl-key  "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
-   :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"
-   :as :text})
 
 (deftest test-override-webserver-settings!
   (let [ssl-port  9001
@@ -69,7 +55,7 @@
               (add-ring-handler ring-handler path)
               (let [response (http-get
                                (format "https://localhost:%d%s/" ssl-port path)
-                               default-options-for-https)]
+                               default-options-for-https-client)]
                 (is (= (:status response) 200)
                     "Unsuccessful http response code ring handler response.")
                 (is (= (:body response) body)
@@ -117,7 +103,7 @@
             (add-ring-handler ring-handler path)
             (let [response (http-get
                              (format "https://localhost:%d%s/" ssl-port path)
-                             default-options-for-https)]
+                             default-options-for-https-client)]
               (is (= (:status response) 200)
                   "Unsuccessful http response code ring handler response.")
               (is (= (:body response) body)
@@ -168,7 +154,7 @@
             (add-ring-handler ring-handler path)
             (let [response (http-get
                              (format "https://localhost:%d%s/" ssl-port path)
-                             default-options-for-https)]
+                             default-options-for-https-client)]
               (is (= (:status response) 200)
                   "Unsuccessful http response code ring handler response.")
               (is (= (:body response) body)
