@@ -11,13 +11,11 @@
                :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
                :refer [with-app-with-empty-config
-                       with-app-with-cli-data
                        with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
                :refer [with-test-logging]]))
 
 (def test-resources-dir        "./test-resources/")
-(def test-resources-config-dir (str test-resources-dir "config/jetty/"))
 
 (defn http-get
   ([url]
@@ -25,20 +23,45 @@
   ([url options]
    (http-client/get url options)))
 
-(def default-options-for-https
+(def jetty-plaintext-config
+  {:webserver {:port 8080}})
+
+(def jetty-ssl-jks-config
+  {:webserver {:port            8080
+               :ssl-host        "0.0.0.0"
+               :ssl-port        8081
+               :keystore        "./test-resources/config/jetty/ssl/keystore.jks"
+               :truststore      "./test-resources/config/jetty/ssl/truststore.jks"
+               :key-password    "Kq8lG9LkISky9cDIYysiadxRx"
+               :trust-password  "Kq8lG9LkISky9cDIYysiadxRx"}})
+
+(def jetty-ssl-pem-config
+  {:webserver {:port        8080
+               :ssl-host    "0.0.0.0"
+               :ssl-port    8081
+               :ssl-cert    "./test-resources/config/jetty/ssl/certs/localhost.pem"
+               :ssl-key     "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
+               :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"}})
+
+(def jetty-ssl-client-need-config
+  (assoc-in jetty-ssl-pem-config [:webserver :client-auth] "need"))
+
+(def jetty-ssl-client-want-config
+  (assoc-in jetty-ssl-pem-config [:webserver :client-auth] "want"))
+
+(def jetty-ssl-client-none-config
+  (assoc-in jetty-ssl-pem-config [:webserver :client-auth] "none"))
+
+(def default-options-for-https-client
   {:ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
    :ssl-key  "./test-resources/config/jetty/ssl/private_keys/localhost.pem"
    :ssl-ca-cert "./test-resources/config/jetty/ssl/certs/ca.pem"
    :as :text})
 
 (def unauthorized-pem-options-for-https
-  (-> default-options-for-https
-      (assoc :ssl-cert
-        (str test-resources-config-dir
-             "ssl/certs/unauthorized.pem"))
-      (assoc :ssl-key
-        (str test-resources-config-dir
-             "ssl/private_keys/unauthorized.pem"))))
+  (-> default-options-for-https-client
+      (assoc :ssl-cert "./test-resources/config/jetty/ssl/certs/unauthorized.pem")
+      (assoc :ssl-key "./test-resources/config/jetty/ssl/private_keys/unauthorized.pem")))
 
 (defmacro with-target-and-proxy-servers
   [{:keys [target proxy proxy-config proxy-opts]} & body]
@@ -63,12 +86,12 @@
         ~@body)))
 
 (defn validate-ring-handler
-  ([base-url config-file-name]
-    (validate-ring-handler base-url config-file-name {:as :text}))
-  ([base-url config-file-name http-get-options]
-    (with-app-with-cli-data app
+  ([base-url config]
+    (validate-ring-handler base-url config {:as :text}))
+  ([base-url config http-get-options]
+    (with-app-with-config app
       [jetty9-service]
-      {:config (str test-resources-config-dir config-file-name)}
+      config
       (let [s                (get-service app :WebserverService)
             add-ring-handler (partial add-ring-handler s)
             body             "Hi World"
@@ -83,9 +106,9 @@
 
 (deftest static-content-test
   (testing "static content context"
-    (with-app-with-cli-data app
+    (with-app-with-config app
       [jetty9-service]
-      {:config (str test-resources-config-dir "jetty-plaintext-http.ini")}
+      jetty-plaintext-config
       (let [s                   (get-service app :WebserverService)
             add-context-handler (partial add-context-handler s)
             path                "/resources"
@@ -96,9 +119,9 @@
           (is (= (:body response) (slurp (str test-resources-dir resource))))))))
 
   (testing "customization of static content context"
-    (with-app-with-cli-data app
+    (with-app-with-config app
       [jetty9-service]
-      {:config (str test-resources-config-dir "jetty-plaintext-http.ini")}
+      jetty-plaintext-config
       (let [s                   (get-service app :WebserverService)
             add-context-handler (partial add-context-handler s)
             path                "/resources"
@@ -119,13 +142,13 @@
   (testing "ring request over http succeeds"
     (validate-ring-handler
       "http://localhost:8080"
-      "jetty-plaintext-http.ini")))
+      jetty-plaintext-config)))
 
 (deftest servlet-test
   (testing "request to servlet over http succeeds"
-    (with-app-with-cli-data app
+    (with-app-with-config app
       [jetty9-service]
-      {:config (str test-resources-config-dir "jetty-plaintext-http.ini")}
+      jetty-plaintext-config
       (let [s                   (get-service app :WebserverService)
             add-servlet-handler (partial add-servlet-handler s)
             body                "Hey there"
@@ -138,9 +161,9 @@
           (is (= (:body response) body))))))
 
   (testing "request to servlet initialized with empty param succeeds"
-    (with-app-with-cli-data app
+    (with-app-with-config app
       [jetty9-service]
-      {:config (str test-resources-config-dir "jetty-plaintext-http.ini")}
+      jetty-plaintext-config
       (let [s                   (get-service app :WebserverService)
             add-servlet-handler (partial add-servlet-handler s)
             body                "Hey there"
@@ -152,9 +175,9 @@
           (is (= (:body response) body))))))
 
   (testing "request to servlet initialized with non-empty params succeeds"
-    (with-app-with-cli-data app
+    (with-app-with-config app
       [jetty9-service]
-      {:config (str test-resources-config-dir "jetty-plaintext-http.ini")}
+      jetty-plaintext-config
       (let [s                   (get-service app :WebserverService)
             add-servlet-handler (partial add-servlet-handler s)
             body                "Hey there"
@@ -177,9 +200,9 @@
 
 (deftest war-test
   (testing "WAR support"
-    (with-app-with-cli-data app
+    (with-app-with-config app
       [jetty9-service]
-      {:config (str test-resources-config-dir "jetty-plaintext-http.ini")}
+      jetty-plaintext-config
       (let [s               (get-service app :WebserverService)
             add-war-handler (partial add-war-handler s)
             path            "/test"
@@ -209,56 +232,56 @@
     ; should default to 'need' to validate the client certificate.  In this
     ; case, the validation should be successful because the client is
     ; providing a certificate which the CA can validate.
-    (doseq [config ["jetty-ssl-jks.ini" "jetty-ssl-pem.ini"]]
+    (doseq [config [jetty-ssl-jks-config jetty-ssl-pem-config]]
         (validate-ring-handler
           "https://localhost:8081"
           config
-          default-options-for-https)))
+          default-options-for-https-client)))
 
   (testing "ring request over SSL succeeds with a server client-auth setting
             of 'need' and the client configured to provide a certificate which
             the CA can validate"
     (validate-ring-handler
       "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-need.ini"
-      default-options-for-https))
+      jetty-ssl-client-need-config
+      default-options-for-https-client))
 
   (testing "ring request over SSL succeeds with a server client-auth setting
             of 'want' and the client configured to provide a certificate which
             the CA can validate"
     (validate-ring-handler
       "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-want.ini"
-      default-options-for-https))
+      jetty-ssl-client-want-config
+      default-options-for-https-client))
 
   (testing "ring request over SSL succeeds with a server client-auth setting
             of 'want' and the client configured to not provide a certificate"
     (validate-ring-handler
       "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-want.ini"
-      (dissoc default-options-for-https :ssl-cert :ssl-key)))
+      jetty-ssl-client-want-config
+      (dissoc default-options-for-https-client :ssl-cert :ssl-key)))
 
   (testing "ring request over SSL succeeds with a server client-auth setting
             of 'none' and the client configured to provide a certificate which
             the CA can validate"
     (validate-ring-handler
       "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-none.ini"
-      default-options-for-https))
+      jetty-ssl-client-none-config
+      default-options-for-https-client))
 
   (testing "ring request over SSL succeeds with a server client-auth setting
             of 'none' and the client configured to not provide a certificate"
     (validate-ring-handler
       "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-none.ini"
-      (dissoc default-options-for-https :ssl-cert :ssl-key)))
+      jetty-ssl-client-none-config
+      (dissoc default-options-for-https-client :ssl-cert :ssl-key)))
 
   (testing "ring request over SSL succeeds with a server client-auth setting
             of 'none' and the client configured to provide a certificate which
             the CA cannot validate"
     (validate-ring-handler
       "https://localhost:8081"
-      "jetty-ssl-pem-client-auth-none.ini"
+      jetty-ssl-client-none-config
       unauthorized-pem-options-for-https)))
 
 (deftest ssl-failure-test
@@ -273,7 +296,7 @@
           ProtocolException
           (validate-ring-handler
             "https://localhost:8081"
-            "jetty-ssl-pem.ini"
+            jetty-ssl-pem-config
             unauthorized-pem-options-for-https))))
 
   (testing "ring request over SSL fails with the server's client-auth setting
@@ -286,8 +309,8 @@
           ProtocolException
           (validate-ring-handler
             "https://localhost:8081"
-            "jetty-ssl-pem.ini"
-            (dissoc default-options-for-https :ssl-cert :ssl-key)))))
+            jetty-ssl-pem-config
+            (dissoc default-options-for-https-client :ssl-cert :ssl-key)))))
 
   (testing "ring request over SSL fails with a server client-auth setting
             of 'need' and the client configured to provide a certificate which
@@ -296,7 +319,7 @@
           ProtocolException
           (validate-ring-handler
             "https://localhost:8081"
-            "jetty-ssl-pem-client-auth-need.ini"
+            jetty-ssl-client-need-config
             unauthorized-pem-options-for-https))))
 
   (testing "ring request over SSL fails with a server client-auth setting
@@ -305,8 +328,8 @@
           ProtocolException
           (validate-ring-handler
             "https://localhost:8081"
-            "jetty-ssl-pem-client-auth-need.ini"
-            (dissoc default-options-for-https :ssl-cert :ssl-key)))))
+            jetty-ssl-client-need-config
+            (dissoc default-options-for-https-client :ssl-cert :ssl-key)))))
 
   (testing "ring request over SSL fails with a server client-auth setting
             of 'want' and the client configured to provide a certificate which
@@ -315,7 +338,7 @@
           ProtocolException
           (validate-ring-handler
             "https://localhost:8081"
-            "jetty-ssl-pem-client-auth-want.ini"
+            jetty-ssl-client-need-config
             unauthorized-pem-options-for-https)))))
 
 (deftest test-proxy-servlet
@@ -366,10 +389,10 @@
          :proxy-config {:host "localhost"
                         :port 9001
                         :path "/hello"}}
-        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
-        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
 
@@ -385,10 +408,10 @@
                         :port 9001
                         :path "/hello"}
          :proxy-opts   {:scheme :orig}}
-        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
-        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
 
@@ -404,10 +427,10 @@
                         :port 9001
                         :path "/hello"}
          :proxy-opts   {:ssl-config :use-server-config}}
-        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
-        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
 
@@ -423,7 +446,7 @@
                         :path "/hello"}
          :proxy-opts   {:scheme     :https
                         :ssl-config common-ssl-config}}
-        (let [response (http-get "https://localhost:9000/hello/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:9000/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
         (let [response (http-get "http://localhost:10000/hello-proxy/world")]
@@ -444,6 +467,6 @@
         (let [response (http-get "http://localhost:9001/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
-        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https)]
+        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))))

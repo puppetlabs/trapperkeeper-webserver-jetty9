@@ -6,7 +6,7 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
               :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
-              :refer [with-app-with-cli-data]]
+              :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
               :refer [with-test-logging]]))
 
@@ -19,6 +19,13 @@
    (http-get url {:as :text}))
   ([url options]
    (http-client/get url options)))
+
+(def jetty-plaintext-config
+  {:webserver {:port 8080}})
+
+(def jetty-ssl-no-certs-config
+  {:webserver {:ssl-host "0.0.0.0"
+               :ssl-port 9001}})
 
 (def default-options-for-https
   {:ssl-cert "./test-resources/config/jetty/ssl/certs/localhost.pem"
@@ -50,11 +57,10 @@
                                               overrides))
                                     context))]
         (with-test-logging
-          (with-app-with-cli-data
+          (with-app-with-config
             app
             [jetty9-service service1]
-            {:config (str test-resources-config-dir
-                          "jetty-plaintext-http.ini")}
+            jetty-plaintext-config
             (let [s                (get-service app :WebserverService)
                   add-ring-handler (partial add-ring-handler s)
                   body             "Hi World"
@@ -99,11 +105,10 @@
                                             (override-webserver-settings!
                                               overrides))
                                     context))]
-        (with-app-with-cli-data
+        (with-app-with-config
           app
           [jetty9-service service1]
-          {:config (str test-resources-config-dir
-                        "jetty-ssl-no-certs.ini")}
+          jetty-ssl-no-certs-config
           (let [s                (get-service app :WebserverService)
                 add-ring-handler (partial add-ring-handler s)
                 body             "Hi World"
@@ -123,11 +128,10 @@
               after webserver has already started"
       (let [override-result (atom nil)
             service1        (tk-services/service [])]
-        (with-app-with-cli-data
+        (with-app-with-config
           app
           [jetty9-service service1]
-          {:config (str test-resources-config-dir
-                        "jetty-plaintext-http.ini")}
+          jetty-plaintext-config
           (let [s                            (get-service app :WebserverService)
                 override-webserver-settings! (partial
                                                override-webserver-settings!
@@ -152,11 +156,10 @@
                                                   (override-webserver-settings!
                                                     overrides))))
                                             context))]
-        (with-app-with-cli-data
+        (with-app-with-config
           app
           [jetty9-service service1]
-          {:config (str test-resources-config-dir
-                        "jetty-plaintext-http.ini")}
+          jetty-plaintext-config
           (let [s                (get-service app :WebserverService)
                 add-ring-handler (partial add-ring-handler s)
                 body             "Hi World"
