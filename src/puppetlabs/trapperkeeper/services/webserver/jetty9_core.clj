@@ -70,15 +70,15 @@
   [s]
   (str/replace s #"^\/" ""))
 
-(defn has-config?
+(defn has-state?
   "A predicate that indicates whether or not the webserver-context contains a
-  ':config' map, used for capturing any configuration settings that can be
+  ':state' map, used for capturing any configuration settings that can be
   atomically updated at run-time."
   [webserver-context]
   (and
     (map? webserver-context)
-    (contains? webserver-context :config)
-    (map? @(:config webserver-context))))
+    (contains? webserver-context :state)
+    (map? @(:state webserver-context))))
 
 (defn has-handlers?
   "A predicate that indicates whether or not the webserver-context contains a
@@ -201,7 +201,7 @@
   "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
   a given context to another host."
   [webserver-context target path options]
-  {:pre [(has-config? webserver-context)
+  {:pre [(has-state? webserver-context)
          (has-handlers? webserver-context)
          (proxy-target? target)
          (proxy-options? options)]}
@@ -229,7 +229,7 @@
       (newHttpClient []
         (if custom-ssl-ctxt-factory
           (HttpClient. custom-ssl-ctxt-factory)
-          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:config webserver-context))]
+          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
             (HttpClient. ssl-ctxt-factory)
             (HttpClient.)))))))
 
@@ -255,16 +255,16 @@
           (when protocols
             (.setIncludeProtocols ssl-ctxt-factory (into-array protocols))))
         (.addConnector server connector)
-        (swap! (:config webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
+        (swap! (:state webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
     server))
 
 (defn- merge-webserver-overrides-with-options
   "Merge any overrides made to the webserver config settings with the supplied
    options."
   [options webserver-context]
-  {:pre  [(has-config? webserver-context)]
+  {:pre  [(has-state? webserver-context)]
    :post [(map? %)]}
-  (let [overrides (:overrides (swap! (:config webserver-context)
+  (let [overrides (:overrides (swap! (:state webserver-context)
                                      assoc
                                      :overrides-read-by-webserver
                                      true))]
@@ -295,7 +295,7 @@
     created by create-handlers."
   [options webserver-context]
   {:pre [(map? options)
-         (has-config? webserver-context)
+         (has-state? webserver-context)
          (has-handlers? webserver-context)]
    :post [(has-webserver? %)]}
   (let [options   (jetty-config/configure-web-server
@@ -318,7 +318,7 @@
     (.setHandlers hc (into-array Handler [chc]))
     {:handler-collection hc
      :handlers chc
-     :config (atom {})}))
+     :state (atom {})}))
 
 (defn start-webserver
   "Starts a webserver that has been previously created and added to the
@@ -455,7 +455,7 @@
    call has already been made to this function (e.g., from other service),
    a java.lang.IllegalStateException will be thrown."
   [webserver-context overrides]
-  {:pre  [(has-config? webserver-context)
+  {:pre  [(has-state? webserver-context)
           (map? overrides)]
    :post [(map? %)]}
   ; Might be worth considering an implementation that only fails if the caller
@@ -467,7 +467,7 @@
   ; adverse effect on another without putting a bunch of key-specific semantic
   ; setting parsing in this implementation.
   (:overrides
-    (swap! (:config webserver-context)
+    (swap! (:state webserver-context)
            #(cond
              (:overrides-read-by-webserver %)
                (if (nil? (:overrides %))

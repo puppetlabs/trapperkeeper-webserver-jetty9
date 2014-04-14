@@ -44,7 +44,7 @@
 
 (deftest override-webserver-settings!-tests
   (testing "able to associate overrides when overrides not already set"
-    (let [context {:config
+    (let [context {:state
                     (atom {:some-other-config-setting "some-other-value"})}]
       (is (= {:override-1 "override-value-1"
               :override-2 "override-value-2"}
@@ -53,14 +53,14 @@
                {:override-1 "override-value-1"
                 :override-2 "override-value-2"}))
           "Unexpected overrides returned from override-webserver-settings!")
-      (is (= @(:config context)
+      (is (= @(:state context)
              {:some-other-config-setting "some-other-value"
               :overrides {:override-1 "override-value-1"
                           :override-2 "override-value-2"}})
           "Unexpected config set for override-webserver-settings!")))
   (testing "unable to associate overrides when overrides already processed by
             webserver but overrides were not present"
-    (let [context {:config
+    (let [context {:state
                     (atom {:some-other-config-setting "some-other-value"
                            :overrides-read-by-webserver true})}]
       (is (thrown-with-msg? java.lang.IllegalStateException
@@ -72,11 +72,11 @@
           "Call to override-webserver-settings! did not fail as expected.")
       (is (= {:some-other-config-setting "some-other-value"
               :overrides-read-by-webserver true}
-             @(:config context))
+             @(:state context))
           "Config unexpectedly changed for override-webserver-settings!")))
   (testing "unable to associate override when overrides already processed by
             webserver and overrides were previously set"
-    (let [context {:config
+    (let [context {:state
                     (atom {:some-other-config-setting "some-other-value"
                            :overrides {:myoverride "my-override-value"}
                            :overrides-read-by-webserver true})}]
@@ -90,10 +90,10 @@
       (is (= {:some-other-config-setting "some-other-value"
               :overrides {:myoverride "my-override-value"}
               :overrides-read-by-webserver true}
-             @(:config context))
+             @(:state context))
           "Config unexpectedly changed for override-webserver-settings!")))
   (testing "unable to associate override when overrides were previously set"
-    (let [context {:config
+    (let [context {:state
                     (atom {:some-other-config-setting "some-other-value"
                            :overrides {:myoverride "my-override-value"}})}]
       (is (thrown-with-msg? java.lang.IllegalStateException
@@ -105,7 +105,7 @@
           "Call to override-webserver-settings! did not fail as expected.")
       (is (= {:some-other-config-setting "some-other-value"
               :overrides {:myoverride "my-override-value"}}
-             @(:config context))
+             @(:state context))
           "config unexpectedly changed for override-webserver-settings!")))
   (testing "Confirm that when a webserver context with no config is passed
             into override-webserver-settings! that an exception is thrown."
@@ -116,6 +116,6 @@
   (testing "Confirm that when a bad overrides is passed
             into override-webserver-settings! that an exception is thrown."
     (is (thrown? AssertionError (jetty/override-webserver-settings!
-                                  {:config (atom {})}
+                                  {:state (atom {})}
                                   nil))
         "Did not encounter expected exception for invalid override argument.")))
