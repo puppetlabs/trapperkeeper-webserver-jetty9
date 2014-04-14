@@ -275,24 +275,24 @@
 ;; Functions for trapperkeeper 'webserver' interface
 
 (defn create-webserver
-    "Create a Jetty webserver according to the supplied options:
-
-    :configurator - a function called with the Jetty Server instance
-    :port         - the port to listen on (defaults to 8080)
-    :host         - the hostname to listen on
-    :join?        - blocks the thread until server ends (defaults to true)
-    :ssl?         - allow connections over HTTPS
-    :ssl-port     - the SSL port to listen on (defaults to 443, implies :ssl?)
-    :keystore     - the keystore to use for SSL connections
-    :key-password - the password to the keystore
-    :truststore   - a truststore to use for SSL connections
-    :trust-password - the password to the truststore
-    :max-threads  - the maximum number of threads to use (default 50)
-    :client-auth  - SSL client certificate authenticate, may be set to :need,
-                    :want or :none (defaults to :none)
-
-    ws is a map containing the :handlers collection which should have been previously
-    created by create-handlers."
+    ;"Create a Jetty webserver according to the supplied options:
+    ;
+    ;:configurator - a function called with the Jetty Server instance
+    ;:port         - the port to listen on (defaults to 8080)
+    ;:host         - the hostname to listen on
+    ;:join?        - blocks the thread until server ends (defaults to true)
+    ;:ssl?         - allow connections over HTTPS
+    ;:ssl-port     - the SSL port to listen on (defaults to 443, implies :ssl?)
+    ;:keystore     - the keystore to use for SSL connections
+    ;:key-password - the password to the keystore
+    ;:truststore   - a truststore to use for SSL connections
+    ;:trust-password - the password to the truststore
+    ;:max-threads  - the maximum number of threads to use (default 50)
+    ;:client-auth  - SSL client certificate authenticate, may be set to :need,
+    ;                :want or :none (defaults to :none)
+    ;
+    ;ws is a map containing the :handlers collection which should have been previously
+    ;created by create-handlers."
   [options webserver-context]
   {:pre [(map? options)
          (has-state? webserver-context)

@@ -19,10 +19,7 @@ won't listen for unencrypted traffic at all.
 
 This sets the maximum number of threads assigned to responding to HTTP and HTTPS
 requests, effectively changing how many concurrent requests can be made at one
-time. Defaults to 50.
-
-> **Note:** Due to how Jetty 7 behaves, this setting must be higher than the
- number of CPU's on your system or it will stop processing any HTTP requests.
+time. Defaults to 100.
 
 ### `ssl-host`
 

@@ -2,6 +2,8 @@
   (:import (java.io IOException))
   (:require
     [clojure.tools.logging :as log]
+
+    [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
     [puppetlabs.trapperkeeper.core :refer [defservice]]))
 

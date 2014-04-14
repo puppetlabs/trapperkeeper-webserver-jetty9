@@ -9,6 +9,7 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.logging "0.2.6"]
+                 [prismatic/schema "0.2.0"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/certificate-authority "0.1.4"]
