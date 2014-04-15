@@ -338,7 +338,7 @@
           ProtocolException
           (validate-ring-handler
             "https://localhost:8081"
-            jetty-ssl-client-need-config
+            jetty-ssl-client-want-config
             unauthorized-pem-options-for-https)))))
 
 (deftest test-proxy-servlet
