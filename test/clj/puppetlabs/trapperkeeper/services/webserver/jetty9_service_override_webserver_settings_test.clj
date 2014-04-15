@@ -1,45 +1,50 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-override-webserver-settings-test
   (:require [clojure.test :refer :all]
-            [clj-http.client :as http-client]
+            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
               :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
-              :refer [with-app-with-cli-data]]
+              :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
               :refer [with-test-logging]]))
 
-(def test-resources-dir        "./test-resources/")
+(def dev-resources-dir        "./dev-resources/")
 
-(def test-resources-config-dir (str test-resources-dir "config/jetty/"))
+(def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
-(def default-keystore-pass     "Kq8lG9LkISky9cDIYysiadxRx")
+(defn http-get
+  ([url]
+   (http-get url {:as :text}))
+  ([url options]
+   (http-client/get url options)))
+
+(def jetty-plaintext-config
+  {:webserver {:port 8080}})
+
+(def jetty-ssl-no-certs-config
+  {:webserver {:ssl-host "0.0.0.0"
+               :ssl-port 9001}})
 
 (def default-options-for-https
-  {:keystore         (str test-resources-config-dir "ssl/keystore.jks")
-   :keystore-type    "JKS"
-   :keystore-pass    default-keystore-pass
-   :trust-store      (str test-resources-config-dir "ssl/truststore.jks")
-   :trust-store-type "JKS"
-   :trust-store-pass default-keystore-pass
-   ; The default server's certificate in this case uses a CN of
-   ; "localhost-puppetdb" whereas the URL being reached is "localhost".  The
-   ; insecure? value of true directs the client to ignore the mismatch.
-   :insecure?        true})
+  {:ssl-cert "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+   :ssl-key  "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
+   :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"
+   :as :text})
 
 (deftest test-override-webserver-settings!
   (let [ssl-port  9001
         overrides {:ssl-port ssl-port
                    :ssl-host "0.0.0.0"
                    :ssl-cert
-                             (str test-resources-config-dir
+                             (str dev-resources-config-dir
                                   "ssl/certs/localhost.pem")
                    :ssl-key
-                             (str test-resources-config-dir
+                             (str dev-resources-config-dir
                                   "ssl/private_keys/localhost.pem")
                    :ssl-ca-cert
-                             (str test-resources-config-dir
+                             (str dev-resources-config-dir
                                   "ssl/certs/ca.pem")}]
     (testing "config override of all SSL settings before webserver starts is
               successful"
@@ -52,19 +57,18 @@
                                               overrides))
                                     context))]
         (with-test-logging
-          (with-app-with-cli-data
+          (with-app-with-config
             app
             [jetty9-service service1]
-            {:config (str test-resources-config-dir
-                          "jetty-plaintext-http.ini")}
+            jetty-plaintext-config
             (let [s                (get-service app :WebserverService)
                   add-ring-handler (partial add-ring-handler s)
                   body             "Hi World"
                   path             "/hi_world"
                   ring-handler     (fn [req] {:status 200 :body body})]
               (add-ring-handler ring-handler path)
-              (let [response (http-client/get
-                               (format "https://localhost:%d/%s" ssl-port path)
+              (let [response (http-get
+                               (format "https://localhost:%d%s/" ssl-port path)
                                default-options-for-https)]
                 (is (= (:status response) 200)
                     "Unsuccessful http response code ring handler response.")
@@ -86,13 +90,13 @@
               from the config are still honored -- ssl-port and ssl-host"
       (let [override-result (atom nil)
             overrides       {:ssl-cert
-                              (str test-resources-config-dir
+                              (str dev-resources-config-dir
                                    "ssl/certs/localhost.pem")
                              :ssl-key
-                              (str test-resources-config-dir
+                              (str dev-resources-config-dir
                                    "ssl/private_keys/localhost.pem")
                              :ssl-ca-cert
-                              (str test-resources-config-dir
+                              (str dev-resources-config-dir
                                    "ssl/certs/ca.pem")}
             service1        (tk-services/service
                               [[:WebserverService override-webserver-settings!]]
@@ -101,19 +105,18 @@
                                             (override-webserver-settings!
                                               overrides))
                                     context))]
-        (with-app-with-cli-data
+        (with-app-with-config
           app
           [jetty9-service service1]
-          {:config (str test-resources-config-dir
-                        "jetty-ssl-no-certs.ini")}
+          jetty-ssl-no-certs-config
           (let [s                (get-service app :WebserverService)
                 add-ring-handler (partial add-ring-handler s)
                 body             "Hi World"
                 path             "/hi_world"
                 ring-handler     (fn [req] {:status 200 :body body})]
             (add-ring-handler ring-handler path)
-            (let [response (http-client/get
-                             (format "https://localhost:%d/%s" ssl-port path)
+            (let [response (http-get
+                             (format "https://localhost:%d%s/" ssl-port path)
                              default-options-for-https)]
               (is (= (:status response) 200)
                   "Unsuccessful http response code ring handler response.")
@@ -125,11 +128,10 @@
               after webserver has already started"
       (let [override-result (atom nil)
             service1        (tk-services/service [])]
-        (with-app-with-cli-data
+        (with-app-with-config
           app
           [jetty9-service service1]
-          {:config (str test-resources-config-dir
-                        "jetty-plaintext-http.ini")}
+          jetty-plaintext-config
           (let [s                            (get-service app :WebserverService)
                 override-webserver-settings! (partial
                                                override-webserver-settings!
@@ -154,19 +156,18 @@
                                                   (override-webserver-settings!
                                                     overrides))))
                                             context))]
-        (with-app-with-cli-data
+        (with-app-with-config
           app
           [jetty9-service service1]
-          {:config (str test-resources-config-dir
-                        "jetty-plaintext-http.ini")}
+          jetty-plaintext-config
           (let [s                (get-service app :WebserverService)
                 add-ring-handler (partial add-ring-handler s)
                 body             "Hi World"
                 path             "/hi_world"
                 ring-handler     (fn [req] {:status 200 :body body})]
             (add-ring-handler ring-handler path)
-            (let [response (http-client/get
-                             (format "https://localhost:%d/%s" ssl-port path)
+            (let [response (http-get
+                             (format "https://localhost:%d%s/" ssl-port path)
                              default-options-for-https)]
               (is (= (:status response) 200)
                   "Unsuccessful http response code ring handler response.")
