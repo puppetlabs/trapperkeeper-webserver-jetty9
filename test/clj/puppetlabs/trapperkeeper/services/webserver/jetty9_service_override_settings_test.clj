@@ -1,4 +1,4 @@
-(ns puppetlabs.trapperkeeper.services.webserver.jetty9_service_override_settings_test
+(ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-override-settings-test
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
