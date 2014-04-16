@@ -24,8 +24,8 @@ file--no code changes.
 
 The web server is configured via the
 [trapperkeeper configuration service](https://github.com/puppetlabs/trapperkeeper#configuration-service);
-so, you can control various properties of the server (ports, SSL, etc.) by adding a `[webserver]`
-section to one of your configuration ini files, and setting various properties
+so, you can control various properties of the server (ports, SSL, etc.) by adding a `webserver`
+section to one of your Trapperkeeper configuration files, and setting various properties
 therein.  For more info, see [Configuring the Webserver](doc/jetty-config.md).
 
 The `webserver-service` currently supports web applications built using
@@ -275,13 +275,14 @@ will be used.
 
 For example, the webserver config may contain:
 
-```INI
-[webserver]
-ssl-host    = 0.0.0.0
-ssl-port    = 9001
-ssl-cert    = mycert.pem
-ssl-key     = mykey.pem
-ssl-ca-cert = myca.pem
+```
+webserver {
+    ssl-host:    0.0.0.0
+    ssl-port:    9001
+    ssl-cert:    mycert.pem
+    ssl-key:     mykey.pem
+    ssl-ca-cert: myca.pem
+}
 ```
 
 Overrides may be supplied from the service using code like the following:

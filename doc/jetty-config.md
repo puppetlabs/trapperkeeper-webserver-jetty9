@@ -1,6 +1,6 @@
 ## Configuring The Webserver Service
 
-The `[webserver]` section in an `.ini` configuration file configures an embedded
+The `webserver` section in your Trapperkeeper configuration files configures an embedded
 HTTP server inside trapperkeeper.
 
 ### `host`
