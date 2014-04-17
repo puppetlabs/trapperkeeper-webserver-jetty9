@@ -15,7 +15,7 @@ To start up _trapperkeeper_ and launch the sample application, use the following
 _trapperkeeper-webserver-jetty9_ home directory:
 
 ```sh
-lein trampoline run --config examples/ring_app/config.ini \
+lein trampoline run --config examples/ring_app/ring-example.conf \
                     --bootstrap-config examples/ring_app/bootstrap.cfg
 ```
 
@@ -39,20 +39,23 @@ examples.ring-app.example-services/ernie-service
 This configuration indicates the jetty9 `WebserverService` is to be loaded, as
 well as the three new services defined in the `example_services.clj` file.
 
-### The `config.ini` configuration file
+### The `ring-example.conf` configuration file
 
-For the application configuration, a file called `config.ini` provides the most minimal configuration of the
-webserver-service, which is simply the port the service will be listening on and also a `logging-config` key which
-contains a path to a logback config file which defines the logging configuration.
+For the application configuration, a file called `ring-example.conf` provides the most minimal
+configuration of the webserver-service, which is simply the port the service will be listening
+on and also a `logging-config` key which contains a path to a logback config file which defines
+the logging configuration.
 
-```ini
-[global]
-# Points to a logback config file
-logging-config = examples/ring_app/logback.xml
+```
+global {
+    # Points to a logback config file
+    logging-config: examples/ring_app/logback.xml
+}
 
-[webserver]
-# Port to listen on for clear-text HTTP.
-port = 8080
+webserver {
+    # Port to listen on for clear-text HTTP.
+    port: 8080
+}
 ```
 
 ### Debug mode
@@ -61,7 +64,7 @@ There is a debugging statement inside the count-service which displays the state
 to be incremented. To turn on debugging logging pass in the `--debug` option on the command line, like so:
 
 ```sh
-lein trampoline run --config examples/ring_app/config.ini \
+lein trampoline run --config examples/ring_app/ring-example.conf \
                     --bootstrap-config examples/ring_app/bootstrap.cfg \
                     --debug
 ```
@@ -193,8 +196,8 @@ The _ernie_ service is very similar to the _bert_ service, but also leverages
 another bit of built-in _trapperkeeper_ functionality: the `:ConfigService`.
 
 This service can be specified as a dependency, and provides functions that can be
-used to retrieve user-specified configuration values.  In this case, we've added an `[example]`
-section to the `config.ini` file, and specified a setting `ernie-url-prefix`
+used to retrieve user-specified configuration values.  In this case, we've added an `example`
+section to the `ring-example.conf` file, and specified a setting `ernie-url-prefix`
 that can be used to control the URL prefix where the `ernie-service` will
 be available in the web server.
 

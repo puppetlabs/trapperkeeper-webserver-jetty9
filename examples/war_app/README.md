@@ -4,7 +4,7 @@ Sample Trapperkeeper WAR Web App
 To run the app, use this command:
 
 ```sh
-lein trampoline run --config examples/war_app/config.ini \
+lein trampoline run --config examples/war_app/war-example.conf \
                     --bootstrap-config examples/war_app/bootstrap.cfg
 
 ```
