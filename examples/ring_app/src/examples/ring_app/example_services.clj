@@ -11,8 +11,7 @@
          (string? endpoint)]
    :post [(integer? %) (> % 0)]}
 
-  (let [new-hit-counts (swap! hit-counts update-in [endpoint] (fnil inc 0))]                                                             (inc (% endpoint)) :else 1)))]
-
+  (let [new-hit-counts (swap! hit-counts update-in [endpoint] (fnil inc 0))]
     (log/debug "Incrementing hit count for" endpoint "from"
                (dec (new-hit-counts endpoint)) "to" (new-hit-counts endpoint))
 
