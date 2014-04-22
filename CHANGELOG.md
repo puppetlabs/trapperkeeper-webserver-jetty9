@@ -1,3 +1,9 @@
+## 0.5.1
+ * Upgrade trapperkeeper dependency to version 0.3.12
+ * Upgrade kitchensink dependency to version 0.7.0
+ * Replace clj-http dependency with [puppetlabs/http-client](https://github.com/puppetlabs/clj-http-client)
+ * Update test/example configuration files to use HOCON instead of .ini files
+
 ## 0.5.0
  * Added new function `override-webserver-settings!`, which allows another
    service to provide overridden values for the webserver configuration.
