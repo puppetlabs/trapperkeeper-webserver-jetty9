@@ -495,7 +495,8 @@
 
 (defn shutdown
   [webserver-context]
-  {:pre [(has-webserver? webserver-context)]}
-  (log/info "Shutting down web server.")
-  (.stop (:server webserver-context)))
+  {:pre [((some-fn nil? map?) webserver-context)]}
+  (when (has-webserver? webserver-context)
+    (log/info "Stopping Jetty server.")
+    (.stop (:server webserver-context))))
 

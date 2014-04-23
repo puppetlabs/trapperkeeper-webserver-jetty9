@@ -1,18 +1,24 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
-  (:import  (javax.net.ssl SSLHandshakeException)
+  (:import  (java.util.concurrent ExecutionException)
+            (javax.net.ssl SSLHandshakeException)
             (org.httpkit ProtocolException))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [clojure.tools.logging :as log]
+            [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
+            [puppetlabs.trapperkeeper.core :as tk-core]
+            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
-               :refer :all]
+              :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
-               :refer [with-app-with-empty-config
-                       with-app-with-config]]
+              :refer [with-app-with-empty-config
+                      with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-               :refer [with-test-logging]]))
+              :refer [with-test-logging]]))
+
+(use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
 
 (def unauthorized-pem-options-for-https
   (-> default-options-for-https-client
@@ -172,4 +178,60 @@
             jetty-ssl-client-want-config
             unauthorized-pem-options-for-https)))))
 
+(defn boot-service-and-jetty-with-default-config
+  [service]
+  (tk-core/boot-services-with-config
+    [service jetty9-service]
+    jetty-plaintext-config))
 
+(deftest jetty-and-dependent-service-shutdown-after-service-error
+  (testing (str "jetty and any dependent services are shutdown after a"
+                "service throws an error from its start function")
+    (with-test-logging
+     (let [shutdown-called? (atom false)
+           test-service     (tk-services/service
+                              [[:WebserverService]]
+                              (start [this context]
+                                     (throw (Throwable. "oops"))
+                                     context)
+                              (stop [this context]
+                                    (reset! shutdown-called? true)
+                                    context))
+           app              (boot-service-and-jetty-with-default-config
+                              test-service)
+           jetty-server     (-> (get-service app :WebserverService)
+                                (tk-services/service-context)
+                                (:jetty9-server)
+                                (:server))]
+       (is (.isStarted jetty-server)
+           "Jetty server was never started")
+       (is (thrown-with-msg?
+             Throwable
+             #"oops"
+             (tk-core/run-app app))
+           "tk run-app did not die with expected exception.")
+       (is (true? @shutdown-called?)
+           "Service shutdown was not called.")
+       (is (.isStopped jetty-server)
+           "Jetty server was not stopped at shutdown."))))
+  (testing (str "jetty and any dependent services are shutdown after a"
+                "service throws an error from its init function")
+    (with-test-logging
+      (let [shutdown-called? (atom false)
+            test-service     (tk-services/service
+                               [[:WebserverService]]
+                               (init [this context]
+                                     (throw (Throwable. "oops"))
+                                     context)
+                               (stop [this context]
+                                     (reset! shutdown-called? true)
+                                     context))
+            app              (boot-service-and-jetty-with-default-config
+                               test-service)]
+        (is (thrown-with-msg?
+              Throwable
+              #"oops"
+              (tk-core/run-app app))
+            "tk run-app did not die with expected exception.")
+        (is (true? @shutdown-called?)
+            "Service shutdown was not called.")))))
