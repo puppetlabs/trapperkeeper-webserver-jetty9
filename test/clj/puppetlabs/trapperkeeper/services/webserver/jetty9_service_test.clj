@@ -1,12 +1,14 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
-  (:import  (java.util.concurrent ExecutionException)
+  (:import  (java.net BindException)
+            (java.util.concurrent ExecutionException)
             (javax.net.ssl SSLHandshakeException)
+            (org.eclipse.jetty.server Server)
             (org.httpkit ProtocolException))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
-            [puppetlabs.trapperkeeper.app :refer [get-service]]
+            [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.core :as tk-core]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
@@ -32,7 +34,7 @@
     (with-app-with-config app
       [jetty9-service]
       config
-      (let [s                (get-service app :WebserverService)
+      (let [s                (tk-app/get-service app :WebserverService)
             add-ring-handler (partial add-ring-handler s)
             body             "Hi World"
             path             "/hi_world"
@@ -186,7 +188,7 @@
 
 (defn get-jetty-server-from-app-context
   [app]
-  (-> (get-service app :WebserverService)
+  (-> (tk-app/get-service app :WebserverService)
       (tk-services/service-context)
       (:jetty9-server)
       (:server)))
@@ -208,7 +210,9 @@
                               test-service)
            jetty-server     (get-jetty-server-from-app-context app)]
        (is (.isStarted jetty-server)
-           "Jetty server was never started")
+           "Jetty server was never started before call to run-app")
+       (is (not (.isStopped jetty-server))
+           "Jetty server was stopped before call to run-app")
        (is (thrown-with-msg?
              Throwable
              #"oops"
@@ -217,7 +221,7 @@
        (is (true? @shutdown-called?)
            "Service shutdown was not called.")
        (is (.isStopped jetty-server)
-           "Jetty server was not stopped at shutdown."))))
+           "Jetty server was not stopped after call to run-app."))))
   (testing (str "jetty server instance never attached to the service context "
                 "and dependent services are shutdown after a service throws "
                 "an error from its init function")
@@ -243,4 +247,33 @@
             (str "Jetty server was unexpectedly attached to the service "
                  "context."))
         (is (true? @shutdown-called?)
-            "Service shutdown was not called.")))))
+            "Service shutdown was not called."))))
+  (testing (str "attempt to launch second jetty server on same port as already "
+                "running jetty server fails with BindException but is still "
+                "properly shutdown")
+    (with-test-logging
+      (let [first-app (tk-core/boot-services-with-config
+                        [jetty9-service]
+                        jetty-plaintext-config)]
+        (try
+          (let [second-app          (tk-core/boot-services-with-config
+                                      [jetty9-service]
+                                      jetty-plaintext-config)
+                second-jetty-server (get-jetty-server-from-app-context
+                                      second-app)]
+            (is (instance? Server second-jetty-server)
+                "Unable to retrieve second Jetty server from app context")
+            (is (not (.isStarted second-jetty-server))
+                "Second Jetty server unexpectedly started on duplicate port")
+            (is (not (.isStopped second-jetty-server))
+                (str "Second Jetty server unexpectedly stopped before run-app"
+                     "on duplicate port"))
+            (is (thrown?
+                  BindException
+                  (tk-core/run-app second-app))
+                "tk run-app did not die with expected exception.")
+            (is (.isStopped second-jetty-server)
+                 (str "Second Jetty server unexpectedly not stopped"
+                      "on completion of run-app call")))
+          (finally
+            (tk-app/stop first-app)))))))
