@@ -248,9 +248,9 @@
                  "context."))
         (is (true? @shutdown-called?)
             "Service shutdown was not called."))))
-  (testing (str "attempt to launch second jetty server on same port as already "
-                "running jetty server fails with BindException but is still "
-                "properly shutdown")
+  (testing (str "attempt to launch second jetty server on same port as "
+                "already running jetty server fails with BindException without "
+                "placing second jetty server instance on app context")
     (with-test-logging
       (let [first-app (tk-core/boot-services-with-config
                         [jetty9-service]
@@ -261,19 +261,14 @@
                                       jetty-plaintext-config)
                 second-jetty-server (get-jetty-server-from-app-context
                                       second-app)]
-            (is (instance? Server second-jetty-server)
-                "Unable to retrieve second Jetty server from app context")
-            (is (not (.isStarted second-jetty-server))
-                "Second Jetty server unexpectedly started on duplicate port")
-            (is (not (.isStopped second-jetty-server))
-                (str "Second Jetty server unexpectedly stopped before run-app"
-                     "on duplicate port"))
+            (is (logged?
+                  #"^Encountered error starting web server, so shutting down")
+                "Didn't find log message for port bind error")
+            (is (nil? second-jetty-server)
+                "Jetty server was unexpectedly attached to the service context")
             (is (thrown?
                   BindException
                   (tk-core/run-app second-app))
-                "tk run-app did not die with expected exception.")
-            (is (.isStopped second-jetty-server)
-                 (str "Second Jetty server unexpectedly not stopped"
-                      "on completion of run-app call")))
+                "tk run-app did not die with expected exception."))
           (finally
             (tk-app/stop first-app)))))))
