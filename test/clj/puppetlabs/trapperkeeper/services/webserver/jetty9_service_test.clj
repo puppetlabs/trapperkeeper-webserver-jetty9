@@ -184,6 +184,13 @@
     [service jetty9-service]
     jetty-plaintext-config))
 
+(defn get-jetty-server-from-app-context
+  [app]
+  (-> (get-service app :WebserverService)
+      (tk-services/service-context)
+      (:jetty9-server)
+      (:server)))
+
 (deftest jetty-and-dependent-service-shutdown-after-service-error
   (testing (str "jetty and any dependent services are shutdown after a"
                 "service throws an error from its start function")
@@ -199,10 +206,7 @@
                                     context))
            app              (boot-service-and-jetty-with-default-config
                               test-service)
-           jetty-server     (-> (get-service app :WebserverService)
-                                (tk-services/service-context)
-                                (:jetty9-server)
-                                (:server))]
+           jetty-server     (get-jetty-server-from-app-context app)]
        (is (.isStarted jetty-server)
            "Jetty server was never started")
        (is (thrown-with-msg?
@@ -214,8 +218,9 @@
            "Service shutdown was not called.")
        (is (.isStopped jetty-server)
            "Jetty server was not stopped at shutdown."))))
-  (testing (str "jetty and any dependent services are shutdown after a"
-                "service throws an error from its init function")
+  (testing (str "jetty server instance never attached to the service context "
+                "and dependent services are shutdown after a service throws "
+                "an error from its init function")
     (with-test-logging
       (let [shutdown-called? (atom false)
             test-service     (tk-services/service
@@ -227,11 +232,15 @@
                                      (reset! shutdown-called? true)
                                      context))
             app              (boot-service-and-jetty-with-default-config
-                               test-service)]
+                               test-service)
+            jetty-server     (get-jetty-server-from-app-context app)]
         (is (thrown-with-msg?
               Throwable
               #"oops"
               (tk-core/run-app app))
             "tk run-app did not die with expected exception.")
+        (is (nil? jetty-server)
+            (str "Jetty server was unexpectedly attached to the service "
+                 "context."))
         (is (true? @shutdown-called?)
             "Service shutdown was not called.")))))
