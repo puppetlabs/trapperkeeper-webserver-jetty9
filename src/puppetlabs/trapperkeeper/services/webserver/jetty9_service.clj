@@ -20,8 +20,7 @@
 (defservice jetty9-service
   "Provides a Jetty 9 web server as a service"
   WebserverService
-  [[:ConfigService get-in-config]
-   [:ShutdownService shutdown-on-error]]
+  [[:ConfigService get-in-config]]
   (init [this context]
         (log/info "Initializing web server.")
         (assoc context :jetty9-server (core/create-handlers)))
