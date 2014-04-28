@@ -1,4 +1,5 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service
+  (:import (java.io IOException))
   (:require
     [clojure.tools.logging :as log]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
@@ -31,7 +32,14 @@
                           {})
                webserver (core/create-webserver config (:jetty9-server context))]
            (log/info "Starting web server.")
-           (core/start-webserver webserver)
+           (try
+             (core/start-webserver webserver)
+             (catch IOException e
+               (log/error
+                 e
+                 "Encountered error starting web server, so shutting down")
+               (core/shutdown webserver)
+               (throw e)))
            (assoc context :jetty9-server webserver)))
 
   (stop [this context]
