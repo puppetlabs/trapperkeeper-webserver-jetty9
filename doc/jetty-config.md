@@ -12,8 +12,9 @@ use `0.0.0.0`.
 
 ### `port`
 
-This sets what port to use for _unencrypted_ HTTP traffic. If not supplied, we
-won't listen for unencrypted traffic at all.
+This sets what port to use for _unencrypted_ HTTP traffic.  If not supplied, but
+`host` is supplied, a value of 8080 will be used.  If neither host nor port is
+supplied, we won't listen for unencrypted traffic at all.
 
 ### `max-threads`
 
@@ -29,8 +30,10 @@ use `0.0.0.0`.
 
 ### `ssl-port`
 
-This sets the port to use for _encrypted_ HTTPS traffic. If not supplied, we
-won't listen for encrypted traffic at all.
+This sets the port to use for _encrypted_ HTTPS traffic. If not supplied, but
+`ssl-host` is supplied, a value of 8081 will be used for the https port.  If
+neither ssl-host nor ssl-port is supplied, we won't listen for encrypted traffic
+at all.
 
 ### `ssl-cert`
 

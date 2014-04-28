@@ -138,7 +138,6 @@
       (merge {:ssl-port 8001} (dissoc valid-ssl-keystore-config :keystore))))
 
   (testing "should warn if both keystore-based and PEM-based SSL settings are found"
-    (is (not false))
     (with-test-logging
       (process-config (merge {:ssl-port 8001}
                              valid-ssl-pem-config
