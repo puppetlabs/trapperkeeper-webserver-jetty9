@@ -45,18 +45,21 @@
    (schema/optional-key :trust-password)  schema/Str
    (schema/optional-key :cipher-suites)   [schema/Str]
    (schema/optional-key :ssl-protocols)   [schema/Str]
-   (schema/optional-key :client-auth)     (schema/enum "need" "want" "none")})
+   (schema/optional-key :client-auth)     schema/Str})
 
 (def WebserverSslPemConfig
-  {:key      schema/Str
-   :cert     schema/Str
-   :ca-cert  schema/Str})
+  {:ssl-key      schema/Str
+   :ssl-cert     schema/Str
+   :ssl-ca-cert  schema/Str})
 
-(def WebserverKeystoreConfig
+(def WebserverSslKeystoreConfig
   {:keystore        KeyStore
    :key-password    schema/Str
    :truststore      KeyStore
    (schema/optional-key :trust-password) schema/Str})
+
+(def WebserverSslClientAuth
+  (schema/enum :need :want :none))
 
 (def WebserverConnector
   {:host schema/Str
@@ -65,10 +68,10 @@
 (def WebserverSslConnector
   {:host schema/Str
    :port schema/Int
-   :keystore-config WebserverKeystoreConfig
+   :keystore-config WebserverSslKeystoreConfig
    :cipher-suites [schema/Str]
    :protocols (schema/maybe [schema/Str])
-   :client-auth (schema/enum :need :want :auth)})
+   :client-auth WebserverSslClientAuth})
 
 (def HasConnector
   (schema/either
@@ -91,25 +94,23 @@
   (let [pem-required-keys [:ssl-key :ssl-cert :ssl-ca-cert]
         pem-config (select-keys config pem-required-keys)]
     (condp = (count pem-config)
-      3 {:cert    (:ssl-cert pem-config)
-         :key     (:ssl-key pem-config)
-         :ca-cert (:ssl-ca-cert pem-config)}
+      3 pem-config
       0 nil
       (throw (IllegalArgumentException.
                (format "Found SSL config options: %s; If configuring SSL from PEM files, you must provide all of the following options: %s"
                        (keys pem-config) pem-required-keys))))))
 
 (sm/defn ^:always-validate
-  pem-ssl-config->keystore-ssl-config :- WebserverKeystoreConfig
-  [{:keys [ca-cert key cert]} :- WebserverSslPemConfig]
+  pem-ssl-config->keystore-ssl-config :- WebserverSslKeystoreConfig
+  [{:keys [ssl-ca-cert ssl-key ssl-cert]} :- WebserverSslPemConfig]
   (let [key-password (uuid)]
     {:truststore    (-> (ssl/keystore)
                         (ssl/assoc-certs-from-file!
-                          "CA Certificate" ca-cert))
+                          "CA Certificate" ssl-ca-cert))
      :key-password  key-password
      :keystore      (-> (ssl/keystore)
                         (ssl/assoc-private-key-file!
-                          "Private Key" key key-password cert))}))
+                          "Private Key" ssl-key key-password ssl-cert))}))
 
 (sm/defn ^:always-validate
   warn-if-keystore-ssl-configs-found!
@@ -121,7 +122,7 @@
                         (keys keystore-ssl-config))))))
 
 (sm/defn ^:always-validate
-  get-jks-keystore-config! :- WebserverKeystoreConfig
+  get-jks-keystore-config! :- WebserverSslKeystoreConfig
   [{:keys [truststore keystore key-password trust-password]}
       :- WebserverServiceRawConfig]
   (when (some nil? [truststore keystore key-password trust-password])
@@ -141,13 +142,26 @@
       result)))
 
 (sm/defn ^:always-validate
-  get-keystore-config! :- WebserverKeystoreConfig
+  get-keystore-config! :- WebserverSslKeystoreConfig
   [config :- WebserverServiceRawConfig]
   (if-let [pem-config (maybe-get-pem-config! config)]
     (do
       (warn-if-keystore-ssl-configs-found! config)
       (pem-ssl-config->keystore-ssl-config pem-config))
     (get-jks-keystore-config! config)))
+
+(sm/defn ^:always-validate
+  get-client-auth! :- WebserverSslClientAuth
+  [config :- WebserverServiceRawConfig]
+  (let [client-auth (:client-auth config)]
+    (cond
+      (nil? client-auth) :need
+      (contains? #{"need" "want" "none"} client-auth) (keyword client-auth)
+      :else (throw
+              (IllegalArgumentException.
+                (format
+                  "Unexpected value found for client auth config option: %s.  Expected need, want, or none."
+                  client-auth))))))
 
 (sm/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
@@ -165,7 +179,7 @@
      :keystore-config (get-keystore-config! config)
      :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
      :protocols (:ssl-protocols config)
-     :client-auth (or (keyword (:client-auth config)) default-client-auth)}))
+     :client-auth (get-client-auth! config)}))
 
 (sm/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector
@@ -189,76 +203,11 @@
 (sm/defn ^:always-validate
   process-config :- WebserverServiceConfig
   [config :- WebserverServiceRawConfig]
-  (-> {}
-      (maybe-add-http-connector config)
-      (maybe-add-https-connector config)
-      (assoc :max-threads (get config :max-threads default-max-threads))))
-
-
-
-
-(defn configure-web-server-ssl-from-pems
-  "Configures the web server's SSL settings based on PEM files, rather than
-  via a java keystore (jks) file.  The configuration map returned by this function
-  will have overwritten any existing keystore-related settings to use in-memory
-  KeyStore objects, which are constructed based on the values of
-  `:ssl-key`, `:ssl-cert`, and `:ssl-ca-cert` from
-  the input map.  The output map does not include the `:ssl-*` keys, as they
-  are not meaningful to the web server implementation."
-  [{:keys [ssl-key ssl-cert ssl-ca-cert] :as options}]
-  {:pre  [ssl-key
-          ssl-cert
-          ssl-ca-cert]
-   :post [(map? %)
-          (instance? KeyStore (:keystore %))
-          (string? (:key-password %))
-          (instance? KeyStore (:truststore %))
-          (missing? % :trust-password :ssl-key :ssl-cert :ssl-ca-cert)]}
-  (let [old-ssl-config-keys [:keystore :truststore :key-password :trust-password]
-        old-ssl-config      (select-keys options old-ssl-config-keys)]
-    (when (pos? (count old-ssl-config))
-      (log/warn (format "Found settings for both keystore-based and PEM-based SSL; using PEM-based settings, ignoring %s"
-                  (keys old-ssl-config)))))
-  (let [truststore  (-> (ssl/keystore)
-                      (ssl/assoc-certs-from-file! "CA Certificate" ssl-ca-cert))
-        keystore-pw (uuid)
-        keystore    (-> (ssl/keystore)
-                      (ssl/assoc-private-key-file! "Private Key" ssl-key keystore-pw ssl-cert))]
-    (-> options
-      (dissoc :ssl-key :ssl-ca-cert :ssl-cert :trust-password)
-      (assoc :keystore keystore)
-      (assoc :key-password keystore-pw)
-      (assoc :truststore truststore))))
-
-(defn configure-web-server
-  "Update the supplied config map with information about the HTTP webserver to
-  start. This will specify client auth."
-  [options]
-  {:pre  [(map? options)]
-   :post [(map? %)
-          (missing? % :ssl-key :ssl-cert :ssl-ca-cert)
-          (contains? % :max-threads)]}
-  (if (missing? options :port :ssl-port)
-    (throw (IllegalArgumentException.
-             "Either port or ssl-port must be specified on the config in order for a port binding to be opened")))
-  (let [defaults          {:max-threads 100}
-        options           (merge defaults options)
-        pem-required-keys [:ssl-key :ssl-cert :ssl-ca-cert]
-        pem-config        (select-keys options pem-required-keys)]
-    (-> (condp = (count pem-config)
-          3 (configure-web-server-ssl-from-pems options)
-          0 options
-          (throw (IllegalArgumentException.
-                   (format "Found SSL config options: %s; If configuring SSL from PEM files, you must provide all of the following options: %s"
-                     (keys pem-config) pem-required-keys))))
-      (assoc :client-auth
-        (condp = (:client-auth options)
-          "need" :need
-          "want" :want
-          "none" :none
-          nil    :need
-          (throw
-            (IllegalArgumentException.
-              (format
-                "Unexpected value found for client auth config option: %s.  Expected need, want, or none."
-                (:client-auth options)))))))))
+  (let [result (-> {}
+                   (maybe-add-http-connector config)
+                   (maybe-add-https-connector config)
+                   (assoc :max-threads (get config :max-threads default-max-threads)))]
+    (when-not (some #(contains? result %) [:http :https])
+      (throw (IllegalArgumentException.
+               "Either host, port, ssl-host, or ssl-port must be specified on the config in order for the server to be started")))
+    result))
