@@ -122,8 +122,7 @@
       (thrown? ExceptionInfo
                (process-config config))
       {:port "foo"}
-      {:port 8000 :badkey "hi"}
-      ))
+      {:port 8000 :badkey "hi"}))
 
   (testing "process-config fails for incomplete ssl context config"
     (are [config]

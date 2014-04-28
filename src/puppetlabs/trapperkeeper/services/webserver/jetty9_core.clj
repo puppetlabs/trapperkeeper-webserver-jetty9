@@ -86,7 +86,6 @@
    options."
   [webserver-context :- WebserverServiceContext
    options :- config/WebserverServiceRawConfig]
-  {:post [(map? %)]}
   (let [overrides (:overrides (swap! (:state webserver-context)
                                      assoc
                                      :overrides-read-by-webserver

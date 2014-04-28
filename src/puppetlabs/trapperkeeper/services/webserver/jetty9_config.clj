@@ -130,16 +130,14 @@
              (str "Missing some SSL configuration; must provide either :ssl-cert, "
                   ":ssl-key, and :ssl-ca-cert, OR :truststore, :trust-password, "
                   ":keystore, and :key-password."))))
-  (let [result {:keystore     (doto (ssl/keystore)
-                                (.load (FileInputStream. keystore)
-                                       (.toCharArray key-password)))
-                :truststore   (doto (ssl/keystore)
-                                (.load (FileInputStream. truststore)
-                                       (.toCharArray trust-password)))
-                :key-password key-password}]
-    (if trust-password
-      (assoc result :trust-password trust-password)
-      result)))
+  {:keystore       (doto (ssl/keystore)
+                     (.load (FileInputStream. keystore)
+                            (.toCharArray key-password)))
+   :truststore     (doto (ssl/keystore)
+                     (.load (FileInputStream. truststore)
+                            (.toCharArray trust-password)))
+   :key-password   key-password
+   :trust-password trust-password})
 
 (sm/defn ^:always-validate
   get-keystore-config! :- WebserverSslKeystoreConfig
@@ -190,7 +188,7 @@
     acc))
 
 (sm/defn ^:always-validate
-  maybe-add-https-connector :- {(schema/optional-key :http) WebserverConnector
+  maybe-add-https-connector :- {(schema/optional-key :https) WebserverSslConnector
                                 schema/Keyword              schema/Any}
   [acc config :- WebserverServiceRawConfig]
   (if-let [https-connector (maybe-get-https-connector config)]
