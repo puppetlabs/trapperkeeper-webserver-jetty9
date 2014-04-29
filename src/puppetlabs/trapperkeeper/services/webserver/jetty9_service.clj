@@ -1,7 +1,8 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service
-  (:import (java.io IOException))
   (:require
     [clojure.tools.logging :as log]
+
+    [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
     [puppetlabs.trapperkeeper.core :refer [defservice]]))
 
@@ -23,23 +24,15 @@
   [[:ConfigService get-in-config]]
   (init [this context]
         (log/info "Initializing web server.")
-        (assoc context :jetty9-server (core/create-handlers)))
+        (assoc context :jetty9-server (core/initialize-context)))
 
   (start [this context]
+         (log/info "Starting web server.")
          (let [config (or (get-in-config [:webserver])
                           ;; Here for backward compatibility with existing projects
                           (get-in-config [:jetty])
                           {})
-               webserver (core/create-webserver config (:jetty9-server context))]
-           (log/info "Starting web server.")
-           (try
-             (core/start-webserver webserver)
-             (catch IOException e
-               (log/error
-                 e
-                 "Encountered error starting web server, so shutting down")
-               (core/shutdown webserver)
-               (throw e)))
+               webserver (core/start-webserver! (:jetty9-server context) config)]
            (assoc context :jetty9-server webserver)))
 
   (stop [this context]

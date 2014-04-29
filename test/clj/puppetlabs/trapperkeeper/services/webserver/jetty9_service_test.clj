@@ -57,7 +57,7 @@
             port nor ssl-port specified in the config"
     (is (thrown-with-msg?
           IllegalArgumentException
-          #"Either port or ssl-port must be specified on the config in order for a port binding to be opened"
+          #"Either host, port, ssl-host, or ssl-port must be specified"
           (with-test-logging
             (with-app-with-empty-config app [jetty9-service])))
       "Did not encounter expected exception when no port specified in config")))

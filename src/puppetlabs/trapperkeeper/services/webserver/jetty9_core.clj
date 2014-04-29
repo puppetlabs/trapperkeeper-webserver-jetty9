@@ -1,9 +1,4 @@
-;; NOTE: this code is an adaptation of ring-jetty-handler.
-;;  It adds some SSL utility functions, and
-;;  provides the ability to dynamically register ring handlers.
-
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core
-  "Adapter for the Jetty webserver."
   (:import (org.eclipse.jetty.server Handler Server Request ServerConnector
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory)
@@ -19,17 +14,23 @@
            (java.util HashSet)
            (org.eclipse.jetty.http MimeTypes)
            (javax.servlet Servlet ServletContextListener)
-           (java.io File)
+           (java.io File IOException)
            (org.eclipse.jetty.proxy ProxyServlet)
            (java.net URI)
            (java.security Security)
-           (org.eclipse.jetty.client HttpClient))
+           (org.eclipse.jetty.client HttpClient)
+           (clojure.lang Atom))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [schema.macros :as sm]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as jetty-config]))
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
+            [schema.core :as schema]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; JDK SecurityProvider Hack
 
 ;; Work around an issue with OpenJDK's PKCS11 implementation preventing TLSv1
 ;; connections from working correctly
@@ -47,109 +48,81 @@
     (catch Throwable e
       (log/error e "Could not remove security providers; HTTPS may not work!"))))
 
-;; Due to weird issues between JSSE and OpenSSL clients on some 1.7
-;; jdks when using Diffie-Hellman exchange, we need to only enable
-;; RSA-based ciphers.
-;;
-;; https://forums.oracle.com/forums/thread.jspa?messageID=10999587
-;; https://issues.apache.org/jira/browse/APLO-287
-;;
-;; This also applies to all JDK's with regards to EC algorithms causing
-;; issues.
-;;
-(def acceptable-ciphers
-  ["TLS_RSA_WITH_AES_256_CBC_SHA256"
-   "TLS_RSA_WITH_AES_256_CBC_SHA"
-   "TLS_RSA_WITH_AES_128_CBC_SHA256"
-   "TLS_RSA_WITH_AES_128_CBC_SHA"
-   "SSL_RSA_WITH_RC4_128_SHA"
-   "SSL_RSA_WITH_3DES_EDE_CBC_SHA"
-   "SSL_RSA_WITH_RC4_128_MD5"])
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Schemas
+
+(def ProxyTarget
+  {:host schema/Str
+   :path schema/Str
+   :port schema/Int})
+
+(def ProxyOptions
+  {(schema/optional-key :scheme) (schema/enum :orig :http :https)
+   (schema/optional-key :ssl-config) (schema/either
+                                       (schema/eq :use-server-config)
+                                       config/WebserverSslPemConfig)})
+
+(def WebserverServiceContext
+  {:state     Atom
+   :handlers  ContextHandlerCollection
+   :server    (schema/maybe Server)})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Utility Functions
 
 (defn- remove-leading-slash
   [s]
   (str/replace s #"^\/" ""))
 
-(defn has-config?
-  "A predicate that indicates whether or not the webserver-context contains a
-  ':config' map, used for capturing any configuration settings that can be
-  atomically updated at run-time."
-  [webserver-context]
-  (and
-    (map? webserver-context)
-    (contains? webserver-context :config)
-    (map? @(:config webserver-context))))
-
-(defn has-handlers?
-  "A predicate that indicates whether or not the webserver-context contains a
-  ContextHandlerCollection which can have handlers attached to it."
-  [webserver-context]
-  (and
-    (map? webserver-context)
-    (instance? HandlerCollection (:handler-collection webserver-context))
-    (instance? ContextHandlerCollection (:handlers webserver-context))))
-
-(defn has-webserver?
+(sm/defn ^:always-validate started? :- Boolean
   "A predicate that indicates whether or not the webserver-context contains a Jetty
   Server object."
-  [webserver-context]
-  (and
-    (has-handlers? webserver-context)
-    (instance? Server (:server webserver-context))))
+  [webserver-context :- WebserverServiceContext]
+  (instance? Server (:server webserver-context)))
 
-(defn proxy-target?
-  "A predicate that validates the format of a proxy target configuration map"
-  [target]
-  ;; TODO: should probably be using prismatic schema here (PE-3409)
-  (and
-    (map? target)
-    (string? (:host target))
-    (string? (:path target))
-    (integer? (:port target))
-    (> (:port target) 0)
-    (<= (:port target) 65535)))
+(sm/defn ^:always-validate
+  merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
+  "Merge any overrides made to the webserver config settings with the supplied
+   options."
+  [webserver-context :- WebserverServiceContext
+   options :- config/WebserverServiceRawConfig]
+  (let [overrides (:overrides (swap! (:state webserver-context)
+                                     assoc
+                                     :overrides-read-by-webserver
+                                     true))]
+    (doseq [key (keys overrides)]
+      (log/info (str "webserver config overridden for key '" (name key) "'")))
+    (merge options overrides)))
 
-(defn proxy-options?
-  "A predicate that validates the format of a proxy options configuration map"
-  [options]
-  ;; TODO: should probably be using prismatic schema here (PE-3409)
-  (and
-    (empty? (set/difference (ks/keyset options) #{:scheme :ssl-config}))
-    (contains? #{nil :orig :http :https} (:scheme options))
-    ((some-fn nil? map? #(= :use-server-config %)) (:ssl-config options))
-    (or (not (map? (:ssl-config options)))
-        (= #{:ssl-ca-cert :ssl-cert :ssl-key} (ks/keyset (:ssl-config options))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; SSL Context Functions
 
-(defn- ring-handler
-  "Returns an Jetty Handler implementation for the given Ring handler."
-  [handler]
-  (proxy [AbstractHandler] []
-    (handle [_ ^Request base-request request response]
-      (let [request-map  (servlet/build-request-map request)
-            response-map (handler request-map)]
-        (when response-map
-          (servlet/update-servlet-response response response-map)
-          (.setHandled base-request true))))))
-
-(defn- ssl-context-factory
+(sm/defn ^:always-validate
+  ssl-context-factory :- SslContextFactory
   "Creates a new SslContextFactory instance from a map of options."
-  [options]
+  [config :- config/WebserverSslKeystoreConfig
+   client-auth :- config/WebserverSslClientAuth]
   (let [context (SslContextFactory.)]
-    (if (string? (options :keystore))
-      (.setKeyStorePath context (options :keystore))
-      (.setKeyStore context (options :keystore)))
-    (.setKeyStorePassword context (options :key-password))
-    (when (options :truststore)
-      (if (string? (options :truststore))
-        (.setTrustStorePath context (options :truststore))
-        (.setTrustStore context (options :truststore))))
-    (when (options :trust-password)
-      (.setTrustStorePassword context (options :trust-password)))
-    (case (options :client-auth)
+    (.setKeyStore context (:keystore config))
+    (.setKeyStorePassword context (:key-password config))
+    (.setTrustStore context (:truststore config))
+    (when-let [trust-password (:trust-password config)]
+      (.setTrustStorePassword context trust-password))
+    (case client-auth
       :need (.setNeedClientAuth context true)
       :want (.setWantClientAuth context true)
       nil)
     context))
+
+(sm/defn ^:always-validate
+  get-proxy-client-context-factory :- SslContextFactory
+  [ssl-config :- config/WebserverSslPemConfig]
+  (-> ssl-config
+      config/pem-ssl-config->keystore-ssl-config
+      (ssl-context-factory :none)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Jetty Server / Connector Functions
 
 (defn- connection-factory
   []
@@ -158,18 +131,48 @@
     (into-array ConnectionFactory
                 [(HttpConnectionFactory. http-config)])))
 
-(defn- ssl-connector
+(sm/defn ^:always-validate
+  ssl-connector  :- ServerConnector
   "Creates a ssl ServerConnector instance."
-  [server ssl-ctxt-factory options]
+  [server            :- Server
+   ssl-ctxt-factory  :- SslContextFactory
+   config :- config/WebserverSslConnector]
   (doto (ServerConnector. server ssl-ctxt-factory (connection-factory))
-    (.setPort (options :ssl-port 443))
-    (.setHost (options :host))))
+    (.setPort (:port config))
+    (.setHost (:host config))))
 
-(defn- plaintext-connector
-  [server options]
+(sm/defn ^:always-validate
+  plaintext-connector :- ServerConnector
+  [server :- Server
+   config :- config/WebserverConnector]
   (doto (ServerConnector. server (connection-factory))
-    (.setPort (options :port 80))
-    (.setHost (options :host "localhost"))))
+    (.setPort (:port config))
+    (.setHost (:host config))))
+
+(sm/defn ^:always-validate
+  create-server :- Server
+  "Construct a Jetty Server instance."
+  [webserver-context :- WebserverServiceContext
+   config :- config/WebserverServiceConfig]
+  (let [server (Server. (QueuedThreadPool. (:max-threads config)))]
+    (when (:http config)
+      (let [connector (plaintext-connector server (:http config))]
+        (.addConnector server connector)))
+    (when-let [https (:https config)]
+      (let [ssl-ctxt-factory (ssl-context-factory
+                               (:keystore-config https)
+                               (:client-auth https))
+            connector (ssl-connector server ssl-ctxt-factory https)]
+        (when-let [ciphers (:cipher-suites https)]
+          (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers)))
+        (when-let [protocols (:protocols https)]
+          (.setIncludeProtocols ssl-ctxt-factory (into-array protocols)))
+        (.addConnector server connector)
+        (swap! (:state webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
+    server))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; GZip Functions
 
 ;; TODO: make all of this gzip-mime-type stuff configurable
 (defn- gzip-excluded-mime-types
@@ -197,18 +200,36 @@
     (.setMimeTypes (gzip-excluded-mime-types))
     (.setExcludeMimeTypes true)))
 
-(defn- proxy-servlet
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Handler Helper Functions
+
+(sm/defn ^:always-validate
+  add-handler :- ContextHandler
+  [webserver-context :- WebserverServiceContext
+   handler :- ContextHandler]
+  (.addHandler (:handlers webserver-context) handler)
+  handler)
+
+(defn- ring-handler
+  "Returns an Jetty Handler implementation for the given Ring handler."
+  [handler]
+  (proxy [AbstractHandler] []
+    (handle [_ ^Request base-request request response]
+      (let [request-map  (servlet/build-request-map request)
+            response-map (handler request-map)]
+        (when response-map
+          (servlet/update-servlet-response response response-map)
+          (.setHandled base-request true))))))
+
+(sm/defn ^:always-validate
+  proxy-servlet :- ProxyServlet
   "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
   a given context to another host."
-  [webserver-context target path options]
-  {:pre [(has-config? webserver-context)
-         (has-handlers? webserver-context)
-         (proxy-target? target)
-         (proxy-options? options)]}
+  [webserver-context :- WebserverServiceContext
+   target :- ProxyTarget
+   options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
-                                  (-> (:ssl-config options)
-                                      jetty-config/configure-web-server-ssl-from-pems
-                                      ssl-context-factory))]
+                                  (get-proxy-client-context-factory (:ssl-config options)))]
     (proxy [ProxyServlet] []
       (rewriteURI [req]
         (let [query (.getQueryString req)
@@ -229,42 +250,33 @@
       (newHttpClient []
         (if custom-ssl-ctxt-factory
           (HttpClient. custom-ssl-ctxt-factory)
-          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:config webserver-context))]
+          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
             (HttpClient. ssl-ctxt-factory)
             (HttpClient.)))))))
 
-(defn- create-server
-  "Construct a Jetty Server instance."
-  [webserver-context options]
-  (let [server (Server. (QueuedThreadPool. (options :max-threads)))]
-    (when (options :port)
-      (let [connector (plaintext-connector server options)]
-        (.addConnector server connector)))
-    (when (or (options :ssl?) (options :ssl-port))
-      (let [ssl-host          (options :ssl-host (options :host "localhost"))
-            options           (assoc options :host ssl-host)
-            ssl-ctxt-factory  (ssl-context-factory options)
-            connector         (ssl-connector server ssl-ctxt-factory options)
-            ciphers           (if-let [txt (options :cipher-suites)]
-                                (map str/trim (str/split txt #","))
-                                acceptable-ciphers)
-            protocols         (if-let [txt (options :ssl-protocols)]
-                                (map str/trim (str/split txt #",")))]
-        (when ciphers
-          (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers))
-          (when protocols
-            (.setIncludeProtocols ssl-ctxt-factory (into-array protocols))))
-        (.addConnector server connector)
-        (swap! (:config webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
-    server))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
 
-(defn- merge-webserver-overrides-with-options
+(sm/defn ^:always-validate
+  initialize-context :- WebserverServiceContext
+  "Create a webserver-context which contains a HandlerCollection and a
+  ContextHandlerCollection which can accept the addition of new handlers
+  before the webserver is started."
+  []
+  (let [^ContextHandlerCollection chc (ContextHandlerCollection.)]
+    {:handlers chc
+     :state (atom {})
+     :server nil}))
+
+; TODO move out of public
+(sm/defn ^:always-validate
+  merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
   "Merge any overrides made to the webserver config settings with the supplied
    options."
-  [options webserver-context]
-  {:pre  [(has-config? webserver-context)]
-   :post [(map? %)]}
-  (let [overrides (:overrides (swap! (:config webserver-context)
+  [webserver-context :- WebserverServiceContext
+   options :- config/WebserverServiceRawConfig]
+  {:post [(map? %)]}
+  (let [overrides (:overrides (swap! (:state webserver-context)
                                      assoc
                                      :overrides-read-by-webserver
                                      true))]
@@ -272,79 +284,82 @@
       (log/info (str "webserver config overridden for key '" (name key) "'")))
     (merge options overrides)))
 
-;; Functions for trapperkeeper 'webserver' interface
+(sm/defn ^:always-validate shutdown
+  [webserver-context :- WebserverServiceContext]
+  (when (started? webserver-context)
+    (log/info "Shutting down web server.")
+    (.stop (:server webserver-context))))
 
-(defn create-webserver
+(sm/defn ^:always-validate
+  create-webserver :- WebserverServiceContext
     "Create a Jetty webserver according to the supplied options:
 
-    :configurator - a function called with the Jetty Server instance
-    :port         - the port to listen on (defaults to 8080)
     :host         - the hostname to listen on
-    :join?        - blocks the thread until server ends (defaults to true)
-    :ssl?         - allow connections over HTTPS
-    :ssl-port     - the SSL port to listen on (defaults to 443, implies :ssl?)
-    :keystore     - the keystore to use for SSL connections
-    :key-password - the password to the keystore
-    :truststore   - a truststore to use for SSL connections
-    :trust-password - the password to the truststore
-    :max-threads  - the maximum number of threads to use (default 50)
-    :client-auth  - SSL client certificate authenticate, may be set to :need,
-                    :want or :none (defaults to :none)
+    :port         - the port to listen on (defaults to 8080)
+    :ssl-host     - the hostname to listen on for SSL connections
+    :ssl-port     - the SSL port to listen on (defaults to 8081)
+    :max-threads  - the maximum number of threads to use (default 100)
 
-    ws is a map containing the :handlers collection which should have been previously
-    created by create-handlers."
-  [options webserver-context]
-  {:pre [(map? options)
-         (has-config? webserver-context)
-         (has-handlers? webserver-context)]
-   :post [(has-webserver? %)]}
-  (let [options   (jetty-config/configure-web-server
-                    (merge-webserver-overrides-with-options options
-                                                            webserver-context))
-        ^Server s (create-server webserver-context (dissoc options :configurator))]
-    (.setHandler s (gzip-handler (:handler-collection webserver-context)))
-    (when-let [configurator (:configurator options)]
-      (configurator s))
+    SSL may be configured via PEM files by providing all three of the following
+    settings:
+
+    :ssl-key      - a PEM file containing the host's private key
+    :ssl-cert     - a PEM file containing the host's certificate
+    :ssl-ca-cert  - a PEM file containing the CA certificate
+
+    or via JKS keystore files by providing all four of the following settings:
+
+    :keystore       - the keystore to use for SSL connections
+    :key-password   - the password to the keystore
+    :truststore     - a truststore to use for SSL connections
+    :trust-password - the password to the truststore
+
+    Other SSL settings:
+
+    :client-auth   - SSL client certificate authenticate, may be set to :need,
+                     :want or :none (defaults to :need)
+    :cipher-suites - list of cryptographic ciphers to allow for incoming SSL connections
+    :ssl-protocols - list of protocols to allow for incoming SSL connections"
+  [webserver-context :- WebserverServiceContext
+   options :- config/WebserverServiceRawConfig]
+  {:pre  [(map? options)]
+   :post [(started? %)]}
+    (let [config                (config/process-config
+                                  (merge-webserver-overrides-with-options
+                                    webserver-context
+                                    options))
+          ^Server s             (create-server webserver-context config)
+          ^HandlerCollection hc (HandlerCollection.)]
+    (.setHandlers hc (into-array Handler [(:handlers webserver-context)]))
+    (.setHandler s (gzip-handler hc))
     (assoc webserver-context :server s)))
 
-(defn create-handlers
-  "Create a webserver-context which contains a HandlerCollection and a
-  ContextHandlerCollection which can accept the addition of new handlers
-  before the webserver is started."
-  []
-  {:post [(has-handlers? %)]}
-  (let [^ContextHandlerCollection chc (ContextHandlerCollection.)
-        ^HandlerCollection hc         (HandlerCollection.)]
-    (.setHandlers hc (into-array Handler [chc]))
-    {:handler-collection hc
-     :handlers chc
-     :config (atom {})}))
+(sm/defn ^:always-validate start-webserver! :- WebserverServiceContext
+  "Creates and starts a webserver.  Returns an updated context map containing
+  the Server object."
+  [webserver-context :- WebserverServiceContext
+   config :- config/WebserverServiceRawConfig]
+  (let [webserver-context (create-webserver webserver-context config)]
+    (log/info "Starting web server.")
+    (try
+      (.start (:server webserver-context))
+      (catch IOException e
+        (log/error
+          e
+          "Encountered error starting web server, so shutting down")
+        (shutdown webserver-context)
+        (throw e)))
+    webserver-context))
 
-(defn start-webserver
-  "Starts a webserver that has been previously created and added to the
-  webserver-context by `create-webserver`"
-  [webserver-context]
-  {:pre [(has-webserver? webserver-context)]}
-  (.start (:server webserver-context)))
-
-(defn add-handler
-  [webserver-context handler]
-  {:pre [(has-handlers? webserver-context)
-         (instance? ContextHandler handler)]}
-  (.addHandler (:handlers webserver-context) handler)
-  handler)
-
-(defn add-context-handler
+(sm/defn ^:always-validate
+  add-context-handler :- ContextHandler
   "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
   ([webserver-context base-path context-path]
    (add-context-handler webserver-context base-path context-path nil))
-  ([webserver-context base-path context-path context-listeners]
-   {:pre [(has-handlers? webserver-context)
-          (string? base-path)
-          (string? context-path)
-          (or (nil? context-listeners)
-              (and (sequential? context-listeners)
-                   (every? #(instance? ServletContextListener %) context-listeners)))]}
+  ([webserver-context :- WebserverServiceContext
+    base-path :- schema/Str
+    context-path :- schema/Str
+    context-listeners :- (schema/maybe [ServletContextListener])]
    (let [handler (ServletContextHandler. nil context-path ServletContextHandler/NO_SESSIONS)]
      (.setBaseResource handler (Resource/newResource base-path))
      ;; register servlet context listeners (if any)
@@ -353,23 +368,23 @@
      (.addServlet handler (ServletHolder. (DefaultServlet.)) "/")
      (add-handler webserver-context handler))))
 
-(defn add-ring-handler
-  [webserver-context handler path]
-  {:pre [(has-handlers? webserver-context)
-         (ifn? handler)
-         (string? path)]}
+(sm/defn ^:always-validate
+  add-ring-handler :- ContextHandler
+  [webserver-context :- WebserverServiceContext
+   handler :- (schema/pred ifn? 'ifn?)
+   path :- schema/Str]
   (let [ctxt-handler (doto (ContextHandler. path)
                        (.setHandler (ring-handler handler)))]
     (add-handler webserver-context ctxt-handler)))
 
-(defn add-servlet-handler
+(sm/defn ^:always-validate
+  add-servlet-handler :- ContextHandler
   ([webserver-context servlet path]
    (add-servlet-handler webserver-context servlet path {}))
-  ([webserver-context servlet path servlet-init-params]
-   {:pre [(has-handlers? webserver-context)
-          (instance? Servlet servlet)
-          (string? path)
-          (map? servlet-init-params)]}
+  ([webserver-context :- WebserverServiceContext
+    servlet :- Servlet
+    path :- schema/Str
+    servlet-init-params :- {schema/Any schema/Any}]
    (let [holder   (doto (ServletHolder. servlet)
                     (.setInitParameters servlet-init-params))
          handler  (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
@@ -377,20 +392,21 @@
                     (.addServlet holder "/*"))]
      (add-handler webserver-context handler))))
 
-(defn add-war-handler
+(sm/defn ^:always-validate
+  add-war-handler :- ContextHandler
   "Registers a WAR to Jetty. It takes two arguments: `[war path]`.
   - `war` is the file path or the URL to a WAR file
   - `path` is the URL prefix at which the WAR will be registered"
-  [webserver-context war path]
-  {:pre [(has-handlers? webserver-context)
-         (string? war)
-         (string? path)]}
+  [webserver-context :- WebserverServiceContext
+   war :- schema/Str
+   path :- schema/Str]
   (let [handler (doto (WebAppContext.)
                   (.setContextPath path)
                   (.setWar war))]
     (add-handler webserver-context handler)))
 
-(defn add-proxy-route
+(sm/defn ^:always-validate
+  add-proxy-route
   "Configures the Jetty server to proxy a given URL path to another host.
 
   `target` should be a map containing the keys :host, :port, and :path; where
@@ -400,17 +416,17 @@
   and :ssl-config (value may be :use-server-config or a map containing :ssl-ca-cert,
   :ssl-cert, and :ssl-key).
   "
-  [webserver-context target path options]
-  {:pre [(has-handlers? webserver-context)
-         (proxy-target? target)
-         (proxy-options? options)
-         (string? path)]}
+  [webserver-context :- WebserverServiceContext
+   target :- ProxyTarget
+   path :- schema/Str
+   options :- ProxyOptions]
   (let [target (update-in target [:path] remove-leading-slash)]
     (add-servlet-handler webserver-context
-                         (proxy-servlet webserver-context target path options)
+                         (proxy-servlet webserver-context target options)
                          path)))
 
-(defn override-webserver-settings!
+(sm/defn ^:always-validate
+  override-webserver-settings! :- config/WebserverServiceRawConfig
   "Override the settings in the webserver section of the service's config file
    with the set of options in the supplied overrides map.
 
@@ -454,10 +470,8 @@
    If a call is made to this function after webserver startup or after another
    call has already been made to this function (e.g., from other service),
    a java.lang.IllegalStateException will be thrown."
-  [webserver-context overrides]
-  {:pre  [(has-config? webserver-context)
-          (map? overrides)]
-   :post [(map? %)]}
+  [webserver-context :- WebserverServiceContext
+   overrides :- config/WebserverServiceRawConfig]
   ; Might be worth considering an implementation that only fails if the caller
   ; is trying to override a specific option that has been overridden already
   ; rather than blindly failing if an attempt is made to override any option.
@@ -467,7 +481,7 @@
   ; adverse effect on another without putting a bunch of key-specific semantic
   ; setting parsing in this implementation.
   (:overrides
-    (swap! (:config webserver-context)
+    (swap! (:state webserver-context)
            #(cond
              (:overrides-read-by-webserver %)
                (if (nil? (:overrides %))
@@ -488,15 +502,10 @@
                    (str "overrides cannot be set because they have "
                         "already been set")))))))
 
-(defn join
-  [webserver-context]
-  {:pre [(has-webserver? webserver-context)]}
+(sm/defn ^:always-validate join
+  [webserver-context :- WebserverServiceContext]
+  {:pre [(started? webserver-context)]}
   (.join (:server webserver-context)))
 
-(defn shutdown
-  [webserver-context]
-  {:pre [((some-fn nil? map?) webserver-context)]}
-  (when (has-webserver? webserver-context)
-    (log/info "Stopping Jetty server.")
-    (.stop (:server webserver-context))))
+
 
