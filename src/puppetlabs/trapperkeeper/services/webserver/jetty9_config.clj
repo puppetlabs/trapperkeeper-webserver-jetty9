@@ -4,7 +4,6 @@
            (clojure.lang ExceptionInfo))
   (:require [clojure.tools.logging :as log]
             [schema.core :as schema]
-            [schema.macros :as sm]
             [puppetlabs.certificate-authority.core :as ssl]
             [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid]]))
 
@@ -88,7 +87,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Conversion functions (raw config -> schema)
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   maybe-get-pem-config! :- (schema/maybe WebserverSslPemConfig)
   [config :- WebserverServiceRawConfig]
   (let [pem-required-keys [:ssl-key :ssl-cert :ssl-ca-cert]
@@ -100,7 +99,7 @@
                (format "Found SSL config options: %s; If configuring SSL from PEM files, you must provide all of the following options: %s"
                        (keys pem-config) pem-required-keys))))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   pem-ssl-config->keystore-ssl-config :- WebserverSslKeystoreConfig
   [{:keys [ssl-ca-cert ssl-key ssl-cert]} :- WebserverSslPemConfig]
   (let [key-password (uuid)]
@@ -112,7 +111,7 @@
                         (ssl/assoc-private-key-file!
                           "Private Key" ssl-key key-password ssl-cert))}))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   warn-if-keystore-ssl-configs-found!
   [config :- WebserverServiceRawConfig]
   (let [keystore-ssl-config-keys [:keystore :truststore :key-password :trust-password]
@@ -121,7 +120,7 @@
       (log/warn (format "Found settings for both keystore-based and PEM-based SSL; using PEM-based settings, ignoring %s"
                         (keys keystore-ssl-config))))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   get-jks-keystore-config! :- WebserverSslKeystoreConfig
   [{:keys [truststore keystore key-password trust-password]}
       :- WebserverServiceRawConfig]
@@ -139,7 +138,7 @@
    :key-password   key-password
    :trust-password trust-password})
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   get-keystore-config! :- WebserverSslKeystoreConfig
   [config :- WebserverServiceRawConfig]
   (if-let [pem-config (maybe-get-pem-config! config)]
@@ -148,7 +147,7 @@
       (pem-ssl-config->keystore-ssl-config pem-config))
     (get-jks-keystore-config! config)))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   get-client-auth! :- WebserverSslClientAuth
   [config :- WebserverServiceRawConfig]
   (let [client-auth (:client-auth config)]
@@ -161,14 +160,14 @@
                   "Unexpected value found for client auth config option: %s.  Expected need, want, or none."
                   client-auth))))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
   [config :- WebserverServiceRawConfig]
   (if (some #(contains? config %) #{:port :host})
     {:host (or (:host config) default-host)
      :port (or (:port config) default-http-port)}))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   maybe-get-https-connector :- (schema/maybe WebserverSslConnector)
   [config :- WebserverServiceRawConfig]
   (if (some #(contains? config %) #{:ssl-port :ssl-host})
@@ -179,7 +178,7 @@
      :protocols (:ssl-protocols config)
      :client-auth (get-client-auth! config)}))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector
                                schema/Keyword              schema/Any}
   [acc config :- WebserverServiceRawConfig]
@@ -187,7 +186,7 @@
     (assoc acc :http http-connector)
     acc))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   maybe-add-https-connector :- {(schema/optional-key :https) WebserverSslConnector
                                 schema/Keyword              schema/Any}
   [acc config :- WebserverServiceRawConfig]
@@ -198,7 +197,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   process-config :- WebserverServiceConfig
   [config :- WebserverServiceRawConfig]
   (let [result (-> {}
