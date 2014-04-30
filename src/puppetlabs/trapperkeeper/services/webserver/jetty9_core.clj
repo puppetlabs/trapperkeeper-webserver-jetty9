@@ -24,7 +24,6 @@
             [clojure.string :as str]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [schema.macros :as sm]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [schema.core :as schema]))
@@ -74,13 +73,13 @@
   [s]
   (str/replace s #"^\/" ""))
 
-(sm/defn ^:always-validate started? :- Boolean
+(schema/defn ^:always-validate started? :- Boolean
   "A predicate that indicates whether or not the webserver-context contains a Jetty
   Server object."
   [webserver-context :- WebserverServiceContext]
   (instance? Server (:server webserver-context)))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
   "Merge any overrides made to the webserver config settings with the supplied
    options."
@@ -97,7 +96,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Context Functions
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   ssl-context-factory :- SslContextFactory
   "Creates a new SslContextFactory instance from a map of options."
   [config :- config/WebserverSslKeystoreConfig
@@ -114,7 +113,7 @@
       nil)
     context))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   get-proxy-client-context-factory :- SslContextFactory
   [ssl-config :- config/WebserverSslPemConfig]
   (-> ssl-config
@@ -131,7 +130,7 @@
     (into-array ConnectionFactory
                 [(HttpConnectionFactory. http-config)])))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   ssl-connector  :- ServerConnector
   "Creates a ssl ServerConnector instance."
   [server            :- Server
@@ -141,7 +140,7 @@
     (.setPort (:port config))
     (.setHost (:host config))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   plaintext-connector :- ServerConnector
   [server :- Server
    config :- config/WebserverConnector]
@@ -149,7 +148,7 @@
     (.setPort (:port config))
     (.setHost (:host config))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   create-server :- Server
   "Construct a Jetty Server instance."
   [webserver-context :- WebserverServiceContext
@@ -203,7 +202,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler Helper Functions
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   add-handler :- ContextHandler
   [webserver-context :- WebserverServiceContext
    handler :- ContextHandler]
@@ -221,7 +220,7 @@
           (servlet/update-servlet-response response response-map)
           (.setHandled base-request true))))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   proxy-servlet :- ProxyServlet
   "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
   a given context to another host."
@@ -257,7 +256,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   initialize-context :- WebserverServiceContext
   "Create a webserver-context which contains a HandlerCollection and a
   ContextHandlerCollection which can accept the addition of new handlers
@@ -269,7 +268,7 @@
      :server nil}))
 
 ; TODO move out of public
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
   "Merge any overrides made to the webserver config settings with the supplied
    options."
@@ -284,13 +283,13 @@
       (log/info (str "webserver config overridden for key '" (name key) "'")))
     (merge options overrides)))
 
-(sm/defn ^:always-validate shutdown
+(schema/defn ^:always-validate shutdown
   [webserver-context :- WebserverServiceContext]
   (when (started? webserver-context)
     (log/info "Shutting down web server.")
     (.stop (:server webserver-context))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   create-webserver :- WebserverServiceContext
     "Create a Jetty webserver according to the supplied options:
 
@@ -334,7 +333,7 @@
     (.setHandler s (gzip-handler hc))
     (assoc webserver-context :server s)))
 
-(sm/defn ^:always-validate start-webserver! :- WebserverServiceContext
+(schema/defn ^:always-validate start-webserver! :- WebserverServiceContext
   "Creates and starts a webserver.  Returns an updated context map containing
   the Server object."
   [webserver-context :- WebserverServiceContext
@@ -351,7 +350,7 @@
         (throw e)))
     webserver-context))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   add-context-handler :- ContextHandler
   "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
   ([webserver-context base-path context-path]
@@ -368,7 +367,7 @@
      (.addServlet handler (ServletHolder. (DefaultServlet.)) "/")
      (add-handler webserver-context handler))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   add-ring-handler :- ContextHandler
   [webserver-context :- WebserverServiceContext
    handler :- (schema/pred ifn? 'ifn?)
@@ -377,7 +376,7 @@
                        (.setHandler (ring-handler handler)))]
     (add-handler webserver-context ctxt-handler)))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   add-servlet-handler :- ContextHandler
   ([webserver-context servlet path]
    (add-servlet-handler webserver-context servlet path {}))
@@ -392,7 +391,7 @@
                     (.addServlet holder "/*"))]
      (add-handler webserver-context handler))))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   add-war-handler :- ContextHandler
   "Registers a WAR to Jetty. It takes two arguments: `[war path]`.
   - `war` is the file path or the URL to a WAR file
@@ -405,7 +404,7 @@
                   (.setWar war))]
     (add-handler webserver-context handler)))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   add-proxy-route
   "Configures the Jetty server to proxy a given URL path to another host.
 
@@ -425,7 +424,7 @@
                          (proxy-servlet webserver-context target options)
                          path)))
 
-(sm/defn ^:always-validate
+(schema/defn ^:always-validate
   override-webserver-settings! :- config/WebserverServiceRawConfig
   "Override the settings in the webserver section of the service's config file
    with the set of options in the supplied overrides map.
@@ -502,7 +501,7 @@
                    (str "overrides cannot be set because they have "
                         "already been set")))))))
 
-(sm/defn ^:always-validate join
+(schema/defn ^:always-validate join
   [webserver-context :- WebserverServiceContext]
   {:pre [(started? webserver-context)]}
   (.join (:server webserver-context)))
