@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty7.png?branch=master)](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty7)
 
+PLEASE DO NOT MERGE THIS PULL REQUEST.  Just testing the CLA bot.
+
 ## Trapperkeeper Webserver Service
 
 This project provides a webserver service for use with the
