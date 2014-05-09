@@ -73,7 +73,6 @@
                   "Didn't find log message for override of 'ssl-key'")
               (is (logged? #"^webserver config overridden for key 'ssl-ca-cert'")
                   "Didn't find log message for override of 'ssl-ca-cert'")
-
               (is (logged? #"^webserver config overridden for key 'crl-path'")
                   "Didn't find log message for override of 'crl-path'"))
 
