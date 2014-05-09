@@ -15,7 +15,8 @@
   {:keystore        "./dev-resources/config/jetty/ssl/keystore.jks"
    :truststore      "./dev-resources/config/jetty/ssl/truststore.jks"
    :key-password    "Kq8lG9LkISky9cDIYysiadxRx"
-   :trust-password  "Kq8lG9LkISky9cDIYysiadxRx"})
+   :trust-password  "Kq8lG9LkISky9cDIYysiadxRx"
+   :crl-path        "./dev-resources/config/jetty/ssk/crl.pem"})
 
 (defn expected-http-config?
   [config expected]

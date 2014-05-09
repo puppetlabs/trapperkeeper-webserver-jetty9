@@ -44,7 +44,8 @@
    (schema/optional-key :trust-password)  schema/Str
    (schema/optional-key :cipher-suites)   [schema/Str]
    (schema/optional-key :ssl-protocols)   [schema/Str]
-   (schema/optional-key :client-auth)     schema/Str})
+   (schema/optional-key :client-auth)     schema/Str
+   (schema/optional-key :crl-path)        schema/Str})
 
 (def WebserverSslPemConfig
   {:ssl-key      schema/Str

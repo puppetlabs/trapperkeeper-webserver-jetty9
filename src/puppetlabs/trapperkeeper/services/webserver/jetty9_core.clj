@@ -105,6 +105,8 @@
     (.setKeyStore context (:keystore config))
     (.setKeyStorePassword context (:key-password config))
     (.setTrustStore context (:truststore config))
+    (when-let [crl-path (:crl-path config)]
+      (.setCrlPath context crl-path))
     (when-let [trust-password (:trust-password config)]
       (.setTrustStorePassword context trust-password))
     (case client-auth
