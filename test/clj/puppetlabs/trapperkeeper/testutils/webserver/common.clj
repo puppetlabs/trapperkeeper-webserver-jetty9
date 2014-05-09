@@ -40,4 +40,5 @@
   {:ssl-cert "./dev-resources/config/jetty/ssl/certs/localhost.pem"
    :ssl-key  "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
    :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"
+   :crl-path "./dev-resources/config/jetty/ssl/crl.pem"
    :as :text})
