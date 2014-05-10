@@ -100,11 +100,15 @@
   ssl-context-factory :- SslContextFactory
   "Creates a new SslContextFactory instance from a map of options."
   [config :- config/WebserverSslKeystoreConfig
-   client-auth :- config/WebserverSslClientAuth]
+   client-auth :- config/WebserverSslClientAuth
+   crl-path :- config/WebserverSslCrlPath]
   (let [context (SslContextFactory.)]
     (.setKeyStore context (:keystore config))
     (.setKeyStorePassword context (:key-password config))
     (.setTrustStore context (:truststore config))
+    (when (not (nil? crl-path))
+      (.setCrlPath context crl-path)
+      (.setValidatePeerCerts context true))
     (when-let [trust-password (:trust-password config)]
       (.setTrustStorePassword context trust-password))
     (case client-auth
@@ -118,7 +122,7 @@
   [ssl-config :- config/WebserverSslPemConfig]
   (-> ssl-config
       config/pem-ssl-config->keystore-ssl-config
-      (ssl-context-factory :none)))
+      (ssl-context-factory :none nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
@@ -160,7 +164,8 @@
     (when-let [https (:https config)]
       (let [ssl-ctxt-factory (ssl-context-factory
                                (:keystore-config https)
-                               (:client-auth https))
+                               (:client-auth https)
+                               (:crl-path https))
             connector (ssl-connector server ssl-ctxt-factory https)]
         (when-let [ciphers (:cipher-suites https)]
           (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers)))
@@ -342,7 +347,7 @@
     (log/info "Starting web server.")
     (try
       (.start (:server webserver-context))
-      (catch IOException e
+      (catch Exception e
         (log/error
           e
           "Encountered error starting web server, so shutting down")

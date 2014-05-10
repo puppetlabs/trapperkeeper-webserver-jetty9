@@ -31,7 +31,10 @@
                                   "ssl/private_keys/localhost.pem")
                    :ssl-ca-cert
                              (str dev-resources-config-dir
-                                  "ssl/certs/ca.pem")}]
+                                  "ssl/certs/ca.pem")
+                   :crl-path
+                             (str dev-resources-config-dir
+                                  "ssl/crls/crls_none_revoked.pem")}]
     (testing "config override of all SSL settings before webserver starts is
               successful"
       (let [override-result (atom nil)
@@ -69,7 +72,9 @@
               (is (logged? #"^webserver config overridden for key 'ssl-key'")
                   "Didn't find log message for override of 'ssl-key'")
               (is (logged? #"^webserver config overridden for key 'ssl-ca-cert'")
-                  "Didn't find log message for override of 'ssl-ca-cert'"))
+                  "Didn't find log message for override of 'ssl-ca-cert'")
+              (is (logged? #"^webserver config overridden for key 'crl-path'")
+                  "Didn't find log message for override of 'crl-path'"))
         (is (= overrides @override-result)
             "Unexpected response to override-webserver-settings! call.")))
     (testing "SSL certificate settings can be overridden while other settings
