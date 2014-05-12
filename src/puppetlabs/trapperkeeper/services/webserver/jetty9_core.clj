@@ -106,7 +106,7 @@
     (.setKeyStore context (:keystore config))
     (.setKeyStorePassword context (:key-password config))
     (.setTrustStore context (:truststore config))
-    (when (not (nil? crl-path))
+    (when crl-path
       (.setCrlPath context crl-path)
       (.setValidatePeerCerts context true))
     (when-let [trust-password (:trust-password config)]
