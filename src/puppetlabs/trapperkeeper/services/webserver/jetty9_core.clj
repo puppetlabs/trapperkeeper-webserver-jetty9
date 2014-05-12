@@ -98,7 +98,13 @@
 
 (schema/defn ^:always-validate
   ssl-context-factory :- SslContextFactory
-  "Creates a new SslContextFactory instance from a map of options."
+  "Creates a new SslContextFactory instance from:
+
+   config      - A map of SSL keystore options.
+   client-auth - SSL client certificate authentication mode.  May be set to
+                 :need, :want or nil.
+   crl-path    - Path to a CRL (Certificate Revocation List) file.  May be
+                 set to nil in order for a CRL to not be used."
   [config :- config/WebserverSslKeystoreConfig
    client-auth :- config/WebserverSslClientAuth
    crl-path :- config/WebserverSslCrlPath]
