@@ -108,6 +108,9 @@
     (.setTrustStore context (:truststore config))
     (when crl-path
       (.setCrlPath context crl-path)
+      ; .setValidatePeerCerts needs to be called with a value of 'true' in
+      ; order to force Jetty to actually use the CRL when validating client
+      ; certificates for a connection.
       (.setValidatePeerCerts context true))
     (when-let [trust-password (:trust-password config)]
       (.setTrustStorePassword context trust-password))
