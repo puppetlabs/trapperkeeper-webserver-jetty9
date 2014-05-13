@@ -66,19 +66,17 @@
   {:host schema/Str
    :port schema/Int})
 
-(def WebserverSslConnector
-  {:host                               schema/Str
-   :port                               schema/Int
-   :keystore-config                    WebserverSslKeystoreConfig
-   :cipher-suites                      [schema/Str]
-   :protocols                          (schema/maybe [schema/Str])
-   :client-auth                        WebserverSslClientAuth
-   (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)})
-
 (def WebserverSslContextFactory
   {:keystore-config                    WebserverSslKeystoreConfig
    :client-auth                        WebserverSslClientAuth
    (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)})
+
+(def WebserverSslConnector
+  (merge
+    WebserverConnector
+    WebserverSslContextFactory
+    {:cipher-suites [schema/Str]
+     :protocols     (schema/maybe [schema/Str])}))
 
 (def HasConnector
   (schema/either
