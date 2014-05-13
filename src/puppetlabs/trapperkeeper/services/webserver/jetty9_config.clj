@@ -3,6 +3,7 @@
            (java.io FileInputStream)
            (clojure.lang ExceptionInfo))
   (:require [clojure.tools.logging :as log]
+            [me.raynes.fs :as fs]
             [schema.core :as schema]
             [puppetlabs.certificate-authority.core :as ssl]
             [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid]]))
@@ -44,7 +45,8 @@
    (schema/optional-key :trust-password)  schema/Str
    (schema/optional-key :cipher-suites)   [schema/Str]
    (schema/optional-key :ssl-protocols)   [schema/Str]
-   (schema/optional-key :client-auth)     schema/Str})
+   (schema/optional-key :client-auth)     schema/Str
+   (schema/optional-key :ssl-crl-path)    schema/Str})
 
 (def WebserverSslPemConfig
   {:ssl-key      schema/Str
@@ -64,13 +66,17 @@
   {:host schema/Str
    :port schema/Int})
 
+(def WebserverSslContextFactory
+  {:keystore-config                    WebserverSslKeystoreConfig
+   :client-auth                        WebserverSslClientAuth
+   (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)})
+
 (def WebserverSslConnector
-  {:host schema/Str
-   :port schema/Int
-   :keystore-config WebserverSslKeystoreConfig
-   :cipher-suites [schema/Str]
-   :protocols (schema/maybe [schema/Str])
-   :client-auth WebserverSslClientAuth})
+  (merge
+    WebserverConnector
+    WebserverSslContextFactory
+    {:cipher-suites [schema/Str]
+     :protocols     (schema/maybe [schema/Str])}))
 
 (def HasConnector
   (schema/either
@@ -161,6 +167,17 @@
                   client-auth))))))
 
 (schema/defn ^:always-validate
+  get-ssl-crl-path! :- (schema/maybe schema/Str)
+  [config :- WebserverServiceRawConfig]
+  (if-let [ssl-crl-path (:ssl-crl-path config)]
+    (if (fs/readable? ssl-crl-path)
+      ssl-crl-path
+      (throw (IllegalArgumentException.
+               (format
+                 "Non-readable path specified for ssl-crl-path option: %s"
+                 ssl-crl-path))))))
+
+(schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
   [config :- WebserverServiceRawConfig]
   (if (some #(contains? config %) #{:port :host})
@@ -176,7 +193,8 @@
      :keystore-config (get-keystore-config! config)
      :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
      :protocols (:ssl-protocols config)
-     :client-auth (get-client-auth! config)}))
+     :client-auth (get-client-auth! config)
+     :ssl-crl-path (get-ssl-crl-path! config)}))
 
 (schema/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector

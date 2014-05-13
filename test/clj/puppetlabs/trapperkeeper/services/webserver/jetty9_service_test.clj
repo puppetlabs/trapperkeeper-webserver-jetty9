@@ -1,5 +1,6 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
   (:import  (java.net BindException)
+            (java.security.cert CRLException)
             (java.util.concurrent ExecutionException)
             (javax.net.ssl SSLHandshakeException)
             (org.eclipse.jetty.server Server)
@@ -179,6 +180,66 @@
             "https://localhost:8081"
             jetty-ssl-client-want-config
             unauthorized-pem-options-for-https)))))
+
+(deftest crl-success-test
+  (testing (str "ring request over SSL succeeds when no client certificates "
+                "have been revoked")
+    (validate-ring-handler
+      "https://localhost:8081"
+      (assoc-in jetty-ssl-client-need-config
+        [:webserver :ssl-crl-path]
+        "./dev-resources/config/jetty/ssl/crls/crls_none_revoked.pem")
+      default-options-for-https-client))
+
+  (testing (str "ring request over SSL succeeds when a different client "
+                "certificate than the one used in the request has been revoked")
+    (validate-ring-handler
+      "https://localhost:8081"
+      (assoc-in jetty-ssl-client-need-config
+                [:webserver :ssl-crl-path]
+                (str "./dev-resources/config/jetty/ssl/crls/"
+                     "crls_localhost-compromised_revoked.pem"))
+      default-options-for-https-client)))
+
+(deftest crl-failure-test
+  (testing (str "ring request over SSL fails when the client certificate has "
+                "been revoked")
+    (is (thrown?
+          ProtocolException
+          (validate-ring-handler
+            "https://localhost:8081"
+            (assoc-in
+              jetty-ssl-client-need-config
+              [:webserver :ssl-crl-path]
+              "./dev-resources/config/jetty/ssl/crls/crls_localhost_revoked.pem")
+            default-options-for-https-client))))
+
+  (testing (str "jetty throws startup exception if non-CRL PEM is specified "
+                "as ssl-crl-path")
+    (with-test-logging
+      (is (thrown?
+            CRLException
+            (with-app-with-config
+              app
+              [jetty9-service]
+              (assoc-in
+                jetty-ssl-client-need-config
+                [:webserver :ssl-crl-path]
+                "./dev-resources/config/jetty/ssl/certs/ca.pem"))))))
+
+  (testing (str "jetty throws startup exception if ssl-crl-path refers to a "
+                "non-existent file")
+    (with-test-logging
+      (is (thrown-with-msg?
+            IllegalArgumentException
+            #"Non-readable path specified for ssl-crl-path option"
+            (with-app-with-config
+              app
+              [jetty9-service]
+              (assoc-in
+                jetty-ssl-client-need-config
+                [:webserver :ssl-crl-path]
+                "./dev-resources/config/jetty/ssl/crls/crls_bogus.pem")))))))
 
 (defn boot-service-and-jetty-with-default-config
   [service]

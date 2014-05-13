@@ -98,27 +98,34 @@
 
 (schema/defn ^:always-validate
   ssl-context-factory :- SslContextFactory
-  "Creates a new SslContextFactory instance from a map of options."
-  [config :- config/WebserverSslKeystoreConfig
-   client-auth :- config/WebserverSslClientAuth]
+  "Creates a new SslContextFactory instance from a map of SSL config options."
+  [{:keys [keystore-config client-auth ssl-crl-path ]}
+   :- config/WebserverSslContextFactory]
   (let [context (SslContextFactory.)]
-    (.setKeyStore context (:keystore config))
-    (.setKeyStorePassword context (:key-password config))
-    (.setTrustStore context (:truststore config))
-    (when-let [trust-password (:trust-password config)]
-      (.setTrustStorePassword context trust-password))
+    (.setKeyStore context (:keystore keystore-config))
+    (.setKeyStorePassword context (:key-password keystore-config))
+    (.setTrustStore context (:truststore keystore-config))
+    (if (:trust-password keystore-config)
+      (.setTrustStorePassword context (:trust-password keystore-config)))
     (case client-auth
       :need (.setNeedClientAuth context true)
       :want (.setWantClientAuth context true)
       nil)
+    (when ssl-crl-path
+      (.setCrlPath context ssl-crl-path)
+      ; .setValidatePeerCerts needs to be called with a value of 'true' in
+      ; order to force Jetty to actually use the CRL when validating client
+      ; certificates for a connection.
+      (.setValidatePeerCerts context true))
     context))
 
 (schema/defn ^:always-validate
   get-proxy-client-context-factory :- SslContextFactory
   [ssl-config :- config/WebserverSslPemConfig]
-  (-> ssl-config
-      config/pem-ssl-config->keystore-ssl-config
-      (ssl-context-factory :none)))
+  (ssl-context-factory {:keystore-config
+                         (config/pem-ssl-config->keystore-ssl-config
+                           ssl-config)
+                        :client-auth :none}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
@@ -159,9 +166,10 @@
         (.addConnector server connector)))
     (when-let [https (:https config)]
       (let [ssl-ctxt-factory (ssl-context-factory
-                               (:keystore-config https)
-                               (:client-auth https))
-            connector (ssl-connector server ssl-ctxt-factory https)]
+                               {:keystore-config (:keystore-config https)
+                                :client-auth     (:client-auth https)
+                                :ssl-crl-path    (:ssl-crl-path https)})
+            connector        (ssl-connector server ssl-ctxt-factory https)]
         (when-let [ciphers (:cipher-suites https)]
           (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers)))
         (when-let [protocols (:protocols https)]
@@ -342,7 +350,7 @@
     (log/info "Starting web server.")
     (try
       (.start (:server webserver-context))
-      (catch IOException e
+      (catch Exception e
         (log/error
           e
           "Encountered error starting web server, so shutting down")

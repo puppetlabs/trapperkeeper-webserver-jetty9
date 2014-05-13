@@ -30,7 +30,8 @@
            (update-in [:max-threads] (fnil identity default-max-threads))
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
-           (update-in [:https :client-auth] (fnil identity default-client-auth)))
+           (update-in [:https :client-auth] (fnil identity default-client-auth))
+           (update-in [:https :ssl-crl-path] identity))
        (-> actual
            (update-in [:https] dissoc :keystore-config)))))
 
@@ -79,13 +80,30 @@
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-port 8001 :cipher-suites ["FOO" "BAR"]})
-          {:https {:host default-host :port 8001 :cipher-suites ["FOO" "BAR"]}})))
+          {:https
+            {:host default-host
+             :port 8001
+             :cipher-suites ["FOO" "BAR"]}})))
 
   (testing "protocols"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-port 8001 :ssl-protocols ["FOO" "BAR"]})
-          {:https {:host default-host :port 8001 :protocols ["FOO" "BAR"]}})))
+          {:https
+            {:host default-host
+             :port 8001
+             :protocols ["FOO" "BAR"]}})))
+
+  (testing "ssl-crl-path"
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-port 8001
+                  :ssl-crl-path
+                            "./dev-resources/config/jetty/ssl/certs/ca.pem"})
+          {:https
+            {:host default-host
+             :port 8001
+             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}})))
 
   (testing "client auth"
     (letfn [(get-client-auth [config]
