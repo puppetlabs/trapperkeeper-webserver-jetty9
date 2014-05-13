@@ -187,7 +187,7 @@
     (validate-ring-handler
       "https://localhost:8081"
       (assoc-in jetty-ssl-client-need-config
-        [:webserver :crl-path]
+        [:webserver :ssl-crl-path]
         "./dev-resources/config/jetty/ssl/crls/crls_none_revoked.pem")
       default-options-for-https-client))
 
@@ -196,7 +196,7 @@
     (validate-ring-handler
       "https://localhost:8081"
       (assoc-in jetty-ssl-client-need-config
-                [:webserver :crl-path]
+                [:webserver :ssl-crl-path]
                 (str "./dev-resources/config/jetty/ssl/crls/"
                      "crls_localhost-compromised_revoked.pem"))
       default-options-for-https-client)))
@@ -210,12 +210,12 @@
             "https://localhost:8081"
             (assoc-in
               jetty-ssl-client-need-config
-              [:webserver :crl-path]
+              [:webserver :ssl-crl-path]
               "./dev-resources/config/jetty/ssl/crls/crls_localhost_revoked.pem")
             default-options-for-https-client))))
 
   (testing (str "jetty throws startup exception if non-CRL PEM is specified "
-                "as crl-path")
+                "as ssl-crl-path")
     (with-test-logging
       (is (thrown?
             CRLException
@@ -224,21 +224,21 @@
               [jetty9-service]
               (assoc-in
                 jetty-ssl-client-need-config
-                [:webserver :crl-path]
+                [:webserver :ssl-crl-path]
                 "./dev-resources/config/jetty/ssl/certs/ca.pem"))))))
 
-  (testing (str "jetty throws startup exception if crl-path refers to a "
+  (testing (str "jetty throws startup exception if ssl-crl-path refers to a "
                 "non-existent file")
     (with-test-logging
       (is (thrown-with-msg?
             IllegalArgumentException
-            #"Non-readable path specified for crl-path option"
+            #"Non-readable path specified for ssl-crl-path option"
             (with-app-with-config
               app
               [jetty9-service]
               (assoc-in
                 jetty-ssl-client-need-config
-                [:webserver :crl-path]
+                [:webserver :ssl-crl-path]
                 "./dev-resources/config/jetty/ssl/crls/crls_bogus.pem")))))))
 
 (defn boot-service-and-jetty-with-default-config

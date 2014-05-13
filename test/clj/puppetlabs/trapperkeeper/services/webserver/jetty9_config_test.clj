@@ -31,7 +31,7 @@
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
            (update-in [:https :client-auth] (fnil identity default-client-auth))
-           (update-in [:https :crl-path] identity))
+           (update-in [:https :ssl-crl-path] identity))
        (-> actual
            (update-in [:https] dissoc :keystore-config)))))
 
@@ -94,15 +94,16 @@
              :port 8001
              :protocols ["FOO" "BAR"]}})))
 
-  (testing "crl-path"
+  (testing "ssl-crl-path"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-port 8001
-                  :crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"})
+                  :ssl-crl-path
+                            "./dev-resources/config/jetty/ssl/certs/ca.pem"})
           {:https
             {:host default-host
              :port 8001
-             :crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}})))
+             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}})))
 
   (testing "client auth"
     (letfn [(get-client-auth [config]

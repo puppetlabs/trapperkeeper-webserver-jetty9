@@ -98,40 +98,34 @@
 
 (schema/defn ^:always-validate
   ssl-context-factory :- SslContextFactory
-  "Creates a new SslContextFactory instance from:
-
-   config      - A map of SSL keystore options.
-   client-auth - SSL client certificate authentication mode.  May be set to
-                 :need, :want or nil.
-   crl-path    - Path to a CRL (Certificate Revocation List) file.  May be
-                 set to nil in order for a CRL to not be used."
-  [config :- config/WebserverSslKeystoreConfig
-   client-auth :- config/WebserverSslClientAuth
-   crl-path :- config/WebserverSslCrlPath]
+  "Creates a new SslContextFactory instance from a map of SSL config options."
+  [{:keys [keystore-config client-auth ssl-crl-path ]}
+   :- config/WebserverSslContextFactory]
   (let [context (SslContextFactory.)]
-    (.setKeyStore context (:keystore config))
-    (.setKeyStorePassword context (:key-password config))
-    (.setTrustStore context (:truststore config))
-    (when crl-path
-      (.setCrlPath context crl-path)
-      ; .setValidatePeerCerts needs to be called with a value of 'true' in
-      ; order to force Jetty to actually use the CRL when validating client
-      ; certificates for a connection.
-      (.setValidatePeerCerts context true))
-    (when-let [trust-password (:trust-password config)]
-      (.setTrustStorePassword context trust-password))
+    (.setKeyStore context (:keystore keystore-config))
+    (.setKeyStorePassword context (:key-password keystore-config))
+    (.setTrustStore context (:truststore keystore-config))
+    (if (:trust-password keystore-config)
+      (.setTrustStorePassword context (:trust-password keystore-config)))
     (case client-auth
       :need (.setNeedClientAuth context true)
       :want (.setWantClientAuth context true)
       nil)
+    (when ssl-crl-path
+      (.setCrlPath context ssl-crl-path)
+      ; .setValidatePeerCerts needs to be called with a value of 'true' in
+      ; order to force Jetty to actually use the CRL when validating client
+      ; certificates for a connection.
+      (.setValidatePeerCerts context true))
     context))
 
 (schema/defn ^:always-validate
   get-proxy-client-context-factory :- SslContextFactory
   [ssl-config :- config/WebserverSslPemConfig]
-  (-> ssl-config
-      config/pem-ssl-config->keystore-ssl-config
-      (ssl-context-factory :none nil)))
+  (ssl-context-factory {:keystore-config
+                         (config/pem-ssl-config->keystore-ssl-config
+                           ssl-config)
+                        :client-auth :none}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
@@ -172,10 +166,10 @@
         (.addConnector server connector)))
     (when-let [https (:https config)]
       (let [ssl-ctxt-factory (ssl-context-factory
-                               (:keystore-config https)
-                               (:client-auth https)
-                               (:crl-path https))
-            connector (ssl-connector server ssl-ctxt-factory https)]
+                               {:keystore-config (:keystore-config https)
+                                :client-auth     (:client-auth https)
+                                :ssl-crl-path    (:ssl-crl-path https)})
+            connector        (ssl-connector server ssl-ctxt-factory https)]
         (when-let [ciphers (:cipher-suites https)]
           (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers)))
         (when-let [protocols (:protocols https)]

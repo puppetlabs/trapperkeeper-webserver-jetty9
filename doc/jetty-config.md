@@ -123,7 +123,7 @@ values may be specified:
 If a value is not provided for this setting, `need` will be used as the default
 value.
 
-### `crl-path`
+### `ssl-crl-path`
 
 Optional. This describes a path to a Certificate Revocation List file. Incoming
 SSL connections will be rejected if the client certificate matches a

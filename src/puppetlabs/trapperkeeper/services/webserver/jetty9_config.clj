@@ -46,7 +46,7 @@
    (schema/optional-key :cipher-suites)   [schema/Str]
    (schema/optional-key :ssl-protocols)   [schema/Str]
    (schema/optional-key :client-auth)     schema/Str
-   (schema/optional-key :crl-path)        schema/Str})
+   (schema/optional-key :ssl-crl-path)    schema/Str})
 
 (def WebserverSslPemConfig
   {:ssl-key      schema/Str
@@ -62,21 +62,23 @@
 (def WebserverSslClientAuth
   (schema/enum :need :want :none))
 
-(def WebserverSslCrlPath
-  (schema/maybe schema/Str))
-
 (def WebserverConnector
   {:host schema/Str
    :port schema/Int})
 
 (def WebserverSslConnector
-  {:host             schema/Str
-   :port             schema/Int
-   :keystore-config  WebserverSslKeystoreConfig
-   :cipher-suites    [schema/Str]
-   :protocols        (schema/maybe [schema/Str])
-   :client-auth      WebserverSslClientAuth
-   :crl-path         WebserverSslCrlPath})
+  {:host                               schema/Str
+   :port                               schema/Int
+   :keystore-config                    WebserverSslKeystoreConfig
+   :cipher-suites                      [schema/Str]
+   :protocols                          (schema/maybe [schema/Str])
+   :client-auth                        WebserverSslClientAuth
+   (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)})
+
+(def WebserverSslContextFactory
+  {:keystore-config                    WebserverSslKeystoreConfig
+   :client-auth                        WebserverSslClientAuth
+   (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)})
 
 (def HasConnector
   (schema/either
@@ -167,15 +169,15 @@
                   client-auth))))))
 
 (schema/defn ^:always-validate
-  get-crl-path! :- WebserverSslCrlPath
+  get-ssl-crl-path! :- (schema/maybe schema/Str)
   [config :- WebserverServiceRawConfig]
-  (if-let [crl-path (:crl-path config)]
-    (if (fs/readable? crl-path)
-      crl-path
+  (if-let [ssl-crl-path (:ssl-crl-path config)]
+    (if (fs/readable? ssl-crl-path)
+      ssl-crl-path
       (throw (IllegalArgumentException.
                (format
-                 "Non-readable path specified for crl-path option: %s"
-                 crl-path))))))
+                 "Non-readable path specified for ssl-crl-path option: %s"
+                 ssl-crl-path))))))
 
 (schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
@@ -194,7 +196,7 @@
      :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
      :protocols (:ssl-protocols config)
      :client-auth (get-client-auth! config)
-     :crl-path (get-crl-path! config)}))
+     :ssl-crl-path (get-ssl-crl-path! config)}))
 
 (schema/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector

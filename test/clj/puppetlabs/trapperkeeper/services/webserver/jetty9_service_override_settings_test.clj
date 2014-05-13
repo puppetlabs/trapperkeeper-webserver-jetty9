@@ -32,7 +32,7 @@
                    :ssl-ca-cert
                              (str dev-resources-config-dir
                                   "ssl/certs/ca.pem")
-                   :crl-path
+                   :ssl-crl-path
                              (str dev-resources-config-dir
                                   "ssl/crls/crls_none_revoked.pem")}]
     (testing "config override of all SSL settings before webserver starts is
@@ -73,8 +73,8 @@
                   "Didn't find log message for override of 'ssl-key'")
               (is (logged? #"^webserver config overridden for key 'ssl-ca-cert'")
                   "Didn't find log message for override of 'ssl-ca-cert'")
-              (is (logged? #"^webserver config overridden for key 'crl-path'")
-                  "Didn't find log message for override of 'crl-path'"))
+              (is (logged? #"^webserver config overridden for key 'ssl-crl-path'")
+                  "Didn't find log message for override of 'ssl-crl-path'"))
         (is (= overrides @override-result)
             "Unexpected response to override-webserver-settings! call.")))
     (testing "SSL certificate settings can be overridden while other settings
