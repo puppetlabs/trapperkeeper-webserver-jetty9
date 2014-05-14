@@ -1,3 +1,17 @@
+## 0.5.2
+ * Update trapperkeeper dependency to version 0.4.2.
+ * Update kitchensink dependency to version 0.7.1.
+ * Update certificate-authority dependency to 0.1.5.
+ * Update http-client dev dependency to 0.1.7.
+ * Stop is now called on the Jetty Server instance if an error occurs in Jetty
+   code while the server is starting up.  This allows the process running
+   Trapperkeeper to shut down properly after such an error has occurred.
+ * Validation of the webserver configuration is now done via the use of
+   Prismatic Schema.
+ * A new webserver option, `ssl-crl-path`, can be used to configure a
+   Certificate Revocation List that Jetty would use to validate client
+   certificates for incoming SSL connections.
+
 ## 0.5.1
  * Upgrade trapperkeeper dependency to version 0.3.12
  * Upgrade kitchensink dependency to version 0.7.0
