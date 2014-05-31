@@ -37,7 +37,8 @@
 
   (stop [this context]
         (log/info "Shutting down web server.")
-        (core/shutdown (context :jetty9-server))
+        (if-let [server (:jetty9-server context)]
+          (core/shutdown server))
         context)
 
   (add-context-handler [this base-path context-path]
