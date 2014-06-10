@@ -218,6 +218,10 @@ route:
   a map, then the entries must point to the PEM files that should be used for the
   SSL context.  These keys have the same meaning as they do for the SSL configuration
   of the main web server.
+* `:callback-fn`: optional; a function to manipulate the request object (e.g.
+  to add additional headers) before Jetty continues on with the proxy. The
+  function must accept two arguments, `[proxy-req req]`. For more information,
+  see [below](#callback-fn).
 
 Simple example:
 
@@ -262,6 +266,42 @@ In this example, all incoming requests with a prefix of `foo` will be proxied
 to `https://localhost:10000/bar`.  We'll proxy using HTTPS even if the original
 request was HTTP, and we'll use the three pem files in `/tmp` to configure the
 HTTPS client, regardless of the SSL configuration of the main web server.
+
+
+#####`:callback-fn`
+
+This option lets you provide a function to manipulate the request object.  The
+function will be passed to the
+[`customizeProxyRequest`](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/proxy/ProxyServlet.html#customizeProxyRequest%28org.eclipse.jetty.client.api.Request,%20javax.servlet.http.HttpServletRequest%29)
+method. It must take two arguments, `[proxy-req req]`, where `proxy-req` is a
+[`Request`](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/client/api/Request.html)
+and `req` is an
+[`HttpServletRequest`](http://docs.oracle.com/javaee/6/api/javax/servlet/http/HttpServletRequest.html).
+`proxy-req` will be modified and returned by the function.
+
+An example with a callback function:
+
+```clj
+(defservice foo-service
+  [[:WebserverService add-proxy-route]]
+  (init [this context]
+    (add-proxy-route
+        {:host "localhost"
+         :port 10000
+         :path "/bar"}
+        "/foo"
+        {:callback-fn (fn [proxy-req req]
+          (.header proxy-req "x-example" "baz"))})
+    context))
+```
+
+In this example, all incoming requests with a prefix of `foo` will be proxied
+to `https://localhost:10000/bar`, using the same scheme (HTTP/HTTPS) that the
+original request used, and using the SSL context of the main webserver. In
+addition, a header `"x-example"` with the value `"baz"` will be added to the
+request before it is proxied, using the
+[`header`](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/client/api/Request.html#header%28java.lang.String,%20java.lang.String%29)
+method.
 
 #### `override-webserver-settings!`
 

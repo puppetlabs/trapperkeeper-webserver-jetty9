@@ -427,8 +427,8 @@
   `options` may contain the keys :scheme (legal values are :orig, :http, and
   :https), :ssl-config (value may be :use-server-config or a map containing
   :ssl-ca-cert, :ssl-cert, and :ssl-key), and :callback-fn (a function taking
-  two arguments, `[proxy-req req]`, where `req` is the request to be proxied,
-  and `proxy-req` is the request that is customized and returned.)
+  two arguments, `[proxy-req req]`. For more information see
+  README.md/#callback-fn.)
   "
   [webserver-context :- WebserverServiceContext
    target :- ProxyTarget
