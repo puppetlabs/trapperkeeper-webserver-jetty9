@@ -59,7 +59,8 @@
   {(schema/optional-key :scheme) (schema/enum :orig :http :https)
    (schema/optional-key :ssl-config) (schema/either
                                        (schema/eq :use-server-config)
-                                       config/WebserverSslPemConfig)})
+                                       config/WebserverSslPemConfig)
+   (schema/optional-key :callback-fn) (schema/pred ifn?)})
 
 (def WebserverServiceContext
   {:state     Atom
@@ -259,7 +260,11 @@
           (HttpClient. custom-ssl-ctxt-factory)
           (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
             (HttpClient. ssl-ctxt-factory)
-            (HttpClient.)))))))
+            (HttpClient.))))
+
+      (customizeProxyRequest [proxy-req req]
+        (if-let [callback-fn (:callback-fn options)]
+         (callback-fn proxy-req req))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -419,9 +424,11 @@
   `target` should be a map containing the keys :host, :port, and :path; where
   :path specifies the URL prefix to proxy to on the target host.
 
-  `options` may contain the keys :scheme (legal values are :orig, :http, and :https)
-  and :ssl-config (value may be :use-server-config or a map containing :ssl-ca-cert,
-  :ssl-cert, and :ssl-key).
+  `options` may contain the keys :scheme (legal values are :orig, :http, and
+  :https), :ssl-config (value may be :use-server-config or a map containing
+  :ssl-ca-cert, :ssl-cert, and :ssl-key), and :callback-fn (a function taking
+  two arguments, `[proxy-req req]`. For more information see
+  README.md/#callback-fn.)
   "
   [webserver-context :- WebserverServiceContext
    target :- ProxyTarget
