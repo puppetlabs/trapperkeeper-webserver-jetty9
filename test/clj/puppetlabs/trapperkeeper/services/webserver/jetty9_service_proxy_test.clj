@@ -15,7 +15,8 @@
          target-webserver#
          (fn [req#]
            (if (= "/hello/world" (:uri req#))
-             {:status 200 :body "Hello, World!"}
+             {:status 200 :body (str "Hello, World!"
+                                     ((:headers req#) "x-fancy-proxy-header"))}
              {:status 404 :body "D'oh"}))
          "/hello"))
      (with-app-with-config proxy-app#
@@ -155,4 +156,63 @@
           (is (= (:body response) "Hello, World!")))
         (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https-client)]
           (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!")))))))
+          (is (= (:body response) "Hello, World!")))))
+
+    (testing "basic http proxy support with callback function"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:callback-fn  (fn [proxy-req req]
+                                        (.header proxy-req "x-fancy-proxy-header" "!!!"))}}
+        (let [response (http-get "http://localhost:9000/hello/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get "http://localhost:10000/hello-proxy/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!!!!")))))
+
+    (testing "basic https proxy support (pass-through https config) with callback function"
+      (with-target-and-proxy-servers
+         {:target       (merge common-ssl-config
+                              {:ssl-host "0.0.0.0"
+                               :ssl-port 9001})
+         :proxy        (merge common-ssl-config
+                              {:ssl-host "0.0.0.0"
+                               :ssl-port 10001})
+         :proxy-config {:host "localhost"
+                        :port 9001
+                        :path "/hello"}
+         :proxy-opts   {:callback-fn  (fn [proxy-req req]
+                                        (.header proxy-req "x-fancy-proxy-header" "!!!"))}}
+        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https-client)]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!!!!")))))
+
+    (testing "http->https proxy support with explicit ssl config and callback function for proxy"
+      (with-target-and-proxy-servers
+        {:target       (merge common-ssl-config
+                              {:ssl-host    "0.0.0.0"
+                               :ssl-port    9000})
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:scheme       :https
+                        :ssl-config   common-ssl-config
+                        :callback-fn  (fn [proxy-req req]
+                                        (.header proxy-req "x-fancy-proxy-header" "!!!"))}}
+        (let [response (http-get "https://localhost:9000/hello/world" default-options-for-https-client)]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get "http://localhost:10000/hello-proxy/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!!!!")))))))

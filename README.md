@@ -218,6 +218,9 @@ route:
   a map, then the entries must point to the PEM files that should be used for the
   SSL context.  These keys have the same meaning as they do for the SSL configuration
   of the main web server.
+* `:callback-fn`: optional; a function to manipulate the request object (e.g.
+  to add additional headers) before Jetty continues on with the proxy. The
+  function must accept two arguments, `[proxy-req req]`.
 
 Simple example:
 
@@ -262,6 +265,28 @@ In this example, all incoming requests with a prefix of `foo` will be proxied
 to `https://localhost:10000/bar`.  We'll proxy using HTTPS even if the original
 request was HTTP, and we'll use the three pem files in `/tmp` to configure the
 HTTPS client, regardless of the SSL configuration of the main web server.
+
+An example with a callback function:
+
+```clj
+(defservice foo-service
+  [[:WebserverService add-proxy-route]]
+  (init [this context]
+    (add-proxy-route
+        {:host "localhost"
+         :port 10000
+         :path "/bar"}
+        "/foo"
+        {:callback-fn (fn [proxy-req req]
+          (.header proxy-req "x-example" "baz"))})
+    context))
+```
+
+In this example, all incoming requests with a prefix of `foo` will be proxied
+to `https://localhost:10000/bar`, using the same scheme (HTTP/HTTPS) that the
+original request used, and using the SSL context of the main webserver. In
+addition, a header `"x-example"` with the value `"baz"` will be added to the
+request before it is proxied.
 
 #### `override-webserver-settings!`
 
