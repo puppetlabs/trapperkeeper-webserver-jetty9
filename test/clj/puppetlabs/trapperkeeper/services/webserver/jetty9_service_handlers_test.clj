@@ -143,7 +143,13 @@
         (add-war-handler (str dev-resources-dir war) path-war)
         (add-proxy-route target path-proxy)
         (let [endpoints (get-registered-endpoints)]
-          (is (= endpoints #{"/foo" "/bar" "/ernie" "/bert" "0.0.0.0:9000/ernie proxy. Replaces prefix /baz"}))))))
+          (is (= endpoints #{{:type "Context Handler" :base-path dev-resources-dir
+                              :endpoint path-context}
+                             {:type "Ring Handler" :endpoint path-ring}
+                             {:type "Servlet Handler" :endpoint path-servlet}
+                             {:type "War Handler" :war (str dev-resources-dir war) :endpoint path-war}
+                             {:type "Proxy" :host "0.0.0.0" :port 9000
+                              :old-prefix path-proxy :new-prefix "/ernie"}}))))))
 
   (testing "Retrieve all endpoints with alternate versions of some handlers"
     (with-app-with-config app
@@ -166,4 +172,8 @@
         (add-servlet-handler servlet path-servlet {})
         (add-proxy-route target path-proxy {})
         (let [endpoints (get-registered-endpoints)]
-          (is (= endpoints #{"/foo" "/ernie" "localhost:10000/ernie proxy. Replaces prefix /baz"})))))))
+          (is (= endpoints #{{:type "Context Handler" :base-path dev-resources-dir
+                              :endpoint path-context}
+                             {:type "Servlet Handler" :endpoint path-servlet}
+                             {:type "Proxy" :host "localhost" :port 10000
+                              :old-prefix path-proxy :new-prefix "/ernie"}})))))))
