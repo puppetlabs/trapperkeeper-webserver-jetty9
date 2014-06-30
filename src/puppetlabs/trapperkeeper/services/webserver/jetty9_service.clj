@@ -7,6 +7,11 @@
     [puppetlabs.trapperkeeper.core :refer [defservice]]))
 
 
+(def context-type "Context Handler")
+(def ring-type "Ring Handler")
+(def servlet-type "Servlet Handler")
+(def war-type "War Handler")
+(def proxy-type "Proxy")
 ;; TODO: this should probably be moved to a separate jar that can be used as
 ;; a dependency for all webserver service implementations
 (defprotocol WebserverService
@@ -45,7 +50,7 @@
   (add-context-handler [this base-path context-path]
                        (let [s             ((service-context this) :jetty9-server)
                              state         (:state (:jetty9-server (service-context this)))
-                             endpoint-info {:type "Context Handler"
+                             endpoint-info {:type context-type
                                             :base-path base-path
                                             :endpoint  context-path}]
                          (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
@@ -54,7 +59,7 @@
   (add-context-handler [this base-path context-path context-listeners]
                        (let [s             ((service-context this) :jetty9-server)
                              state         (:state (:jetty9-server (service-context this)))
-                             endpoint-info {:type "Context Handler"
+                             endpoint-info {:type context-type
                                             :base-path base-path
                                             :endpoint  context-path}]
                          (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
@@ -63,7 +68,7 @@
   (add-ring-handler [this handler path]
                     (let [s             ((service-context this) :jetty9-server)
                           state         (:state (:jetty9-server (service-context this)))
-                          endpoint-info {:type "Ring Handler"
+                          endpoint-info {:type ring-type
                                          :endpoint path}]
                       (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
                       (core/add-ring-handler s handler path)))
@@ -71,7 +76,7 @@
   (add-servlet-handler [this servlet path]
                        (let [s             ((service-context this) :jetty9-server)
                              state         (:state (:jetty9-server (service-context this)))
-                             endpoint-info {:type "Servlet Handler"
+                             endpoint-info {:type servlet-type
                                             :endpoint path}]
                          (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
                          (core/add-servlet-handler s servlet path)))
@@ -79,7 +84,7 @@
   (add-servlet-handler [this servlet path servlet-init-params]
                        (let [s             ((service-context this) :jetty9-server)
                              state         (:state (:jetty9-server (service-context this)))
-                             endpoint-info {:type "Servlet Handler"
+                             endpoint-info {:type servlet-type
                                             :endpoint path}]
                          (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
                          (core/add-servlet-handler s servlet path servlet-init-params)))
@@ -87,7 +92,7 @@
   (add-war-handler [this war path]
                    (let [s             ((service-context this) :jetty9-server)
                          state         (:state (:jetty9-server (service-context this)))
-                         endpoint-info {:type "War Handler"
+                         endpoint-info {:type war-type
                                         :war war
                                         :endpoint path}]
                      (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
@@ -96,7 +101,7 @@
   (add-proxy-route [this target path]
                    (let [s             ((service-context this) :jetty9-server)
                          state         (:state (:jetty9-server (service-context this)))
-                         endpoint-info {:type "Proxy"
+                         endpoint-info {:type proxy-type
                                         :host (:host target)
                                         :port (:port target)
                                         :old-prefix path
@@ -107,7 +112,7 @@
   (add-proxy-route [this target path options]
                    (let [s             ((service-context this) :jetty9-server)
                          state         (:state (:jetty9-server (service-context this)))
-                         endpoint-info {:type "Proxy"
+                         endpoint-info {:type proxy-type
                                         :host (:host target)
                                         :port (:port target)
                                         :old-prefix path
