@@ -112,3 +112,58 @@
           (is (= (:status response) 200))
           (is (= (:body response)
                  "<html>\n<head><title>Hello World Servlet</title></head>\n<body>Hello World!!</body>\n</html>\n")))))))
+
+(deftest endpoints-test
+  (testing "Retrieve all endpoints"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s                        (get-service app :WebserverService)
+            path-context             "/ernie"
+            path-ring                "/bert"
+            path-servlet             "/foo"
+            path-war                 "/bar"
+            path-proxy               "/baz"
+            get-registered-endpoints (partial get-registered-endpoints s)
+            add-context-handler      (partial add-context-handler s)
+            add-ring-handler         (partial add-ring-handler s)
+            add-servlet-handler      (partial add-servlet-handler s)
+            add-war-handler          (partial add-war-handler s)
+            add-proxy-route          (partial add-proxy-route s)
+            ring-handler             (fn [req] {:status 200 :body "Hi world"})
+            body                     "This is a test"
+            servlet                  (SimpleServlet. body)
+            war                      "helloWorld.war"
+            target                   {:host "0.0.0.0"
+                                      :port 9000
+                                      :path "/ernie"}]
+        (add-context-handler dev-resources-dir path-context)
+        (add-ring-handler ring-handler path-ring)
+        (add-servlet-handler servlet path-servlet)
+        (add-war-handler (str dev-resources-dir war) path-war)
+        (add-proxy-route target path-proxy)
+        (let [endpoints (get-registered-endpoints)]
+          (is (= endpoints #{"/foo" "/bar" "/ernie" "/bert" "0.0.0.0:9000/ernie proxy. Replaces prefix /baz"}))))))
+
+  (testing "Retrieve all endpoints with alternate versions of some handlers"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s (get-service app :WebserverService)
+            path-context "/ernie"
+            path-servlet "/foo"
+            path-proxy "/baz"
+            get-registered-endpoints (partial get-registered-endpoints s)
+            add-context-handler (partial add-context-handler s)
+            add-servlet-handler (partial add-servlet-handler s)
+            add-proxy-route (partial add-proxy-route s)
+            body "This is a test"
+            servlet (SimpleServlet. body)
+            target {:host "localhost"
+                    :port 10000
+                    :path "/ernie"}]
+        (add-context-handler dev-resources-dir path-context [])
+        (add-servlet-handler servlet path-servlet {})
+        (add-proxy-route target path-proxy {})
+        (let [endpoints (get-registered-endpoints)]
+          (is (= endpoints #{"/foo" "/ernie" "localhost:10000/ernie proxy. Replaces prefix /baz"})))))))
