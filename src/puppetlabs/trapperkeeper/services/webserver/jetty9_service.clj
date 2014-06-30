@@ -39,6 +39,7 @@
                           (get-in-config [:jetty])
                           {})
                webserver (core/start-webserver! (:jetty9-server context) config)]
+           (swap! (:state (:jetty9-server context)) assoc :endpoints #{})
            (assoc context :jetty9-server webserver)))
 
   (stop [this context]

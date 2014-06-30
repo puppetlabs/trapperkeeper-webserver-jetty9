@@ -277,7 +277,7 @@
   []
   (let [^ContextHandlerCollection chc (ContextHandlerCollection.)]
     {:handlers chc
-     :state (atom {:endpoints #{}})
+     :state (atom {})
      :server nil}))
 
 ; TODO move out of public
