@@ -50,75 +50,75 @@
 
   (add-context-handler [this base-path context-path]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state (:jetty9-server (service-context this)))
+                             state         (:state s)
                              endpoint-info {:type context-type
                                             :base-path base-path
                                             :endpoint  context-path}]
-                         (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                         (swap! state update-in [:endpoints] (partial cons endpoint-info))
                          (core/add-context-handler s base-path context-path)))
 
   (add-context-handler [this base-path context-path context-listeners]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state (:jetty9-server (service-context this)))
+                             state         (:state s)
                              endpoint-info {:type context-type
                                             :base-path base-path
                                             :endpoint  context-path}]
-                         (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                         (swap! state update-in [:endpoints] (partial cons endpoint-info))
                          (core/add-context-handler s base-path context-path context-listeners)))
 
   (add-ring-handler [this handler path]
                     (let [s             ((service-context this) :jetty9-server)
-                          state         (:state (:jetty9-server (service-context this)))
+                          state         (:state s)
                           endpoint-info {:type ring-type
                                          :endpoint path}]
-                      (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                      (swap! state update-in [:endpoints] (partial cons endpoint-info))
                       (core/add-ring-handler s handler path)))
 
   (add-servlet-handler [this servlet path]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state (:jetty9-server (service-context this)))
+                             state         (:state s)
                              endpoint-info {:type servlet-type
                                             :endpoint path}]
-                         (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                         (swap! state update-in [:endpoints] (partial cons endpoint-info))
                          (core/add-servlet-handler s servlet path)))
 
   (add-servlet-handler [this servlet path servlet-init-params]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state (:jetty9-server (service-context this)))
+                             state         (:state s)
                              endpoint-info {:type servlet-type
                                             :endpoint path}]
-                         (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                         (swap! state update-in [:endpoints] (partial cons endpoint-info))
                          (core/add-servlet-handler s servlet path servlet-init-params)))
 
   (add-war-handler [this war path]
                    (let [s             ((service-context this) :jetty9-server)
-                         state         (:state (:jetty9-server (service-context this)))
+                         state         (:state s)
                          endpoint-info {:type war-type
                                         :war war
                                         :endpoint path}]
-                     (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                     (swap! state update-in [:endpoints] (partial cons endpoint-info))
                      (core/add-war-handler s war path)))
 
   (add-proxy-route [this target path]
                    (let [s             ((service-context this) :jetty9-server)
-                         state         (:state (:jetty9-server (service-context this)))
+                         state         (:state s)
                          endpoint-info {:type proxy-type
                                         :host (:host target)
                                         :port (:port target)
                                         :old-prefix path
                                         :new-prefix (:path target)}]
-                     (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                     (swap! state update-in [:endpoints] (partial cons endpoint-info))
                      (core/add-proxy-route s target path {})))
 
   (add-proxy-route [this target path options]
                    (let [s             ((service-context this) :jetty9-server)
-                         state         (:state (:jetty9-server (service-context this)))
+                         state         (:state s)
                          endpoint-info {:type proxy-type
                                         :host (:host target)
                                         :port (:port target)
                                         :old-prefix path
                                         :new-prefix (:path target)}]
-                     (swap! state assoc :endpoints (conj (:endpoints @state) endpoint-info))
+                     (swap! state update-in [:endpoints] (partial cons endpoint-info))
                      (core/add-proxy-route s target path options)))
 
   (override-webserver-settings! [this overrides]
