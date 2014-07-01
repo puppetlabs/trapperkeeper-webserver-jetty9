@@ -93,16 +93,6 @@
    :endpoint    schema/Str
    :target-path schema/Str})
 
-(def TestEndpoint
-  {:type schema/Keyword
-   :endpoint schema/Str
-   (schema/optional-key :base-path) schema/Str
-   (schema/optional-key :servlet) java.lang.Class
-   (schema/optional-key :war) schema/Str
-   (schema/optional-key :target-host) schema/Str
-   (schema/optional-key :target-port) schema/Int
-   (schema/optional-key :target-path) schema/Str})
-
 (def EndpointSet
   #{(schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)})
 
