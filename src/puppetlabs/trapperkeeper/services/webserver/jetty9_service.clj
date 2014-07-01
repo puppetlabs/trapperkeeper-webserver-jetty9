@@ -72,6 +72,7 @@
                        (let [s             ((service-context this) :jetty9-server)
                              state         (:state s)
                              endpoint-info {:type :servlet
+                                            :servlet (type servlet)
                                             :endpoint path}]
                          (swap! state update-in [:endpoints] conj endpoint-info)
                          (core/add-servlet-handler s servlet path)))
@@ -80,6 +81,7 @@
                        (let [s             ((service-context this) :jetty9-server)
                              state         (:state s)
                              endpoint-info {:type :servlet
+                                            :servlet (type servlet)
                                             :endpoint path}]
                          (swap! state update-in [:endpoints] conj endpoint-info)
                          (core/add-servlet-handler s servlet path servlet-init-params)))

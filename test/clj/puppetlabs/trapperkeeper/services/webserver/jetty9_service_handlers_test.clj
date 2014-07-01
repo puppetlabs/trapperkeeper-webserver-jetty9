@@ -146,7 +146,7 @@
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
                               :endpoint path-context}
                              {:type :ring :endpoint path-ring}
-                             {:type :servlet :endpoint path-servlet}
+                             {:type :servlet :servlet (type servlet) :endpoint path-servlet}
                              {:type :war :war (str dev-resources-dir war) :endpoint path-war}
                              {:type :proxy :host "0.0.0.0" :port 9000
                               :old-prefix path-proxy :new-prefix "/ernie"}}))))))
@@ -174,6 +174,6 @@
         (let [endpoints (get-registered-endpoints)]
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
                               :endpoint path-context}
-                             {:type :servlet :endpoint path-servlet}
+                             {:type :servlet :servlet (type servlet) :endpoint path-servlet}
                              {:type :proxy :host "localhost" :port 10000
                               :old-prefix path-proxy :new-prefix "/ernie"}})))))))
