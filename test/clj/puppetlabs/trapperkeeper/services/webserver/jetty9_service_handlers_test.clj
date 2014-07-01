@@ -5,7 +5,9 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [puppetlabs.trapperkeeper.testutils.logging
+             :refer [with-test-logging]]))
 
 (def dev-resources-dir        "./dev-resources/")
 
@@ -162,4 +164,19 @@
                              {:type :proxy :target-host "0.0.0.0" :target-port 9000
                               :endpoint path-proxy :target-path "/ernie"}
                              {:type :proxy :target-host "localhost" :target-port 10000
-                              :endpoint path-proxy :target-path "/kermit"}})))))))
+                              :endpoint path-proxy :target-path "/kermit"}}))))))
+
+  (testing "Log endpoints"
+    (with-test-logging
+      (with-app-with-config app
+        [jetty9-service]
+        jetty-plaintext-config
+        (let [s                        (get-service app :WebserverService)
+              log-registered-endpoints (partial log-registered-endpoints s)
+              add-ring-handler         (partial add-ring-handler s)
+              ring-handler             (fn [req] {:status 200 :body "Hi world"})
+              path-ring                "/bert"]
+          (add-ring-handler ring-handler path-ring)
+          (log-registered-endpoints)
+          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$"))
+          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$" :info)))))))

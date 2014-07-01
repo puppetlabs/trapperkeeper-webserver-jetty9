@@ -16,6 +16,7 @@
   (add-proxy-route [this target path] [this target path options])
   (override-webserver-settings! [this overrides])
   (get-registered-endpoints [this])
+  (log-registered-endpoints [this])
   (join [this]))
 
 (defservice jetty9-service
@@ -124,6 +125,9 @@
 
   (get-registered-endpoints [this]
                             (:endpoints @(:state (:jetty9-server (service-context this)))))
+
+  (log-registered-endpoints [this]
+                            (log/info (str (get-registered-endpoints this))))
 
   (join [this]
         (let [s ((service-context this) :jetty9-server)]
