@@ -124,7 +124,8 @@
                                                                      overrides)))
 
   (get-registered-endpoints [this]
-                            (:endpoints @(:state (:jetty9-server (service-context this)))))
+                            (let [s ((service-context this) :jetty9-server)]
+                              (core/get-registered-endpoints s)))
 
   (log-registered-endpoints [this]
                             (log/info (str (get-registered-endpoints this))))

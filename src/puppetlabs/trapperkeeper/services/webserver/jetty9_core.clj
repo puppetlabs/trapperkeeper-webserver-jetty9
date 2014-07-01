@@ -67,6 +67,45 @@
    :handlers  ContextHandlerCollection
    :server    (schema/maybe Server)})
 
+(def ContextEndpoint
+  {:type      schema/Keyword
+   :base-path schema/Str
+   :endpoint  schema/Str})
+
+(def RingEndpoint
+  {:type     schema/Keyword
+   :endpoint schema/Str})
+
+(def ServletEndpoint
+  {:type     schema/Keyword
+   :servlet  java.lang.Class
+   :endpoint schema/Str})
+
+(def WarEndpoint
+  {:type     schema/Keyword
+   :war      schema/Str
+   :endpoint schema/Str})
+
+(def ProxyEndpoint
+  {:type        schema/Keyword
+   :target-host schema/Str
+   :target-port schema/Int
+   :endpoint    schema/Str
+   :target-path schema/Str})
+
+(def TestEndpoint
+  {:type schema/Keyword
+   :endpoint schema/Str
+   (schema/optional-key :base-path) schema/Str
+   (schema/optional-key :servlet) java.lang.Class
+   (schema/optional-key :war) schema/Str
+   (schema/optional-key :target-host) schema/Str
+   (schema/optional-key :target-port) schema/Int
+   (schema/optional-key :target-path) schema/Str})
+
+(def EndpointSet
+  #{(schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
 
@@ -438,6 +477,32 @@
     (add-servlet-handler webserver-context
                          (proxy-servlet webserver-context target options)
                          path)))
+
+(schema/defn ^:always-validate
+   get-registered-endpoints :- EndpointSet
+   "Returns the registered endpoints as a set of maps. The type of the
+    endpoint determines what is returned by the map. Each map contains
+    the type of the endpoint under the :type key, and the endpoint
+    itself under the :endpoint key.
+
+    A map of type :context will also include the base-path of the
+    context-handler under the :base-path key.
+
+    A map of type :servlet will contain information on the type of the
+    servlet under the :servlet key.
+
+    A map of type :war will contain the path to the war under the
+    :war key.
+
+    A map of type :proxy will contain the host under the :target-host
+    key, the port under the :target-port key, the prefix to be
+    prepended under the :endpoint key, and the prefix from which you
+    want to proxy requests under the :target-path key.
+
+    A map of type :ring will have no additional information beyond
+    the type and the endpoint."
+   [webserver-context :- WebserverServiceContext]
+   (:endpoints @(:state webserver-context)))
 
 (schema/defn ^:always-validate
   override-webserver-settings! :- config/WebserverServiceRawConfig
