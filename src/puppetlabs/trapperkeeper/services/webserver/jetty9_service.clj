@@ -99,10 +99,10 @@
                    (let [s             ((service-context this) :jetty9-server)
                          state         (:state s)
                          endpoint-info {:type :proxy
-                                        :host (:host target)
-                                        :port (:port target)
-                                        :old-prefix path
-                                        :new-prefix (:path target)}]
+                                        :target-host (:host target)
+                                        :target-port (:port target)
+                                        :endpoint path
+                                        :target-path (:path target)}]
                      (swap! state update-in [:endpoints] conj endpoint-info)
                      (core/add-proxy-route s target path {})))
 
@@ -110,10 +110,10 @@
                    (let [s             ((service-context this) :jetty9-server)
                          state         (:state s)
                          endpoint-info {:type :proxy
-                                        :host (:host target)
-                                        :port (:port target)
-                                        :old-prefix path
-                                        :new-prefix (:path target)}]
+                                        :target-host (:host target)
+                                        :target-port (:port target)
+                                        :endpoint path
+                                        :target-path (:path target)}]
                      (swap! state update-in [:endpoints] conj endpoint-info)
                      (core/add-proxy-route s target path options)))
 

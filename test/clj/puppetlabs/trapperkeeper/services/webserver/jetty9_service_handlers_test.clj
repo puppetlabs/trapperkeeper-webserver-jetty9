@@ -138,42 +138,23 @@
                                       :port 9000
                                       :path "/ernie"}]
         (add-context-handler dev-resources-dir path-context)
+        (add-context-handler dev-resources-dir path-context [])
         (add-ring-handler ring-handler path-ring)
         (add-servlet-handler servlet path-servlet)
+        (add-servlet-handler servlet path-servlet {})
         (add-war-handler (str dev-resources-dir war) path-war)
         (add-proxy-route target path-proxy)
-        (let [endpoints (get-registered-endpoints)]
-          (is (= endpoints #{{:type :context :base-path dev-resources-dir
-                              :endpoint path-context}
-                             {:type :ring :endpoint path-ring}
-                             {:type :servlet :servlet (type servlet) :endpoint path-servlet}
-                             {:type :war :war (str dev-resources-dir war) :endpoint path-war}
-                             {:type :proxy :host "0.0.0.0" :port 9000
-                              :old-prefix path-proxy :new-prefix "/ernie"}}))))))
-
-  (testing "Retrieve all endpoints with alternate versions of some handlers"
-    (with-app-with-config app
-      [jetty9-service]
-      jetty-plaintext-config
-      (let [s (get-service app :WebserverService)
-            path-context "/ernie"
-            path-servlet "/foo"
-            path-proxy "/baz"
-            get-registered-endpoints (partial get-registered-endpoints s)
-            add-context-handler (partial add-context-handler s)
-            add-servlet-handler (partial add-servlet-handler s)
-            add-proxy-route (partial add-proxy-route s)
-            body "This is a test"
-            servlet (SimpleServlet. body)
-            target {:host "localhost"
-                    :port 10000
-                    :path "/ernie"}]
-        (add-context-handler dev-resources-dir path-context [])
-        (add-servlet-handler servlet path-servlet {})
         (add-proxy-route target path-proxy {})
         (let [endpoints (get-registered-endpoints)]
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
                               :endpoint path-context}
+                             {:type :context :base-path dev-resources-dir
+                              :endpoint path-context}
+                             {:type :ring :endpoint path-ring}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet}
-                             {:type :proxy :host "localhost" :port 10000
-                              :old-prefix path-proxy :new-prefix "/ernie"}})))))))
+                             {:type :servlet :servlet (type servlet) :endpoint path-servlet}
+                             {:type :war :war (str dev-resources-dir war) :endpoint path-war}
+                             {:type :proxy :target-host "0.0.0.0" :target-port 9000
+                              :endpoint path-proxy :target-path "/ernie"}
+                             {:type :proxy :target-host "localhost" :target-port 10000
+                              :endpoint path-proxy :target-path "/ernie"}})))))))
