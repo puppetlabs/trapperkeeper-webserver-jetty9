@@ -120,8 +120,10 @@
       jetty-plaintext-config
       (let [s                        (get-service app :WebserverService)
             path-context             "/ernie"
+            path-context2            "/gonzo"
             path-ring                "/bert"
             path-servlet             "/foo"
+            path-servlet2            "/misspiggy"
             path-war                 "/bar"
             path-proxy               "/baz"
             get-registered-endpoints (partial get-registered-endpoints s)
@@ -136,25 +138,28 @@
             war                      "helloWorld.war"
             target                   {:host "0.0.0.0"
                                       :port 9000
-                                      :path "/ernie"}]
+                                      :path "/ernie"}
+            target2                  {:host "localhost"
+                                      :port 10000
+                                      :path "/kermit"}]
         (add-context-handler dev-resources-dir path-context)
-        (add-context-handler dev-resources-dir path-context [])
+        (add-context-handler dev-resources-dir path-context2 [])
         (add-ring-handler ring-handler path-ring)
         (add-servlet-handler servlet path-servlet)
-        (add-servlet-handler servlet path-servlet {})
+        (add-servlet-handler servlet path-servlet2 {})
         (add-war-handler (str dev-resources-dir war) path-war)
         (add-proxy-route target path-proxy)
-        (add-proxy-route target path-proxy {})
+        (add-proxy-route target2 path-proxy {})
         (let [endpoints (get-registered-endpoints)]
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
                               :endpoint path-context}
                              {:type :context :base-path dev-resources-dir
-                              :endpoint path-context}
+                              :endpoint path-context2}
                              {:type :ring :endpoint path-ring}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet}
-                             {:type :servlet :servlet (type servlet) :endpoint path-servlet}
+                             {:type :servlet :servlet (type servlet) :endpoint path-servlet2}
                              {:type :war :war (str dev-resources-dir war) :endpoint path-war}
                              {:type :proxy :target-host "0.0.0.0" :target-port 9000
                               :endpoint path-proxy :target-path "/ernie"}
                              {:type :proxy :target-host "localhost" :target-port 10000
-                              :endpoint path-proxy :target-path "/ernie"}})))))))
+                              :endpoint path-proxy :target-path "/kermit"}})))))))
