@@ -160,7 +160,7 @@
                              {:type :ring :endpoint path-ring}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet2}
-                             {:type :war :war (str dev-resources-dir war) :endpoint path-war}
+                             {:type :war :war-path (str dev-resources-dir war) :endpoint path-war}
                              {:type :proxy :target-host "0.0.0.0" :target-port 9000
                               :endpoint path-proxy :target-path "/ernie"}
                              {:type :proxy :target-host "localhost" :target-port 10000

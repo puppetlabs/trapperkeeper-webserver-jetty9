@@ -68,32 +68,32 @@
    :server    (schema/maybe Server)})
 
 (def ContextEndpoint
-  {:type      schema/Keyword
+  {:type      (schema/eq :context)
    :base-path schema/Str
    :endpoint  schema/Str})
 
 (def RingEndpoint
-  {:type     schema/Keyword
+  {:type     (schema/eq :ring)
    :endpoint schema/Str})
 
 (def ServletEndpoint
-  {:type     schema/Keyword
+  {:type     (schema/eq :servlet)
    :servlet  java.lang.Class
    :endpoint schema/Str})
 
 (def WarEndpoint
-  {:type     schema/Keyword
-   :war      schema/Str
+  {:type     (schema/eq :war)
+   :war-path schema/Str
    :endpoint schema/Str})
 
 (def ProxyEndpoint
-  {:type        schema/Keyword
+  {:type        (schema/eq :proxy)
    :target-host schema/Str
    :target-port schema/Int
    :endpoint    schema/Str
    :target-path schema/Str})
 
-(def EndpointSet
+(def RegisteredEndpoints
   #{(schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -469,28 +469,28 @@
                          path)))
 
 (schema/defn ^:always-validate
-   get-registered-endpoints :- EndpointSet
-   "Returns the registered endpoints as a set of maps. The type of the
-    endpoint determines what is returned by the map. Each map contains
-    the type of the endpoint under the :type key, and the endpoint
-    itself under the :endpoint key.
+   get-registered-endpoints :- RegisteredEndpoints
+   "Returns the registered endpoints. Each endpoint is registered upon
+    creation as a map of endpoint information. The type of the
+    endpoint determines what is contained in that endpoint's map of
+    endpoint information. Each map contains the type of the endpoint
+    under the :type key, and the endpoint itself under the :endpoint
+    key.
 
-    A map of type :context will also include the base-path of the
-    context-handler under the :base-path key.
+    When the value of :type is :context, the endpoint information will
+    be an instance of ContextEndpoint.
 
-    A map of type :servlet will contain information on the type of the
-    servlet under the :servlet key.
+    When the value of :type is :ring, the endpoint information will be
+    an instance of RingEndpoint.
 
-    A map of type :war will contain the path to the war under the
-    :war key.
+    When the value of :type is :servlet, the endpoint information will
+    be an instance of ServletEndpoint.
 
-    A map of type :proxy will contain the host under the :target-host
-    key, the port under the :target-port key, the prefix to be
-    prepended under the :endpoint key, and the prefix from which you
-    want to proxy requests under the :target-path key.
+    When the value of :type is :war, the endpoint information will be
+    an instance of WarEndpoint.
 
-    A map of type :ring will have no additional information beyond
-    the type and the endpoint."
+    When the value of :type is :proxy, the endpoint information will be
+    an instance of ProxyEndpoint."
    [webserver-context :- WebserverServiceContext]
    (:endpoints @(:state webserver-context)))
 

@@ -91,7 +91,7 @@
                    (let [s             ((service-context this) :jetty9-server)
                          state         (:state s)
                          endpoint-info {:type :war
-                                        :war war
+                                        :war-path war
                                         :endpoint path}]
                      (swap! state update-in [:endpoints] conj endpoint-info)
                      (core/add-war-handler s war path)))
