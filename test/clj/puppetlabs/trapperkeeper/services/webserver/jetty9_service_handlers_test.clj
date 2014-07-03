@@ -5,7 +5,9 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [puppetlabs.trapperkeeper.testutils.logging
+             :refer [with-test-logging]]))
 
 (def dev-resources-dir        "./dev-resources/")
 
@@ -112,3 +114,78 @@
           (is (= (:status response) 200))
           (is (= (:body response)
                  "<html>\n<head><title>Hello World Servlet</title></head>\n<body>Hello World!!</body>\n</html>\n")))))))
+
+(deftest endpoints-test
+  (testing "Retrieve all endpoints"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s                        (get-service app :WebserverService)
+            path-context             "/ernie"
+            path-context2            "/gonzo"
+            path-context3            "/goblinking"
+            path-ring                "/bert"
+            path-servlet             "/foo"
+            path-servlet2            "/misspiggy"
+            path-war                 "/bar"
+            path-proxy               "/baz"
+            get-registered-endpoints (partial get-registered-endpoints s)
+            add-context-handler      (partial add-context-handler s)
+            add-ring-handler         (partial add-ring-handler s)
+            add-servlet-handler      (partial add-servlet-handler s)
+            add-war-handler          (partial add-war-handler s)
+            add-proxy-route          (partial add-proxy-route s)
+            ring-handler             (fn [req] {:status 200 :body "Hi world"})
+            body                     "This is a test"
+            servlet                  (SimpleServlet. body)
+            context-listeners        [(reify ServletContextListener
+                                        (contextInitialized [this event]
+                                          (doto (.addServlet (.getServletContext event) "simple" servlet)
+                                            (.addMapping (into-array [path-servlet]))))
+                                        (contextDestroyed [this event]))]
+            war                      "helloWorld.war"
+            target                   {:host "0.0.0.0"
+                                      :port 9000
+                                      :path "/ernie"}
+            target2                  {:host "localhost"
+                                      :port 10000
+                                      :path "/kermit"}]
+        (add-context-handler dev-resources-dir path-context)
+        (add-context-handler dev-resources-dir path-context2 [])
+        (add-context-handler dev-resources-dir path-context3 context-listeners)
+        (add-ring-handler ring-handler path-ring)
+        (add-servlet-handler servlet path-servlet)
+        (add-servlet-handler servlet path-servlet2 {})
+        (add-war-handler (str dev-resources-dir war) path-war)
+        (add-proxy-route target path-proxy)
+        (add-proxy-route target2 path-proxy {})
+        (let [endpoints (get-registered-endpoints)]
+          (is (= endpoints #{{:type :context :base-path dev-resources-dir
+                              :endpoint path-context}
+                             {:type :context :base-path dev-resources-dir
+                              :context-listeners [] :endpoint path-context2}
+                             {:type :context :base-path dev-resources-dir
+                              :context-listeners context-listeners :endpoint path-context3}
+                             {:type :ring :endpoint path-ring}
+                             {:type :servlet :servlet (type servlet) :endpoint path-servlet}
+                             {:type :servlet :servlet (type servlet) :endpoint path-servlet2}
+                             {:type :war :war-path (str dev-resources-dir war) :endpoint path-war}
+                             {:type :proxy :target-host "0.0.0.0" :target-port 9000
+                              :endpoint path-proxy :target-path "/ernie"}
+                             {:type :proxy :target-host "localhost" :target-port 10000
+                              :endpoint path-proxy :target-path "/kermit"}}))))))
+
+  (testing "Log endpoints"
+    (with-test-logging
+      (with-app-with-config app
+        [jetty9-service]
+        jetty-plaintext-config
+        (let [s                        (get-service app :WebserverService)
+              log-registered-endpoints (partial log-registered-endpoints s)
+              add-ring-handler         (partial add-ring-handler s)
+              ring-handler             (fn [req] {:status 200 :body "Hi world"})
+              path-ring                "/bert"]
+          (add-ring-handler ring-handler path-ring)
+          (log-registered-endpoints)
+          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$"))
+          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$" :info)))))))

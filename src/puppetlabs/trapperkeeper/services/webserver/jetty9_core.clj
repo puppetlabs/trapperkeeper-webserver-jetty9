@@ -67,6 +67,36 @@
    :handlers  ContextHandlerCollection
    :server    (schema/maybe Server)})
 
+(def ContextEndpoint
+  {:type                                    (schema/eq :context)
+   :base-path                               schema/Str
+   (schema/optional-key :context-listeners) (schema/maybe [ServletContextListener])
+   :endpoint                                schema/Str})
+
+(def RingEndpoint
+  {:type     (schema/eq :ring)
+   :endpoint schema/Str})
+
+(def ServletEndpoint
+  {:type     (schema/eq :servlet)
+   :servlet  java.lang.Class
+   :endpoint schema/Str})
+
+(def WarEndpoint
+  {:type     (schema/eq :war)
+   :war-path schema/Str
+   :endpoint schema/Str})
+
+(def ProxyEndpoint
+  {:type        (schema/eq :proxy)
+   :target-host schema/Str
+   :target-port schema/Int
+   :endpoint    schema/Str
+   :target-path schema/Str})
+
+(def RegisteredEndpoints
+  #{(schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
 
@@ -266,6 +296,13 @@
         (if-let [callback-fn (:callback-fn options)]
          (callback-fn proxy-req req))))))
 
+(schema/defn ^:always-validate
+  register-endpoint!
+  [state :- Atom
+   endpoint :-
+      (schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)]
+  (swap! state update-in [:endpoints] conj endpoint))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -438,6 +475,32 @@
     (add-servlet-handler webserver-context
                          (proxy-servlet webserver-context target options)
                          path)))
+
+(schema/defn ^:always-validate
+   get-registered-endpoints :- RegisteredEndpoints
+   "Returns the registered endpoints. Each endpoint is registered upon
+    creation as a map of endpoint information. The type of the
+    endpoint determines what is contained in that endpoint's map of
+    endpoint information. Each map contains the type of the endpoint
+    under the :type key, and the endpoint itself under the :endpoint
+    key.
+
+    When the value of :type is :context, the endpoint information will
+    be an instance of ContextEndpoint.
+
+    When the value of :type is :ring, the endpoint information will be
+    an instance of RingEndpoint.
+
+    When the value of :type is :servlet, the endpoint information will
+    be an instance of ServletEndpoint.
+
+    When the value of :type is :war, the endpoint information will be
+    an instance of WarEndpoint.
+
+    When the value of :type is :proxy, the endpoint information will be
+    an instance of ProxyEndpoint."
+   [webserver-context :- WebserverServiceContext]
+   (:endpoints @(:state webserver-context)))
 
 (schema/defn ^:always-validate
   override-webserver-settings! :- config/WebserverServiceRawConfig
