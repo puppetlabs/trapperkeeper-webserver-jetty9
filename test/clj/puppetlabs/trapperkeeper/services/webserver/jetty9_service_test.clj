@@ -252,6 +252,7 @@
   (-> (tk-app/get-service app :WebserverService)
       (tk-services/service-context)
       (:jetty9-server)
+      (:default)
       (:server)))
 
 (deftest jetty-and-dependent-service-shutdown-after-service-error

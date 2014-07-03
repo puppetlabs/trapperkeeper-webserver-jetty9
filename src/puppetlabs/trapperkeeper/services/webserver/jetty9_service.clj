@@ -25,7 +25,7 @@
   [[:ConfigService get-in-config]]
   (init [this context]
         (log/info "Initializing web server.")
-        (assoc context :jetty9-server (core/initialize-context)))
+        (assoc context :jetty9-server {:default (core/initialize-context)}))
 
   (start [this context]
          (log/info "Starting web server.")
@@ -33,18 +33,18 @@
                           ;; Here for backward compatibility with existing projects
                           (get-in-config [:jetty])
                           {})
-               webserver (core/start-webserver! (:jetty9-server context) config)]
-           (swap! (:state (:jetty9-server context)) assoc :endpoints #{})
-           (assoc context :jetty9-server webserver)))
+               webserver (core/start-webserver! (:default (:jetty9-server context)) config)]
+           (swap! (:state (:default (:jetty9-server context))) assoc :endpoints #{})
+           (assoc context :jetty9-server (assoc (:jetty9-server context) :default webserver))))
 
   (stop [this context]
         (log/info "Shutting down web server.")
-        (if-let [server (:jetty9-server context)]
+        (if-let [server (:default (:jetty9-server context))]
           (core/shutdown server))
         context)
 
   (add-context-handler [this base-path context-path]
-                       (let [s             ((service-context this) :jetty9-server)
+                       (let [s             (:default ((service-context this) :jetty9-server))
                              state         (:state s)
                              endpoint      {:type      :context
                                             :base-path base-path
@@ -53,7 +53,7 @@
                          (core/add-context-handler s base-path context-path)))
 
   (add-context-handler [this base-path context-path context-listeners]
-                       (let [s             ((service-context this) :jetty9-server)
+                       (let [s             (:default ((service-context this) :jetty9-server))
                              state         (:state s)
                              endpoint      {:type              :context
                                             :base-path         base-path
@@ -63,7 +63,7 @@
                          (core/add-context-handler s base-path context-path context-listeners)))
 
   (add-ring-handler [this handler path]
-                    (let [s             ((service-context this) :jetty9-server)
+                    (let [s             (:default ((service-context this) :jetty9-server))
                           state         (:state s)
                           endpoint      {:type     :ring
                                          :endpoint path}]
@@ -71,7 +71,7 @@
                       (core/add-ring-handler s handler path)))
 
   (add-servlet-handler [this servlet path]
-                       (let [s             ((service-context this) :jetty9-server)
+                       (let [s             (:default ((service-context this) :jetty9-server))
                              state         (:state s)
                              endpoint      {:type    :servlet
                                             :servlet (type servlet)
@@ -80,7 +80,7 @@
                          (core/add-servlet-handler s servlet path)))
 
   (add-servlet-handler [this servlet path servlet-init-params]
-                       (let [s             ((service-context this) :jetty9-server)
+                       (let [s             (:default ((service-context this) :jetty9-server))
                              state         (:state s)
                              endpoint      {:type    :servlet
                                             :servlet (type servlet)
@@ -89,7 +89,7 @@
                          (core/add-servlet-handler s servlet path servlet-init-params)))
 
   (add-war-handler [this war path]
-                   (let [s             ((service-context this) :jetty9-server)
+                   (let [s             (:default ((service-context this) :jetty9-server))
                          state         (:state s)
                          endpoint      {:type     :war
                                         :war-path war
@@ -98,7 +98,7 @@
                      (core/add-war-handler s war path)))
 
   (add-proxy-route [this target path]
-                   (let [s             ((service-context this) :jetty9-server)
+                   (let [s             (:default ((service-context this) :jetty9-server))
                          state         (:state s)
                          endpoint      {:type        :proxy
                                         :target-host (:host target)
@@ -109,7 +109,7 @@
                      (core/add-proxy-route s target path {})))
 
   (add-proxy-route [this target path options]
-                   (let [s             ((service-context this) :jetty9-server)
+                   (let [s             (:default ((service-context this) :jetty9-server))
                          state         (:state s)
                          endpoint      {:type        :proxy
                                         :target-host (:host target)
@@ -120,17 +120,17 @@
                      (core/add-proxy-route s target path options)))
 
   (override-webserver-settings! [this overrides]
-                                (let [s ((service-context this) :jetty9-server)]
+                                (let [s (:default ((service-context this) :jetty9-server))]
                                   (core/override-webserver-settings! s
                                                                      overrides)))
 
   (get-registered-endpoints [this]
-                            (let [s ((service-context this) :jetty9-server)]
+                            (let [s (:default ((service-context this) :jetty9-server))]
                               (core/get-registered-endpoints s)))
 
   (log-registered-endpoints [this]
                             (log/info (str (get-registered-endpoints this))))
 
   (join [this]
-        (let [s ((service-context this) :jetty9-server)]
+        (let [s (:default ((service-context this) :jetty9-server))]
           (core/join s))))
