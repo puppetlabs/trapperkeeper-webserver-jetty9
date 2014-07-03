@@ -159,7 +159,7 @@
         (add-war-handler (str dev-resources-dir war) path-war)
         (add-proxy-route target path-proxy)
         (add-proxy-route target2 path-proxy {})
-        (let [endpoints (get-registered-endpoints)]
+        (let [endpoints (get-registered-endpoints :default)]
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
                               :endpoint path-context}
                              {:type :context :base-path dev-resources-dir
@@ -186,6 +186,6 @@
               ring-handler             (fn [req] {:status 200 :body "Hi world"})
               path-ring                "/bert"]
           (add-ring-handler ring-handler path-ring)
-          (log-registered-endpoints)
+          (log-registered-endpoints :default)
           (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$"))
           (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$" :info)))))))
