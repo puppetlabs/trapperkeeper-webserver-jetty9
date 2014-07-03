@@ -45,50 +45,77 @@
 
   (add-context-handler [this base-path context-path]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state s)]
-                         (core/register-endpoint state :context context-path base-path)
+                             state         (:state s)
+                             endpoint      {:type      :context
+                                            :base-path base-path
+                                            :endpoint  context-path}]
+                         (core/register-endpoint! state endpoint)
                          (core/add-context-handler s base-path context-path)))
 
   (add-context-handler [this base-path context-path context-listeners]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state s)]
-                         (core/register-endpoint state :context context-path base-path)
+                             state         (:state s)
+                             endpoint      {:type      :context
+                                            :base-path base-path
+                                            :endpoint  context-path}]
+                         (core/register-endpoint! state endpoint)
                          (core/add-context-handler s base-path context-path context-listeners)))
 
   (add-ring-handler [this handler path]
                     (let [s             ((service-context this) :jetty9-server)
-                          state         (:state s)]
-                      (core/register-endpoint state :ring path)
+                          state         (:state s)
+                          endpoint      {:type     :ring
+                                         :endpoint path}]
+                      (core/register-endpoint! state endpoint)
                       (core/add-ring-handler s handler path)))
 
   (add-servlet-handler [this servlet path]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state s)]
-                         (core/register-endpoint state :servlet path (type servlet))
+                             state         (:state s)
+                             endpoint      {:type    :servlet
+                                            :servlet (type servlet)
+                                            :endpoint path}]
+                         (core/register-endpoint! state endpoint)
                          (core/add-servlet-handler s servlet path)))
 
   (add-servlet-handler [this servlet path servlet-init-params]
                        (let [s             ((service-context this) :jetty9-server)
-                             state         (:state s)]
-                         (core/register-endpoint state :servlet path (type servlet))
+                             state         (:state s)
+                             endpoint      {:type    :servlet
+                                            :servlet (type servlet)
+                                            :endpoint path}]
+                         (core/register-endpoint! state endpoint)
                          (core/add-servlet-handler s servlet path servlet-init-params)))
 
   (add-war-handler [this war path]
                    (let [s             ((service-context this) :jetty9-server)
-                         state         (:state s)]
-                     (core/register-endpoint state :war path war)
+                         state         (:state s)
+                         endpoint      {:type     :war
+                                        :war-path war
+                                        :endpoint path}]
+                     (core/register-endpoint! state endpoint)
                      (core/add-war-handler s war path)))
 
   (add-proxy-route [this target path]
                    (let [s             ((service-context this) :jetty9-server)
-                         state         (:state s)]
-                     (core/register-endpoint state :proxy path target)
+                         state         (:state s)
+                         endpoint      {:type        :proxy
+                                        :target-host (:host target)
+                                        :target-port (:port target)
+                                        :target-path (:path target)
+                                        :endpoint     path}]
+                     (core/register-endpoint! state endpoint)
                      (core/add-proxy-route s target path {})))
 
   (add-proxy-route [this target path options]
                    (let [s             ((service-context this) :jetty9-server)
-                         state         (:state s)]
-                     (core/register-endpoint state :proxy path target)
+                         state         (:state s)
+                         endpoint      {:type        :proxy
+                                        :target-host (:host target)
+                                        :target-port (:port target)
+                                        :target-path (:path target)
+                                        :endpoint     path}]
+                     (core/register-endpoint! state endpoint)
                      (core/add-proxy-route s target path options)))
 
   (override-webserver-settings! [this overrides]

@@ -296,22 +296,11 @@
          (callback-fn proxy-req req))))))
 
 (schema/defn ^:always-validate
-  register-endpoint
+  register-endpoint!
   [state :- Atom
-   type :- schema/Keyword
-   path :- schema/Str
-   & more]
-  (let [additional    (first more)
-        endpoint-init (condp = type
-                        :context {:base-path additional}
-                        :ring {}
-                        :servlet {:servlet additional}
-                        :war {:war-path additional}
-                        :proxy {:target-host (:host additional)
-                                :target-port (:port additional)
-                                :target-path (:path additional)})
-        endpoint-final (assoc endpoint-init :endpoint path :type type )]
-    (swap! state update-in [:endpoints] conj endpoint-final)))
+   endpoint :-
+      (schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)]
+  (swap! state update-in [:endpoints] conj endpoint))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
