@@ -251,7 +251,7 @@
   [app]
   (-> (tk-app/get-service app :WebserverService)
       (tk-services/service-context)
-      (:jetty9-server)
+      (:jetty9-servers)
       (:default)
       (:server)))
 
