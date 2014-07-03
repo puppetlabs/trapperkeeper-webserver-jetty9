@@ -156,7 +156,7 @@
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
                               :endpoint path-context}
                              {:type :context :base-path dev-resources-dir
-                              :endpoint path-context2}
+                              :context-listeners [] :endpoint path-context2}
                              {:type :ring :endpoint path-ring}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet2}

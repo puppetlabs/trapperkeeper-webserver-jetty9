@@ -55,9 +55,10 @@
   (add-context-handler [this base-path context-path context-listeners]
                        (let [s             ((service-context this) :jetty9-server)
                              state         (:state s)
-                             endpoint      {:type      :context
-                                            :base-path base-path
-                                            :endpoint  context-path}]
+                             endpoint      {:type              :context
+                                            :base-path         base-path
+                                            :context-listeners context-listeners
+                                            :endpoint          context-path}]
                          (core/register-endpoint! state endpoint)
                          (core/add-context-handler s base-path context-path context-listeners)))
 

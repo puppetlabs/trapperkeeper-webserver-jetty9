@@ -68,9 +68,10 @@
    :server    (schema/maybe Server)})
 
 (def ContextEndpoint
-  {:type      (schema/eq :context)
-   :base-path schema/Str
-   :endpoint  schema/Str})
+  {:type                                    (schema/eq :context)
+   :base-path                               schema/Str
+   (schema/optional-key :context-listeners) (schema/maybe [ServletContextListener])
+   :endpoint                                schema/Str})
 
 (def RingEndpoint
   {:type     (schema/eq :ring)
