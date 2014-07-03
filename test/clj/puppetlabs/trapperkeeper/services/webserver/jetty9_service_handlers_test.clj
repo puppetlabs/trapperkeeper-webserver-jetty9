@@ -123,6 +123,7 @@
       (let [s                        (get-service app :WebserverService)
             path-context             "/ernie"
             path-context2            "/gonzo"
+            path-context3            "/goblinking"
             path-ring                "/bert"
             path-servlet             "/foo"
             path-servlet2            "/misspiggy"
@@ -137,6 +138,11 @@
             ring-handler             (fn [req] {:status 200 :body "Hi world"})
             body                     "This is a test"
             servlet                  (SimpleServlet. body)
+            context-listeners        [(reify ServletContextListener
+                                        (contextInitialized [this event]
+                                          (doto (.addServlet (.getServletContext event) "simple" servlet)
+                                            (.addMapping (into-array [path-servlet]))))
+                                        (contextDestroyed [this event]))]
             war                      "helloWorld.war"
             target                   {:host "0.0.0.0"
                                       :port 9000
@@ -146,6 +152,7 @@
                                       :path "/kermit"}]
         (add-context-handler dev-resources-dir path-context)
         (add-context-handler dev-resources-dir path-context2 [])
+        (add-context-handler dev-resources-dir path-context3 context-listeners)
         (add-ring-handler ring-handler path-ring)
         (add-servlet-handler servlet path-servlet)
         (add-servlet-handler servlet path-servlet2 {})
@@ -157,6 +164,8 @@
                               :endpoint path-context}
                              {:type :context :base-path dev-resources-dir
                               :context-listeners [] :endpoint path-context2}
+                             {:type :context :base-path dev-resources-dir
+                              :context-listeners context-listeners :endpoint path-context3}
                              {:type :ring :endpoint path-ring}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet2}
