@@ -30,7 +30,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
-(def WebserverServiceRawConfig
+(def WebserverRawConfig
   {(schema/optional-key :port)            schema/Int
    (schema/optional-key :host)            schema/Str
    (schema/optional-key :max-threads)     schema/Int
@@ -83,7 +83,7 @@
     (schema/pred #(contains? % :http) 'has-http-connector?)
     (schema/pred #(contains? % :https) 'has-https-connector?)))
 
-(def WebserverServiceConfig
+(def WebserverConfig
   (schema/both
     HasConnector
     {(schema/optional-key :http)  WebserverConnector
@@ -95,7 +95,7 @@
 
 (schema/defn ^:always-validate
   maybe-get-pem-config! :- (schema/maybe WebserverSslPemConfig)
-  [config :- WebserverServiceRawConfig]
+  [config :- WebserverRawConfig]
   (let [pem-required-keys [:ssl-key :ssl-cert :ssl-ca-cert]
         pem-config (select-keys config pem-required-keys)]
     (condp = (count pem-config)
@@ -119,7 +119,7 @@
 
 (schema/defn ^:always-validate
   warn-if-keystore-ssl-configs-found!
-  [config :- WebserverServiceRawConfig]
+  [config :- WebserverRawConfig]
   (let [keystore-ssl-config-keys [:keystore :truststore :key-password :trust-password]
         keystore-ssl-config (select-keys config keystore-ssl-config-keys)]
     (when (pos? (count keystore-ssl-config))
@@ -129,7 +129,7 @@
 (schema/defn ^:always-validate
   get-jks-keystore-config! :- WebserverSslKeystoreConfig
   [{:keys [truststore keystore key-password trust-password]}
-      :- WebserverServiceRawConfig]
+      :- WebserverRawConfig]
   (when (some nil? [truststore keystore key-password trust-password])
     (throw (IllegalArgumentException.
              (str "Missing some SSL configuration; must provide either :ssl-cert, "
@@ -146,7 +146,7 @@
 
 (schema/defn ^:always-validate
   get-keystore-config! :- WebserverSslKeystoreConfig
-  [config :- WebserverServiceRawConfig]
+  [config :- WebserverRawConfig]
   (if-let [pem-config (maybe-get-pem-config! config)]
     (do
       (warn-if-keystore-ssl-configs-found! config)
@@ -155,7 +155,7 @@
 
 (schema/defn ^:always-validate
   get-client-auth! :- WebserverSslClientAuth
-  [config :- WebserverServiceRawConfig]
+  [config :- WebserverRawConfig]
   (let [client-auth (:client-auth config)]
     (cond
       (nil? client-auth) :need
@@ -168,7 +168,7 @@
 
 (schema/defn ^:always-validate
   get-ssl-crl-path! :- (schema/maybe schema/Str)
-  [config :- WebserverServiceRawConfig]
+  [config :- WebserverRawConfig]
   (if-let [ssl-crl-path (:ssl-crl-path config)]
     (if (fs/readable? ssl-crl-path)
       ssl-crl-path
@@ -179,14 +179,14 @@
 
 (schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
-  [config :- WebserverServiceRawConfig]
+  [config :- WebserverRawConfig]
   (if (some #(contains? config %) #{:port :host})
     {:host (or (:host config) default-host)
      :port (or (:port config) default-http-port)}))
 
 (schema/defn ^:always-validate
   maybe-get-https-connector :- (schema/maybe WebserverSslConnector)
-  [config :- WebserverServiceRawConfig]
+  [config :- WebserverRawConfig]
   (if (some #(contains? config %) #{:ssl-port :ssl-host})
     {:host (or (:ssl-host config) default-host)
      :port (or (:ssl-port config) default-https-port)
@@ -199,7 +199,7 @@
 (schema/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector
                                schema/Keyword              schema/Any}
-  [acc config :- WebserverServiceRawConfig]
+  [acc config :- WebserverRawConfig]
   (if-let [http-connector (maybe-get-http-connector config)]
     (assoc acc :http http-connector)
     acc))
@@ -207,7 +207,7 @@
 (schema/defn ^:always-validate
   maybe-add-https-connector :- {(schema/optional-key :https) WebserverSslConnector
                                 schema/Keyword              schema/Any}
-  [acc config :- WebserverServiceRawConfig]
+  [acc config :- WebserverRawConfig]
   (if-let [https-connector (maybe-get-https-connector config)]
     (assoc acc :https https-connector)
     acc))
@@ -216,8 +216,8 @@
 ;;; Public
 
 (schema/defn ^:always-validate
-  process-config :- WebserverServiceConfig
-  [config :- WebserverServiceRawConfig]
+  process-config :- WebserverConfig
+  [config :- WebserverRawConfig]
   (let [result (-> {}
                    (maybe-add-http-connector config)
                    (maybe-add-https-connector config)

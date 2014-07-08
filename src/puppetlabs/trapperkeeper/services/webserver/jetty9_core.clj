@@ -111,11 +111,11 @@
   (instance? Server (:server webserver-context)))
 
 (schema/defn ^:always-validate
-  merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
+  merge-webserver-overrides-with-options :- config/WebserverRawConfig
   "Merge any overrides made to the webserver config settings with the supplied
    options."
   [webserver-context :- ServerContext
-   options :- config/WebserverServiceRawConfig]
+   options :- config/WebserverRawConfig]
   (let [overrides (:overrides (swap! (:state webserver-context)
                                      assoc
                                      :overrides-read-by-webserver
@@ -190,7 +190,7 @@
   create-server :- Server
   "Construct a Jetty Server instance."
   [webserver-context :- ServerContext
-   config :- config/WebserverServiceConfig]
+   config :- config/WebserverConfig]
   (let [server (Server. (QueuedThreadPool. (:max-threads config)))]
     (when (:http config)
       (let [connector (plaintext-connector server (:http config))]
@@ -319,11 +319,11 @@
 
 ; TODO move out of public
 (schema/defn ^:always-validate
-  merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
+  merge-webserver-overrides-with-options :- config/WebserverRawConfig
   "Merge any overrides made to the webserver config settings with the supplied
    options."
   [webserver-context :- ServerContext
-   options :- config/WebserverServiceRawConfig]
+   options :- config/WebserverRawConfig]
   {:post [(map? %)]}
   (let [overrides (:overrides (swap! (:state webserver-context)
                                      assoc
@@ -370,7 +370,7 @@
     :cipher-suites - list of cryptographic ciphers to allow for incoming SSL connections
     :ssl-protocols - list of protocols to allow for incoming SSL connections"
   [webserver-context :- ServerContext
-   options :- config/WebserverServiceRawConfig]
+   options :- config/WebserverRawConfig]
   {:pre  [(map? options)]
    :post [(started? %)]}
     (let [config                (config/process-config
@@ -387,7 +387,7 @@
   "Creates and starts a webserver.  Returns an updated context map containing
   the Server object."
   [webserver-context :- ServerContext
-   config :- config/WebserverServiceRawConfig]
+   config :- config/WebserverRawConfig]
   (let [webserver-context (create-webserver webserver-context config)]
     (log/info "Starting web server.")
     (try
@@ -503,7 +503,7 @@
    (:endpoints @(:state webserver-context)))
 
 (schema/defn ^:always-validate
-  override-webserver-settings! :- config/WebserverServiceRawConfig
+  override-webserver-settings! :- config/WebserverRawConfig
   "Override the settings in the webserver section of the service's config file
    with the set of options in the supplied overrides map.
 
@@ -548,7 +548,7 @@
    call has already been made to this function (e.g., from other service),
    a java.lang.IllegalStateException will be thrown."
   [webserver-context :- ServerContext
-   overrides :- config/WebserverServiceRawConfig]
+   overrides :- config/WebserverRawConfig]
   ; Might be worth considering an implementation that only fails if the caller
   ; is trying to override a specific option that has been overridden already
   ; rather than blindly failing if an attempt is made to override any option.

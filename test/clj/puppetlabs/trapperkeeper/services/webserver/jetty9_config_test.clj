@@ -36,7 +36,7 @@
            (update-in [:https] dissoc :keystore-config)))))
 
 (deftest process-config-test
-  (testing "process-config successfully builds a WebserverServiceConfig for plaintext connector"
+  (testing "process-config successfully builds a WebserverConfig for plaintext connector"
     (is (expected-http-config?
           {:port 8000}
           {:http {:host default-host :port 8000}}))
@@ -54,7 +54,7 @@
           {:http        {:host default-host :port 8000}
            :max-threads 500})))
 
-  (testing "process-config successfully builds a WebserverServiceConfig for ssl connector"
+  (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local"})
@@ -128,7 +128,7 @@
                               #"Unexpected value found for client auth config option: bogus.  Expected need, want, or none."
                               (get-client-auth {:ssl-port 8081 :client-auth "bogus"}))))))
 
-  (testing "process-config successfully builds a WebserverServiceConfig for plaintext+ssl"
+  (testing "process-config successfully builds a WebserverConfig for plaintext+ssl"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :port 8000})
