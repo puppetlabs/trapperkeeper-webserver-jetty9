@@ -30,17 +30,19 @@
 
 (defn validate-ring-handler
   ([base-url config]
-    (validate-ring-handler base-url config {:as :text}))
+    (validate-ring-handler base-url config {:as :text} :default))
   ([base-url config http-get-options]
+   (validate-ring-handler base-url config http-get-options :default))
+  ([base-url config http-get-options server-id]
     (with-app-with-config app
       [jetty9-service]
       config
-      (let [s                (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            body             "Hi World"
-            path             "/hi_world"
-            ring-handler     (fn [req] {:status 200 :body body})]
-        (add-ring-handler ring-handler path)
+      (let [s                   (tk-app/get-service app :WebserverService)
+            add-ring-handler-to (partial add-ring-handler-to s)
+            body                "Hi World"
+            path                "/hi_world"
+            ring-handler        (fn [req] {:status 200 :body body})]
+        (add-ring-handler-to ring-handler path server-id)
         (let [response (http-get
                          (format "%s%s/" base-url path)
                          http-get-options)]
@@ -52,6 +54,32 @@
     (validate-ring-handler
       "http://localhost:8080"
       jetty-plaintext-config)))
+
+(deftest multiserver-ring-test
+  (testing "ring request on single server with new syntax over http succeeds"
+    (validate-ring-handler
+      "http://localhost:8080"
+      {:webservers {:ziggy {:port 8080}}}
+      {:as :text}
+      :ziggy))
+
+  (testing "ring requests on multiple servers succeed"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-multiserver-plaintext-config
+      (let [s (tk-app/get-service app :WebserverService)
+            add-ring-handler-to (partial add-ring-handler-to s)
+            body "Hi World"
+            path "/hi_world"
+            ring-handler (fn [req] {:status 200 :body body})]
+        (add-ring-handler-to ring-handler path :ziggy)
+        (add-ring-handler-to ring-handler path :jareth)
+        (let [response1 (http-get "http://localhost:8080/hi_world/" {:as :text})
+              response2 (http-get "http://localhost:8085/hi_world/" {:as :text})]
+          (is (= (:status response1) 200))
+          (is (= (:status response2) 200))
+          (is (= (:body response1) body))
+          (is (= (:body response2) body)))))))
 
 (deftest port-test
   (testing "webserver bootstrap throws IllegalArgumentException when neither
