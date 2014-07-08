@@ -4,7 +4,8 @@
 
     [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
-    [puppetlabs.trapperkeeper.core :refer [defservice]]))
+    [puppetlabs.trapperkeeper.core :refer [defservice]]
+    [schema.core :as schema]))
 
 ;; TODO: this should probably be moved to a separate jar that can be used as
 ;; a dependency for all webserver service implementations
@@ -32,21 +33,33 @@
   WebserverService
   [[:ConfigService get-in-config]]
   (init [this context]
-        (log/info "Initializing web server.")
-        (assoc context :jetty9-servers {:default (core/initialize-context)}))
+        (let [config (or (get-in-config [:webservers])
+                         ;; Here for backward compatibility with existing projects
+                         (get-in-config [:webserver])
+                         (get-in-config [:jetty])
+                         {})]
+          (log/info "Initializing web server(s).")
+          (assoc context :jetty9-servers {:default (core/initialize-context)})
+          (if (nil? (schema/check config/WebserverServiceRawConfig config))
+            (assoc context :jetty9-servers {:default (core/initialize-context)})
+            (assoc context :jetty9-servers (into {} (for [[key] config] [key (core/initialize-context)]))))))
 
   (start [this context]
-         (log/info "Starting web server.")
-         (let [config (or (get-in-config [:webserver])
+         (log/info "Starting web server(s).")
+         (let [config (or (get-in-config [:webservers])
                           ;; Here for backward compatibility with existing projects
+                          (get-in-config [:webserver])
                           (get-in-config [:jetty])
-                          {})
-               webserver (core/start-webserver! (:default (:jetty9-servers context)) config)]
-           (swap! (:state (:default (:jetty9-servers context))) assoc :endpoints #{})
-           (assoc context :jetty9-servers (assoc (:jetty9-servers context) :default webserver))))
+                          {})]
+           (if (nil? (schema/check config/WebserverServiceRawConfig config))
+             (let [webserver (core/start-webserver! (:default (:jetty9-servers context)) config)]
+               (assoc context :jetty9-servers (assoc (:jetty9-servers context) :default webserver)))
+             (assoc context :jetty9-servers
+                            (into {} (for [[key value] (:jetty9-servers context)]
+                                       [key (core/start-webserver! value (key config))]))))))
 
   (stop [this context]
-        (log/info "Shutting down web server.")
+        (log/info "Shutting down web server(s).")
         (if-let [server (:default (:jetty9-servers context))]
           (core/shutdown server))
         context)
