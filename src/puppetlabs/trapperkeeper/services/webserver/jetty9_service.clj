@@ -60,8 +60,9 @@
 
   (stop [this context]
         (log/info "Shutting down web server(s).")
-        (if-let [server (:default (:jetty9-servers context))]
-          (core/shutdown server))
+        (doseq [key (keys (:jetty9-servers context))]
+          (if-let [server (key (:jetty9-servers context))]
+            (core/shutdown server)))
         context)
 
   (add-context-handler [this base-path context-path]
