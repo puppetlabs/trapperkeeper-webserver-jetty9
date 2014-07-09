@@ -275,13 +275,21 @@
     [service jetty9-service]
     jetty-plaintext-config))
 
+(defn boot-service-and-jetty-with-multiserver-config
+  [service]
+  (tk-core/boot-services-with-config
+    [service jetty9-service]
+    jetty-multiserver-plaintext-config))
+
 (defn get-jetty-server-from-app-context
-  [app]
-  (-> (tk-app/get-service app :WebserverService)
-      (tk-services/service-context)
-      (:jetty9-servers)
-      (:default)
-      (:server)))
+  ([app]
+   (get-jetty-server-from-app-context app :default))
+  ([app server-id]
+   (-> (tk-app/get-service app :WebserverService)
+       (tk-services/service-context)
+       (:jetty9-servers)
+       (server-id)
+       (:server))))
 
 (deftest jetty-and-dependent-service-shutdown-after-service-error
   (testing (str "jetty and any dependent services are shutdown after a"
@@ -312,6 +320,42 @@
            "Service shutdown was not called.")
        (is (.isStopped jetty-server)
            "Jetty server was not stopped after call to run-app."))))
+  (testing (str "jetty and any dependent services are shutdown after a"
+                "service throws an error from its start function"
+                "in a multi-server set-up")
+    (with-test-logging
+      (let [shutdown-called? (atom false)
+            test-service     (tk-services/service
+                               [[:WebserverService]]
+                               (start [this context]
+                                      (throw (Throwable. "oops"))
+                                      context)
+                               (stop [this context]
+                                     (reset! shutdown-called? true)
+                                     context))
+            app              (boot-service-and-jetty-with-multiserver-config
+                               test-service)
+            jetty-server1     (get-jetty-server-from-app-context app :ziggy)
+            jetty-server2     (get-jetty-server-from-app-context app :jareth)]
+        (is (.isStarted jetty-server1)
+            "First Jetty server was never started before call to run-app")
+        (is (.isStarted jetty-server2)
+            "Second Jetty server was never started before call to run-app")
+        (is (not (.isStopped jetty-server1))
+            "First Jetty server was stopped before call to run-app")
+        (is (not (.isStopped jetty-server2))
+            "Second Jetty server was stopped before call to run-app")
+        (is (thrown-with-msg?
+              Throwable
+              #"oops"
+              (tk-core/run-app app))
+            "tk run-app did not die with expected exception.")
+        (is (true? @shutdown-called?)
+            "Service shutdown was not called.")
+        (is (.isStopped jetty-server1)
+            "First Jetty server was not stopped after call to run-app.")
+        (is (.isStopped jetty-server2)
+            "Second Jetty server was not stopped after call to run-app."))))
   (testing (str "jetty server instance never attached to the service context "
                 "and dependent services are shutdown after a service throws "
                 "an error from its init function")
