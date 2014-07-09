@@ -38,10 +38,10 @@
                          (get-in-config [:jetty])
                          {})]
           (log/info "Initializing web server(s).")
-          (assoc context :jetty9-servers {:default (core/initialize-context)})
           (if (nil? (schema/check config/WebserverRawConfig config))
             (assoc context :jetty9-servers {:default (core/initialize-context)})
-            (assoc context :jetty9-servers (into {} (for [[key] config] [key (core/initialize-context)]))))))
+            (assoc context :jetty9-servers (into {} (for [[server-id] config]
+                                                      [server-id (core/initialize-context)]))))))
 
   (start [this context]
          (log/info "Starting web server(s).")
@@ -53,8 +53,8 @@
              (let [webserver (core/start-webserver! (:default (:jetty9-servers context)) config)]
                (assoc context :jetty9-servers (assoc (:jetty9-servers context) :default webserver)))
              (assoc context :jetty9-servers
-                            (into {} (for [[key value] (:jetty9-servers context)]
-                                       [key (core/start-webserver! value (key config))]))))))
+                            (into {} (for [[server-id server-context] (:jetty9-servers context)]
+                                       [server-id (core/start-webserver! server-context (server-id config))]))))))
 
   (stop [this context]
         (log/info "Shutting down web server(s).")
