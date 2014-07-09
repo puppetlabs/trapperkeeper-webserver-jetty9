@@ -59,7 +59,7 @@
   (testing "ring request on single server with new syntax over http succeeds"
     (validate-ring-handler
       "http://localhost:8080"
-      {:webservers {:ziggy {:port 8080}}}
+      {:webserver {:ziggy {:port 8080}}}
       {:as :text}
       :ziggy))
 

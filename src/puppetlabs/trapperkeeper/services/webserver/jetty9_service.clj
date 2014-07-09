@@ -33,9 +33,8 @@
   WebserverService
   [[:ConfigService get-in-config]]
   (init [this context]
-        (let [config (or (get-in-config [:webservers])
+        (let [config (or (get-in-config [:webserver])
                          ;; Here for backward compatibility with existing projects
-                         (get-in-config [:webserver])
                          (get-in-config [:jetty])
                          {})]
           (log/info "Initializing web server(s).")
@@ -46,9 +45,8 @@
 
   (start [this context]
          (log/info "Starting web server(s).")
-         (let [config (or (get-in-config [:webservers])
+         (let [config (or (get-in-config [:webserver])
                           ;; Here for backward compatibility with existing projects
-                          (get-in-config [:webserver])
                           (get-in-config [:jetty])
                           {})]
            (if (nil? (schema/check config/WebserverRawConfig config))
