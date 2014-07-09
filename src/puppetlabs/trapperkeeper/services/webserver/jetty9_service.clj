@@ -50,11 +50,12 @@
                           (get-in-config [:jetty])
                           {})]
            (if (nil? (schema/check config/WebserverRawConfig config))
-             (let [webserver (core/start-webserver! (:default (:jetty9-servers context)) config)]
-               (assoc context :jetty9-servers (assoc (:jetty9-servers context) :default webserver)))
-             (assoc context :jetty9-servers
-                            (into {} (for [[server-id server-context] (:jetty9-servers context)]
-                                       [server-id (core/start-webserver! server-context (server-id config))]))))))
+             (let [webserver           (core/start-webserver! (:default (:jetty9-servers context)) config)
+                   server-context-list (assoc (:jetty9-servers context) :default webserver)]
+               (assoc context :jetty9-servers server-context-list))
+             (let [context-seq (for [[server-id server-context] (:jetty9-servers context)]
+                                 [server-id (core/start-webserver! server-context (server-id config))])]
+               (assoc context :jetty9-servers (into {} context-seq))))))
 
   (stop [this context]
         (log/info "Shutting down web server(s).")
