@@ -50,7 +50,8 @@
                           (get-in-config [:jetty])
                           {})]
            (if (nil? (schema/check config/WebserverRawConfig config))
-             (let [webserver           (core/start-webserver! (:default (:jetty9-servers context)) config)
+             (let [default-context     (:default (:jetty9-servers context))
+                   webserver           (core/start-webserver! default-context config)
                    server-context-list (assoc (:jetty9-servers context) :default webserver)]
                (assoc context :jetty9-servers server-context-list))
              (let [context-seq (for [[server-id server-context] (:jetty9-servers context)]
