@@ -19,7 +19,9 @@
               :refer [with-app-with-empty-config
                       with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-              :refer [with-test-logging]]))
+              :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
+            [schema.core :as schema]))
 
 (use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
 
@@ -406,3 +408,21 @@
                 "tk run-app did not die with expected exception."))
           (finally
             (tk-app/stop first-app)))))))
+
+(deftest default-server-test
+  (testing (str "specifying a config in the old format will start a server with "
+                "a server-id of :default")
+    (let [app          (tk-core/boot-services-with-config
+                         [jetty9-service]
+                         jetty-plaintext-config)
+          context-list (-> (tk-app/get-service app :WebserverService)
+                           (tk-services/service-context)
+                           (:jetty9-servers))
+          jetty-server (get-jetty-server-from-app-context app)]
+      (is (contains? context-list :default)
+          "the default key was not added to the context list")
+      (is (nil? (schema/check core/ServerContext (:default context-list)))
+          "the value of the default key is not a valid server context")
+      (is (.isStarted jetty-server)
+          "the default server was never started")
+      (tk-app/stop app))))
