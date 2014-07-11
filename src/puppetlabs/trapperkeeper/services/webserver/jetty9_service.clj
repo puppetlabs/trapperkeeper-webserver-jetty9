@@ -22,8 +22,10 @@
   (add-proxy-route-to [this target path server-id] [this target path options server-id])
   (override-webserver-settings! [this overrides])
   (override-webserver-settings-for! [this overrides server-id])
-  (get-registered-endpoints [this server-id])
-  (log-registered-endpoints [this server-id])
+  (get-registered-endpoints [this])
+  (get-registered-endpoints-from [this server-id])
+  (log-registered-endpoints [this])
+  (log-registered-endpoints-from [this server-id])
   (join [this])
   (join-server [this server-id])
   )
@@ -173,12 +175,18 @@
                                   (core/override-webserver-settings! s
                                                                      overrides)))
 
-  (get-registered-endpoints [this server-id]
+  (get-registered-endpoints [this]
+                            (get-registered-endpoints-from this :default))
+
+  (get-registered-endpoints-from [this server-id]
                             (let [s (server-id ((service-context this) :jetty9-servers))]
                               (core/get-registered-endpoints s)))
 
-  (log-registered-endpoints [this server-id]
-                            (log/info (str (get-registered-endpoints this server-id))))
+  (log-registered-endpoints [this]
+                            (log-registered-endpoints-from this :default))
+
+  (log-registered-endpoints-from [this server-id]
+                            (log/info (str (get-registered-endpoints-from this server-id))))
 
   (join [this]
         (join-server this :default))
