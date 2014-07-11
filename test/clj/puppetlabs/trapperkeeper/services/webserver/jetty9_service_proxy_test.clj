@@ -28,6 +28,29 @@
            (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy")))
        ~@body)))
 
+(defmacro with-target-and-proxy-servers-variant
+  [{:keys [target proxy proxy-config proxy-opts]} server-id & body]
+  `(with-app-with-config proxy-target-app#
+     [jetty9-service]
+     {:webserver ~target}
+     (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
+       (add-ring-handler
+         target-webserver#
+         (fn [req#]
+           (if (= "/hello/world" (:uri req#))
+             {:status 200 :body (str "Hello, World!"
+                                     ((:headers req#) "x-fancy-proxy-header"))}
+             {:status 404 :body "D'oh"}))
+         "/hello"))
+     (with-app-with-config proxy-app#
+       [jetty9-service]
+       {:webserver ~proxy}
+       (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
+         (if ~proxy-opts
+           (add-proxy-route-to proxy-webserver# ~proxy-config "/hello-proxy" ~proxy-opts ~server-id)
+           (add-proxy-route-to proxy-webserver# ~proxy-config "/hello-proxy" ~server-id)))
+       ~@body)))
+
 (deftest test-proxy-servlet
   (let [common-ssl-config {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
                            :ssl-key     "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
@@ -43,6 +66,25 @@
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}}
+        (let [response (http-get "http://localhost:9000/hello/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get "http://localhost:10000/hello-proxy/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))))
+
+    (testing "basic proxy support with add-proxy-route-to"
+      (with-target-and-proxy-servers-variant
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:ziggy {:host "0.0.0.0"
+                                :port 10000}
+                        :default {:host "0.0.0.0"
+                                  :port 8085}}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}}
+        :ziggy
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
