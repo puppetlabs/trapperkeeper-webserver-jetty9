@@ -35,15 +35,12 @@
   WebserverService
   [[:ConfigService get-in-config]]
   (init [this context]
+        (log/info "Initializing web server(s).")
         (let [config (or (get-in-config [:webserver])
                          ;; Here for backward compatibility with existing projects
                          (get-in-config [:jetty])
                          {})]
-          (log/info "Initializing web server(s).")
-          (if (nil? (schema/check config/WebserverRawConfig config))
-            (assoc context :jetty9-servers {:default (core/initialize-context)})
-            (assoc context :jetty9-servers (into {} (for [[server-id] config]
-                                                      [server-id (core/initialize-context)]))))))
+          (core/init! context config)))
 
   (start [this context]
          (log/info "Starting web server(s).")
@@ -51,14 +48,7 @@
                           ;; Here for backward compatibility with existing projects
                           (get-in-config [:jetty])
                           {})]
-           (if (nil? (schema/check config/WebserverRawConfig config))
-             (let [default-context     (:default (:jetty9-servers context))
-                   webserver           (core/start-webserver! default-context config)
-                   server-context-list (assoc (:jetty9-servers context) :default webserver)]
-               (assoc context :jetty9-servers server-context-list))
-             (let [context-seq (for [[server-id server-context] (:jetty9-servers context)]
-                                 [server-id (core/start-webserver! server-context (server-id config))])]
-               (assoc context :jetty9-servers (into {} context-seq))))))
+           (core/start! context config)))
 
   (stop [this context]
         (log/info "Shutting down web server(s).")

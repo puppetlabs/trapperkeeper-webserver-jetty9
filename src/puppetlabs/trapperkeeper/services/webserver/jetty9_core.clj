@@ -584,5 +584,24 @@
   {:pre [(started? webserver-context)]}
   (.join (:server webserver-context)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Lifecycle Functions
+
+(defn init! [context config]
+  (if (nil? (schema/check config/WebserverRawConfig config))
+    (assoc context :jetty9-servers {:default (initialize-context)})
+    (assoc context :jetty9-servers (into {} (for [[server-id] config]
+                                              [server-id (initialize-context)])))))
+
+(defn start! [context config]
+  (if (nil? (schema/check config/WebserverRawConfig config))
+    (let [default-context     (:default (:jetty9-servers context))
+          webserver           (start-webserver! default-context config)
+          server-context-list (assoc (:jetty9-servers context) :default webserver)]
+      (assoc context :jetty9-servers server-context-list))
+    (let [context-seq (for [[server-id server-context] (:jetty9-servers context)]
+                        [server-id (start-webserver! server-context (server-id config))])]
+      (assoc context :jetty9-servers (into {} context-seq)))))
+
 
 
