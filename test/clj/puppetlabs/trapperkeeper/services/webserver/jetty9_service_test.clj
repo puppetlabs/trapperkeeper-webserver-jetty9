@@ -51,9 +51,34 @@
           (is (= (:status response) 200))
           (is (= (:body response) body)))))))
 
+(defn validate-ring-handler-default
+  ([base-url config]
+   (validate-ring-handler base-url config {:as :text}))
+  ([base-url config http-get-options]
+   (with-app-with-config app
+     [jetty9-service]
+     config
+     (let [s                   (tk-app/get-service app :WebserverService)
+           add-ring-handler    (partial add-ring-handler s)
+           body                "Hi World"
+           path                "/hi_world"
+           ring-handler        (fn [req] {:status 200 :body body})]
+       (add-ring-handler ring-handler path)
+       (let [response (http-get
+                         (format "%s%s/" base-url path)
+                         http-get-options)]
+         (is (= (:status response) 200))
+         (is (= (:body response) body)))))))
+
 (deftest basic-ring-test
   (testing "ring request over http succeeds"
     (validate-ring-handler
+      "http://localhost:8080"
+      jetty-plaintext-config)))
+
+(deftest basic-default-ring-test
+  (testing "ring request over http succeeds with default add-ring-handler"
+    (validate-ring-handler-default
       "http://localhost:8080"
       jetty-plaintext-config)))
 
@@ -81,7 +106,13 @@
           (is (= (:status response1) 200))
           (is (= (:status response2) 200))
           (is (= (:body response1) body))
-          (is (= (:body response2) body)))))))
+          (is (= (:body response2) body))))))
+
+  (testing "ring request succeeds with multiple servers and default add-ring-handler"
+    (validate-ring-handler-default
+      "http://localhost:8080"
+      jetty-multiserver-plaintext-config))
+  )
 
 (deftest port-test
   (testing "webserver bootstrap throws IllegalArgumentException when neither
