@@ -12,7 +12,7 @@
 
 (def jetty-multiserver-plaintext-config
   {:webserver {:ziggy  {:port 8080}
-                :jareth {:port 8085}}})
+               :default {:port 8085}}})
 
 (def jetty-ssl-jks-config
   {:webserver {:port            8080

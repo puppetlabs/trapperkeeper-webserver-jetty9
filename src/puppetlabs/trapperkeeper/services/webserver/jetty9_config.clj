@@ -48,6 +48,13 @@
    (schema/optional-key :client-auth)     schema/Str
    (schema/optional-key :ssl-crl-path)    schema/Str})
 
+(def MultiWebserverRawConfig
+  {:default WebserverRawConfig
+   schema/Keyword WebserverRawConfig})
+
+(def WebserverServiceRawConfig
+  (schema/either WebserverRawConfig MultiWebserverRawConfig))
+
 (def WebserverSslPemConfig
   {:ssl-key      schema/Str
    :ssl-cert     schema/Str
