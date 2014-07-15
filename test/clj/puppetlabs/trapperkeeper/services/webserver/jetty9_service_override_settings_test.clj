@@ -77,6 +77,48 @@
                   "Didn't find log message for override of 'ssl-crl-path'"))
         (is (= overrides @override-result)
             "Unexpected response to override-webserver-settings! call.")))
+    (testing "config override of all SSL settings before webserver starts is
+              successful when specifying a specific server"
+      (let [override-result (atom nil)
+            service1        (tk-services/service
+                              [[:WebserverService override-webserver-settings-for!]]
+                              (init [this context]
+                                    (reset! override-result
+                                            (override-webserver-settings-for!
+                                              :ziggy overrides))
+                                    context))]
+        (with-test-logging
+          (with-app-with-config
+            app
+            [jetty9-service service1]
+            jetty-multiserver-plaintext-config
+            (let [s                   (get-service app :WebserverService)
+                  add-ring-handler-to (partial add-ring-handler-to s)
+                  body                "Hi World"
+                  path                "/hi_world"
+                  ring-handler        (fn [req] {:status 200 :body body})]
+              (add-ring-handler-to :ziggy ring-handler path)
+              (let [response (http-get
+                               (format "https://localhost:%d%s/" ssl-port path)
+                               default-options-for-https-client)]
+                (is (= (:status response) 200)
+                    "Unsuccessful http response code ring handler response.")
+                (is (= (:body response) body)
+                    "Unexpected body in ring handler response."))))
+          (is (logged? #"^webserver config overridden for key 'ssl-port'")
+              "Didn't find log message for override of 'ssl-port'")
+          (is (logged? #"^webserver config overridden for key 'ssl-host'")
+              "Didn't find log message for override of 'ssl-host'")
+          (is (logged? #"^webserver config overridden for key 'ssl-cert'")
+              "Didn't find log message for override of 'ssl-cert'")
+          (is (logged? #"^webserver config overridden for key 'ssl-key'")
+              "Didn't find log message for override of 'ssl-key'")
+          (is (logged? #"^webserver config overridden for key 'ssl-ca-cert'")
+              "Didn't find log message for override of 'ssl-ca-cert'")
+          (is (logged? #"^webserver config overridden for key 'ssl-crl-path'")
+              "Didn't find log message for override of 'ssl-crl-path'"))
+        (is (= overrides @override-result)
+            "Unexpected response to override-webserver-settings! call.")))
     (testing "SSL certificate settings can be overridden while other settings
               from the config are still honored -- ssl-port and ssl-host"
       (let [override-result (atom nil)
