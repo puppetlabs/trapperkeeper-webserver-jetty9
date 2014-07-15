@@ -609,18 +609,20 @@
 
 (schema/defn ^:always-validate init!
   [context config :- config/WebserverServiceRawConfig]
-  (let [old-config? (nil? (schema/check config/WebserverRawConfig config))]
+  (let [old-config (schema/check config/WebserverRawConfig config)
+        new-config (schema/check config/MultiWebserverRawConfig config)]
     (cond
-          old-config? (assoc context :jetty9-servers {:default (initialize-context)})
-          :else (assoc context :jetty9-servers (into {} (for [[server-id] config]
+          (nil? old-config) (assoc context :jetty9-servers {:default (initialize-context)})
+          (nil? new-config) (assoc context :jetty9-servers (into {} (for [[server-id] config]
                                                           [server-id (initialize-context)]))))))
 
 (schema/defn ^:always-validate start!
   [context config :- config/WebserverServiceRawConfig]
-  (let [old-config? (nil? (schema/check config/WebserverRawConfig config))]
+  (let [old-config (schema/check config/WebserverRawConfig config)
+        new-config (schema/check config/MultiWebserverRawConfig config)]
     (cond
-      old-config? (start-server-single-default context config)
-      :else (start-server-multiple context config))))
+      (nil? old-config) (start-server-single-default context config)
+      (nil? new-config) (start-server-multiple context config))))
 
 (schema/defn ^:always-validate add-context-handler-to!
   ([service-context server-id :- schema/Keyword
