@@ -58,61 +58,61 @@
         context)
 
   (add-context-handler [this base-path context-path]
-                       (add-context-handler-to this base-path context-path :default))
+                       (add-context-handler-to this :default base-path context-path))
 
   (add-context-handler [this base-path context-path context-listeners]
-                       (add-context-handler-to this base-path context-path context-listeners :default))
+                       (add-context-handler-to this :default base-path context-path context-listeners))
 
-  (add-context-handler-to [this base-path context-path server-id]
+  (add-context-handler-to [this server-id base-path context-path]
                        (core/add-context-handler-to! (service-context this) server-id base-path context-path))
 
-  (add-context-handler-to [this base-path context-path context-listeners server-id]
+  (add-context-handler-to [this server-id base-path context-path context-listeners]
                        (core/add-context-handler-to! (service-context this) server-id base-path
                                                      context-path context-listeners))
 
   (add-ring-handler [this handler path]
-                    (add-ring-handler-to this handler path :default))
+                    (add-ring-handler-to this :default handler path))
 
-  (add-ring-handler-to [this handler path server-id]
+  (add-ring-handler-to [this server-id handler path]
                     (core/add-ring-handler-to! (service-context this) server-id
                                                handler path))
 
   (add-servlet-handler [this servlet path]
-                       (add-servlet-handler-to this servlet path :default))
+                       (add-servlet-handler-to this :default servlet path))
 
   (add-servlet-handler [this servlet path servlet-init-params]
-                       (add-servlet-handler-to this servlet path servlet-init-params :default))
+                       (add-servlet-handler-to this :default servlet path servlet-init-params))
 
-  (add-servlet-handler-to [this servlet path server-id]
+  (add-servlet-handler-to [this server-id servlet path]
                        (core/add-servlet-handler-to! (service-context this) server-id servlet path))
 
-  (add-servlet-handler-to [this servlet path servlet-init-params server-id]
+  (add-servlet-handler-to [this server-id servlet path servlet-init-params]
                        (core/add-servlet-handler-to! (service-context this) server-id servlet
                                                      path servlet-init-params))
 
   (add-war-handler [this war path]
-                   (add-war-handler-to this war path :default))
+                   (add-war-handler-to this :default war path))
 
-  (add-war-handler-to [this war path server-id]
+  (add-war-handler-to [this server-id war path]
                    (core/add-war-handler-to! (service-context this) server-id war path))
 
   (add-proxy-route [this target path]
-                   (add-proxy-route-to this target path :default))
+                   (add-proxy-route-to this :default target path))
 
   (add-proxy-route [this target path options]
-                   (add-proxy-route-to this target path options :default))
+                   (add-proxy-route-to this :default target path options))
 
-  (add-proxy-route-to [this target path server-id]
+  (add-proxy-route-to [this server-id target path]
                    (core/add-proxy-route-to! (service-context this) server-id target path))
 
-  (add-proxy-route-to [this target path options server-id]
+  (add-proxy-route-to [this server-id target path options]
                    (core/add-proxy-route-to! (service-context this) server-id
                                              target path options))
 
   (override-webserver-settings! [this overrides]
-                                (override-webserver-settings-for! this overrides :default))
+                                (override-webserver-settings-for! this :default overrides))
 
-  (override-webserver-settings-for! [this overrides server-id]
+  (override-webserver-settings-for! [this server-id overrides]
                                 (let [s (server-id ((service-context this) :jetty9-servers))]
                                   (core/override-webserver-settings! s
                                                                      overrides)))

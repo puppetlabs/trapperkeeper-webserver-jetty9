@@ -44,7 +44,7 @@
             body                "Hi World"
             path                "/hi_world"
             ring-handler        (fn [req] {:status 200 :body body})]
-        (add-ring-handler-to ring-handler path server-id)
+        (add-ring-handler-to server-id ring-handler path)
         (let [response (http-get
                          (format "%s%s/" base-url path)
                          http-get-options)]
@@ -99,8 +99,8 @@
             body "Hi World"
             path "/hi_world"
             ring-handler (fn [req] {:status 200 :body body})]
-        (add-ring-handler-to ring-handler path :ziggy)
-        (add-ring-handler-to ring-handler path :default)
+        (add-ring-handler-to :ziggy ring-handler path)
+        (add-ring-handler-to :default ring-handler path)
         (let [response1 (http-get "http://localhost:8080/hi_world/" {:as :text})
               response2 (http-get "http://localhost:8085/hi_world/" {:as :text})]
           (is (= (:status response1) 200))

@@ -33,7 +33,7 @@
             add-context-handler-to (partial add-context-handler-to s)
             path                   "/resources"
             resource               "logback.xml"]
-        (add-context-handler-to dev-resources-dir path :ziggy)
+        (add-context-handler-to :ziggy dev-resources-dir path)
         (let [response (http-get (str "http://localhost:8085" path "/" resource))]
           (is (= (:status response) 200))
           (is (= (:body response) (slurp (str dev-resources-dir resource))))))))
@@ -84,7 +84,7 @@
             body                   "Hey there"
             path                   "/hey"
             servlet                (SimpleServlet. body)]
-        (add-servlet-handler-to servlet path :ziggy)
+        (add-servlet-handler-to :ziggy servlet path)
         (let [response (http-get
                          (str "http://localhost:8085" path))]
           (is (= (:status response) 200))
@@ -151,7 +151,7 @@
             add-war-handler-to (partial add-war-handler-to s)
             path               "/test"
             war                "helloWorld.war"]
-        (add-war-handler-to (str dev-resources-dir war) path :ziggy)
+        (add-war-handler-to :ziggy (str dev-resources-dir war) path)
         (let [response (http-get (str "http://localhost:8085" path "/hello"))]
           (is (= (:status response) 200))
           (is (= (:body response)

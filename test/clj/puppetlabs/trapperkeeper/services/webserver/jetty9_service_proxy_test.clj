@@ -47,8 +47,8 @@
        {:webserver ~proxy}
        (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
          (if ~proxy-opts
-           (add-proxy-route-to proxy-webserver# ~proxy-config "/hello-proxy" ~proxy-opts ~server-id)
-           (add-proxy-route-to proxy-webserver# ~proxy-config "/hello-proxy" ~server-id)))
+           (add-proxy-route-to proxy-webserver# ~server-id ~proxy-config "/hello-proxy" ~proxy-opts)
+           (add-proxy-route-to proxy-webserver# ~server-id ~proxy-config "/hello-proxy")))
        ~@body)))
 
 (deftest test-proxy-servlet
