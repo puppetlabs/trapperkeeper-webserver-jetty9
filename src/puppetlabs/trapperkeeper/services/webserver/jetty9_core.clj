@@ -62,7 +62,7 @@
                                        config/WebserverSslPemConfig)
    (schema/optional-key :callback-fn) (schema/pred ifn?)})
 
-(def WebserverServiceContext
+(def ServerContext
   {:state     Atom
    :handlers  ContextHandlerCollection
    :server    (schema/maybe Server)})
@@ -107,15 +107,15 @@
 (schema/defn ^:always-validate started? :- Boolean
   "A predicate that indicates whether or not the webserver-context contains a Jetty
   Server object."
-  [webserver-context :- WebserverServiceContext]
+  [webserver-context :- ServerContext]
   (instance? Server (:server webserver-context)))
 
 (schema/defn ^:always-validate
-  merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
+  merge-webserver-overrides-with-options :- config/WebserverRawConfig
   "Merge any overrides made to the webserver config settings with the supplied
    options."
-  [webserver-context :- WebserverServiceContext
-   options :- config/WebserverServiceRawConfig]
+  [webserver-context :- ServerContext
+   options :- config/WebserverRawConfig]
   (let [overrides (:overrides (swap! (:state webserver-context)
                                      assoc
                                      :overrides-read-by-webserver
@@ -189,8 +189,8 @@
 (schema/defn ^:always-validate
   create-server :- Server
   "Construct a Jetty Server instance."
-  [webserver-context :- WebserverServiceContext
-   config :- config/WebserverServiceConfig]
+  [webserver-context :- ServerContext
+   config :- config/WebserverConfig]
   (let [server (Server. (QueuedThreadPool. (:max-threads config)))]
     (when (:http config)
       (let [connector (plaintext-connector server (:http config))]
@@ -243,7 +243,7 @@
 
 (schema/defn ^:always-validate
   add-handler :- ContextHandler
-  [webserver-context :- WebserverServiceContext
+  [webserver-context :- ServerContext
    handler :- ContextHandler]
   (.addHandler (:handlers webserver-context) handler)
   handler)
@@ -263,7 +263,7 @@
   proxy-servlet :- ProxyServlet
   "Create an instance of Jetty's `ProxyServlet` that will proxy requests at
   a given context to another host."
-  [webserver-context :- WebserverServiceContext
+  [webserver-context :- ServerContext
    target :- ProxyTarget
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
@@ -307,23 +307,23 @@
 ;;; Public
 
 (schema/defn ^:always-validate
-  initialize-context :- WebserverServiceContext
+  initialize-context :- ServerContext
   "Create a webserver-context which contains a HandlerCollection and a
   ContextHandlerCollection which can accept the addition of new handlers
   before the webserver is started."
   []
   (let [^ContextHandlerCollection chc (ContextHandlerCollection.)]
     {:handlers chc
-     :state (atom {})
+     :state (atom {:endpoints #{}})
      :server nil}))
 
 ; TODO move out of public
 (schema/defn ^:always-validate
-  merge-webserver-overrides-with-options :- config/WebserverServiceRawConfig
+  merge-webserver-overrides-with-options :- config/WebserverRawConfig
   "Merge any overrides made to the webserver config settings with the supplied
    options."
-  [webserver-context :- WebserverServiceContext
-   options :- config/WebserverServiceRawConfig]
+  [webserver-context :- ServerContext
+   options :- config/WebserverRawConfig]
   {:post [(map? %)]}
   (let [overrides (:overrides (swap! (:state webserver-context)
                                      assoc
@@ -334,13 +334,13 @@
     (merge options overrides)))
 
 (schema/defn ^:always-validate shutdown
-  [webserver-context :- WebserverServiceContext]
+  [webserver-context :- ServerContext]
   (when (started? webserver-context)
     (log/info "Shutting down web server.")
     (.stop (:server webserver-context))))
 
 (schema/defn ^:always-validate
-  create-webserver :- WebserverServiceContext
+  create-webserver :- ServerContext
     "Create a Jetty webserver according to the supplied options:
 
     :host         - the hostname to listen on
@@ -369,8 +369,8 @@
                      :want or :none (defaults to :need)
     :cipher-suites - list of cryptographic ciphers to allow for incoming SSL connections
     :ssl-protocols - list of protocols to allow for incoming SSL connections"
-  [webserver-context :- WebserverServiceContext
-   options :- config/WebserverServiceRawConfig]
+  [webserver-context :- ServerContext
+   options :- config/WebserverRawConfig]
   {:pre  [(map? options)]
    :post [(started? %)]}
     (let [config                (config/process-config
@@ -383,11 +383,11 @@
     (.setHandler s (gzip-handler hc))
     (assoc webserver-context :server s)))
 
-(schema/defn ^:always-validate start-webserver! :- WebserverServiceContext
+(schema/defn ^:always-validate start-webserver! :- ServerContext
   "Creates and starts a webserver.  Returns an updated context map containing
   the Server object."
-  [webserver-context :- WebserverServiceContext
-   config :- config/WebserverServiceRawConfig]
+  [webserver-context :- ServerContext
+   config :- config/WebserverRawConfig]
   (let [webserver-context (create-webserver webserver-context config)]
     (log/info "Starting web server.")
     (try
@@ -405,7 +405,7 @@
   "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
   ([webserver-context base-path context-path]
    (add-context-handler webserver-context base-path context-path nil))
-  ([webserver-context :- WebserverServiceContext
+  ([webserver-context :- ServerContext
     base-path :- schema/Str
     context-path :- schema/Str
     context-listeners :- (schema/maybe [ServletContextListener])]
@@ -419,7 +419,7 @@
 
 (schema/defn ^:always-validate
   add-ring-handler :- ContextHandler
-  [webserver-context :- WebserverServiceContext
+  [webserver-context :- ServerContext
    handler :- (schema/pred ifn? 'ifn?)
    path :- schema/Str]
   (let [ctxt-handler (doto (ContextHandler. path)
@@ -430,7 +430,7 @@
   add-servlet-handler :- ContextHandler
   ([webserver-context servlet path]
    (add-servlet-handler webserver-context servlet path {}))
-  ([webserver-context :- WebserverServiceContext
+  ([webserver-context :- ServerContext
     servlet :- Servlet
     path :- schema/Str
     servlet-init-params :- {schema/Any schema/Any}]
@@ -446,7 +446,7 @@
   "Registers a WAR to Jetty. It takes two arguments: `[war path]`.
   - `war` is the file path or the URL to a WAR file
   - `path` is the URL prefix at which the WAR will be registered"
-  [webserver-context :- WebserverServiceContext
+  [webserver-context :- ServerContext
    war :- schema/Str
    path :- schema/Str]
   (let [handler (doto (WebAppContext.)
@@ -467,7 +467,7 @@
   two arguments, `[proxy-req req]`. For more information see
   README.md/#callback-fn.)
   "
-  [webserver-context :- WebserverServiceContext
+  [webserver-context :- ServerContext
    target :- ProxyTarget
    path :- schema/Str
    options :- ProxyOptions]
@@ -499,11 +499,11 @@
 
     When the value of :type is :proxy, the endpoint information will be
     an instance of ProxyEndpoint."
-   [webserver-context :- WebserverServiceContext]
+   [webserver-context :- ServerContext]
    (:endpoints @(:state webserver-context)))
 
 (schema/defn ^:always-validate
-  override-webserver-settings! :- config/WebserverServiceRawConfig
+  override-webserver-settings! :- config/WebserverRawConfig
   "Override the settings in the webserver section of the service's config file
    with the set of options in the supplied overrides map.
 
@@ -547,8 +547,8 @@
    If a call is made to this function after webserver startup or after another
    call has already been made to this function (e.g., from other service),
    a java.lang.IllegalStateException will be thrown."
-  [webserver-context :- WebserverServiceContext
-   overrides :- config/WebserverServiceRawConfig]
+  [webserver-context :- ServerContext
+   overrides :- config/WebserverRawConfig]
   ; Might be worth considering an implementation that only fails if the caller
   ; is trying to override a specific option that has been overridden already
   ; rather than blindly failing if an attempt is made to override any option.
@@ -580,9 +580,135 @@
                         "already been set")))))))
 
 (schema/defn ^:always-validate join
-  [webserver-context :- WebserverServiceContext]
+  [webserver-context :- ServerContext]
   {:pre [(started? webserver-context)]}
   (.join (:server webserver-context)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Service Implementation Helper Functions
 
+(defn start-server-single-default
+  [context config]
+  (let [default-context     (:default (:jetty9-servers context))
+        webserver           (start-webserver! default-context config)
+        server-context-list (assoc (:jetty9-servers context) :default webserver)]
+    (assoc context :jetty9-servers server-context-list)))
 
+(defn start-server-multiple
+  [context config]
+  (let [context-seq (for [[server-id server-context] (:jetty9-servers context)]
+                      [server-id (start-webserver! server-context (server-id config))])]
+    (assoc context :jetty9-servers (into {} context-seq))))
+
+(defn get-server-context
+  [service-context server-id]
+  (server-id (:jetty9-servers service-context)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Service Function Implementations
+
+(schema/defn ^:always-validate init!
+  [context config :- config/WebserverServiceRawConfig]
+  (let [old-config (schema/check config/WebserverRawConfig config)
+        new-config (schema/check config/MultiWebserverRawConfig config)]
+    (cond
+          (nil? old-config) (assoc context :jetty9-servers {:default (initialize-context)})
+          (nil? new-config) (assoc context :jetty9-servers (into {} (for [[server-id] config]
+                                                          [server-id (initialize-context)]))))))
+
+(schema/defn ^:always-validate start!
+  [context config :- config/WebserverServiceRawConfig]
+  (let [old-config (schema/check config/WebserverRawConfig config)
+        new-config (schema/check config/MultiWebserverRawConfig config)]
+    (cond
+      (nil? old-config) (start-server-single-default context config)
+      (nil? new-config) (start-server-multiple context config))))
+
+(schema/defn ^:always-validate add-context-handler-to!
+  ([service-context server-id :- schema/Keyword
+    base-path context-path]
+    (let [s             (get-server-context service-context server-id)
+          state         (:state s)
+          endpoint      {:type      :context
+                         :base-path base-path
+                         :endpoint  context-path}]
+      (register-endpoint! state endpoint)
+      (add-context-handler s base-path context-path)))
+
+  ([service-context server-id :- schema/Keyword
+    base-path context-path context-listeners]
+    (let [s             (get-server-context service-context server-id)
+          state         (:state s)
+          endpoint      {:type              :context
+                         :base-path         base-path
+                         :context-listeners context-listeners
+                         :endpoint          context-path}]
+      (register-endpoint! state endpoint)
+      (add-context-handler s base-path context-path context-listeners))))
+
+(schema/defn ^:always-validate add-ring-handler-to!
+  [service-context server-id :- schema/Keyword
+   handler path]
+  (let [s             (get-server-context service-context server-id)
+        state         (:state s)
+        endpoint      {:type     :ring
+                       :endpoint path}]
+    (register-endpoint! state endpoint)
+    (add-ring-handler s handler path)))
+
+(schema/defn ^:always-validate add-servlet-handler-to!
+  ([service-context server-id :- schema/Keyword
+    servlet path]
+    (let [s             (get-server-context service-context server-id)
+          state         (:state s)
+          endpoint      {:type    :servlet
+                         :servlet (type servlet)
+                         :endpoint path}]
+      (register-endpoint! state endpoint)
+      (add-servlet-handler s servlet path)))
+
+  ([service-context server-id :- schema/Keyword
+    servlet path servlet-init-params]
+    (let [s             (get-server-context service-context server-id)
+          state         (:state s)
+          endpoint      {:type    :servlet
+                         :servlet (type servlet)
+                         :endpoint path}]
+      (register-endpoint! state endpoint)
+      (add-servlet-handler s servlet path servlet-init-params))))
+
+(schema/defn ^:always-validate add-war-handler-to!
+  [service-context server-id :- schema/Keyword
+   war path]
+  (let [s             (get-server-context service-context server-id)
+        state         (:state s)
+        endpoint      {:type     :war
+                       :war-path war
+                       :endpoint path}]
+    (register-endpoint! state endpoint)
+    (add-war-handler s war path)))
+
+(schema/defn ^:always-validate add-proxy-route-to!
+  ([service-context server-id :- schema/Keyword
+    target path]
+    (let [s             (get-server-context service-context server-id)
+          state         (:state s)
+          endpoint      {:type        :proxy
+                         :target-host (:host target)
+                         :target-port (:port target)
+                         :target-path (:path target)
+                         :endpoint     path}]
+      (register-endpoint! state endpoint)
+      (add-proxy-route s target path {})))
+
+  ([service-context server-id :- schema/Keyword
+    target path options]
+    (let [s             (get-server-context service-context server-id)
+          state         (:state s)
+          endpoint      {:type        :proxy
+                         :target-host (:host target)
+                         :target-port (:port target)
+                         :target-path (:path target)
+                         :endpoint     path}]
+      (register-endpoint! state endpoint)
+      (add-proxy-route s target path options))))

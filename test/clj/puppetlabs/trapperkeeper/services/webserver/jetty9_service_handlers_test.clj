@@ -25,6 +25,19 @@
           (is (= (:status response) 200))
           (is (= (:body response) (slurp (str dev-resources-dir resource))))))))
 
+  (testing "static content context with add-context-handler-to"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-multiserver-plaintext-config
+      (let [s                      (get-service app :WebserverService)
+            add-context-handler-to (partial add-context-handler-to s)
+            path                   "/resources"
+            resource               "logback.xml"]
+        (add-context-handler-to :ziggy dev-resources-dir path)
+        (let [response (http-get (str "http://localhost:8085" path "/" resource))]
+          (is (= (:status response) 200))
+          (is (= (:body response) (slurp (str dev-resources-dir resource))))))))
+
   (testing "customization of static content context"
     (with-app-with-config app
       [jetty9-service]
@@ -59,6 +72,21 @@
         (add-servlet-handler servlet path)
         (let [response (http-get
                          (str "http://localhost:8080" path))]
+          (is (= (:status response) 200))
+          (is (= (:body response) body))))))
+
+  (testing "request to servlet over http succeeds with add-servlet-handler-to"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-multiserver-plaintext-config
+      (let [s                      (get-service app :WebserverService)
+            add-servlet-handler-to (partial add-servlet-handler-to s)
+            body                   "Hey there"
+            path                   "/hey"
+            servlet                (SimpleServlet. body)]
+        (add-servlet-handler-to :ziggy servlet path)
+        (let [response (http-get
+                         (str "http://localhost:8085" path))]
           (is (= (:status response) 200))
           (is (= (:body response) body))))))
 
@@ -111,6 +139,20 @@
             war             "helloWorld.war"]
         (add-war-handler (str dev-resources-dir war) path)
         (let [response (http-get (str "http://localhost:8080" path "/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response)
+                 "<html>\n<head><title>Hello World Servlet</title></head>\n<body>Hello World!!</body>\n</html>\n"))))))
+
+  (testing "WAR support with add-war-handler-to"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-multiserver-plaintext-config
+      (let [s                  (get-service app :WebserverService)
+            add-war-handler-to (partial add-war-handler-to s)
+            path               "/test"
+            war                "helloWorld.war"]
+        (add-war-handler-to :ziggy (str dev-resources-dir war) path)
+        (let [response (http-get (str "http://localhost:8085" path "/hello"))]
           (is (= (:status response) 200))
           (is (= (:body response)
                  "<html>\n<head><title>Hello World Servlet</title></head>\n<body>Hello World!!</body>\n</html>\n")))))))

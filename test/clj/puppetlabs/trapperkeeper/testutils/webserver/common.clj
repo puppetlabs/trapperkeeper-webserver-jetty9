@@ -10,6 +10,10 @@
 (def jetty-plaintext-config
   {:webserver {:port 8080}})
 
+(def jetty-multiserver-plaintext-config
+  {:webserver {:ziggy   {:port 8085}
+               :default {:port 8080}}})
+
 (def jetty-ssl-jks-config
   {:webserver {:port            8080
                :ssl-host        "0.0.0.0"

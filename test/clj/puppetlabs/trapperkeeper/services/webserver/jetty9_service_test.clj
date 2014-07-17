@@ -19,7 +19,9 @@
               :refer [with-app-with-empty-config
                       with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-              :refer [with-test-logging]]))
+              :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
+            [schema.core :as schema]))
 
 (use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
 
@@ -30,28 +32,87 @@
 
 (defn validate-ring-handler
   ([base-url config]
-    (validate-ring-handler base-url config {:as :text}))
+    (validate-ring-handler base-url config {:as :text} :default))
   ([base-url config http-get-options]
+   (validate-ring-handler base-url config http-get-options :default))
+  ([base-url config http-get-options server-id]
     (with-app-with-config app
       [jetty9-service]
       config
-      (let [s                (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            body             "Hi World"
-            path             "/hi_world"
-            ring-handler     (fn [req] {:status 200 :body body})]
-        (add-ring-handler ring-handler path)
+      (let [s                   (tk-app/get-service app :WebserverService)
+            add-ring-handler-to (partial add-ring-handler-to s)
+            body                "Hi World"
+            path                "/hi_world"
+            ring-handler        (fn [req] {:status 200 :body body})]
+        (add-ring-handler-to server-id ring-handler path)
         (let [response (http-get
                          (format "%s%s/" base-url path)
                          http-get-options)]
           (is (= (:status response) 200))
           (is (= (:body response) body)))))))
 
+(defn validate-ring-handler-default
+  ([base-url config]
+   (validate-ring-handler base-url config {:as :text}))
+  ([base-url config http-get-options]
+   (with-app-with-config app
+     [jetty9-service]
+     config
+     (let [s                   (tk-app/get-service app :WebserverService)
+           add-ring-handler    (partial add-ring-handler s)
+           body                "Hi World"
+           path                "/hi_world"
+           ring-handler        (fn [req] {:status 200 :body body})]
+       (add-ring-handler ring-handler path)
+       (let [response (http-get
+                         (format "%s%s/" base-url path)
+                         http-get-options)]
+         (is (= (:status response) 200))
+         (is (= (:body response) body)))))))
+
 (deftest basic-ring-test
   (testing "ring request over http succeeds"
     (validate-ring-handler
       "http://localhost:8080"
       jetty-plaintext-config)))
+
+(deftest basic-default-ring-test
+  (testing "ring request over http succeeds with default add-ring-handler"
+    (validate-ring-handler-default
+      "http://localhost:8080"
+      jetty-plaintext-config)))
+
+(deftest multiserver-ring-test
+  (testing "ring request on single server with new syntax over http succeeds"
+    (validate-ring-handler
+      "http://localhost:8080"
+      {:webserver {:default {:port 8080}}}
+      {:as :text}
+      :default))
+
+  (testing "ring requests on multiple servers succeed"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-multiserver-plaintext-config
+      (let [s (tk-app/get-service app :WebserverService)
+            add-ring-handler-to (partial add-ring-handler-to s)
+            body "Hi World"
+            path "/hi_world"
+            ring-handler (fn [req] {:status 200 :body body})]
+        (add-ring-handler-to :ziggy ring-handler path)
+        (add-ring-handler-to :default ring-handler path)
+        (let [response1 (http-get "http://localhost:8080/hi_world/" {:as :text})
+              response2 (http-get "http://localhost:8085/hi_world/" {:as :text})]
+          (is (= (:status response1) 200))
+          (is (= (:status response2) 200))
+          (is (= (:body response1) body))
+          (is (= (:body response2) body))))))
+
+  (testing "ring request succeeds with multiple servers and default add-ring-handler"
+    (validate-ring-handler-default
+      "http://localhost:8080"
+      jetty-multiserver-plaintext-config))
+  )
 
 (deftest port-test
   (testing "webserver bootstrap throws IllegalArgumentException when neither
@@ -247,12 +308,21 @@
     [service jetty9-service]
     jetty-plaintext-config))
 
+(defn boot-service-and-jetty-with-multiserver-config
+  [service]
+  (tk-core/boot-services-with-config
+    [service jetty9-service]
+    jetty-multiserver-plaintext-config))
+
 (defn get-jetty-server-from-app-context
-  [app]
-  (-> (tk-app/get-service app :WebserverService)
-      (tk-services/service-context)
-      (:jetty9-server)
-      (:server)))
+  ([app]
+   (get-jetty-server-from-app-context app :default))
+  ([app server-id]
+   (-> (tk-app/get-service app :WebserverService)
+       (tk-services/service-context)
+       (:jetty9-servers)
+       (server-id)
+       (:server))))
 
 (deftest jetty-and-dependent-service-shutdown-after-service-error
   (testing (str "jetty and any dependent services are shutdown after a"
@@ -283,6 +353,42 @@
            "Service shutdown was not called.")
        (is (.isStopped jetty-server)
            "Jetty server was not stopped after call to run-app."))))
+  (testing (str "jetty and any dependent services are shutdown after a"
+                "service throws an error from its start function"
+                "in a multi-server set-up")
+    (with-test-logging
+      (let [shutdown-called? (atom false)
+            test-service     (tk-services/service
+                               [[:WebserverService]]
+                               (start [this context]
+                                      (throw (Throwable. "oops"))
+                                      context)
+                               (stop [this context]
+                                     (reset! shutdown-called? true)
+                                     context))
+            app              (boot-service-and-jetty-with-multiserver-config
+                               test-service)
+            jetty-server1     (get-jetty-server-from-app-context app :ziggy)
+            jetty-server2     (get-jetty-server-from-app-context app :default)]
+        (is (.isStarted jetty-server1)
+            "First Jetty server was never started before call to run-app")
+        (is (.isStarted jetty-server2)
+            "Second Jetty server was never started before call to run-app")
+        (is (not (.isStopped jetty-server1))
+            "First Jetty server was stopped before call to run-app")
+        (is (not (.isStopped jetty-server2))
+            "Second Jetty server was stopped before call to run-app")
+        (is (thrown-with-msg?
+              Throwable
+              #"oops"
+              (tk-core/run-app app))
+            "tk run-app did not die with expected exception.")
+        (is (true? @shutdown-called?)
+            "Service shutdown was not called.")
+        (is (.isStopped jetty-server1)
+            "First Jetty server was not stopped after call to run-app.")
+        (is (.isStopped jetty-server2)
+            "Second Jetty server was not stopped after call to run-app."))))
   (testing (str "jetty server instance never attached to the service context "
                 "and dependent services are shutdown after a service throws "
                 "an error from its init function")
@@ -333,3 +439,21 @@
                 "tk run-app did not die with expected exception."))
           (finally
             (tk-app/stop first-app)))))))
+
+(deftest default-server-test
+  (testing (str "specifying a config in the old format will start a server with "
+                "a server-id of :default")
+    (let [app          (tk-core/boot-services-with-config
+                         [jetty9-service]
+                         jetty-plaintext-config)
+          context-list (-> (tk-app/get-service app :WebserverService)
+                           (tk-services/service-context)
+                           (:jetty9-servers))
+          jetty-server (get-jetty-server-from-app-context app)]
+      (is (contains? context-list :default)
+          "the default key was not added to the context list")
+      (is (nil? (schema/check core/ServerContext (:default context-list)))
+          "the value of the default key is not a valid server context")
+      (is (.isStarted jetty-server)
+          "the default server was never started")
+      (tk-app/stop app))))
