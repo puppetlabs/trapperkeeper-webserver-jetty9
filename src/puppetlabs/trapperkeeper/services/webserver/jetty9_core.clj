@@ -286,11 +286,13 @@
           (URI/create (.toString uri))))
 
       (newHttpClient []
-        (if custom-ssl-ctxt-factory
-          (HttpClient. custom-ssl-ctxt-factory)
-          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
-            (HttpClient. ssl-ctxt-factory)
-            (HttpClient.))))
+        (let [client (if custom-ssl-ctxt-factory
+                       (HttpClient. custom-ssl-ctxt-factory)
+                       (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
+                         (HttpClient. ssl-ctxt-factory)
+                         (HttpClient.)))]
+          (.setRequestBufferSize client 8192)
+          client))
 
       (customizeProxyRequest [proxy-req req]
         (if-let [callback-fn (:callback-fn options)]
