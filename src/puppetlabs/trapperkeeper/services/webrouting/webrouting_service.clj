@@ -11,7 +11,11 @@
   (add-ring-handler [this svc handler])
   (add-servlet-handler [this svc servlet] [this svc servlet servlet-init-params])
   (add-war-handler [this svc war])
-  (add-proxy-route [this svc target] [this svc target options]))
+  (add-proxy-route [this svc target] [this svc target options])
+  (override-webserver-settings! [this overrides])
+  (get-registered-endpoints [this])
+  (log-registered-endpoints [this])
+  (join [this]))
 
 (defservice webrouting-service
   "Provides the ability to route handlers to different jetty9 webserver services"
@@ -69,4 +73,20 @@
                          endpoint (core/get-endpoint-from-config context svc)
                          add-proxy-route (:add-proxy-route WebserverService)]
                      (add-proxy-route target endpoint options)))
+
+  (override-webserver-settings! [this overrides]
+                                (let [override-webserver-settings (:override-webserver-settings! WebserverService)]
+                                  (override-webserver-settings overrides)))
+
+  (get-registered-endpoints [this]
+                            (let [get-registered-endpoints (:get-registered-endpoints WebserverService)]
+                              (get-registered-endpoints)))
+
+  (log-registered-endpoints [this]
+                            (let [log-registered-endpoints (:log-registered-endpoints WebserverService)]
+                              (log-registered-endpoints)))
+
+  (join [this]
+        (let [join (:join WebserverService)]
+          (join)))
   )
