@@ -187,7 +187,7 @@
     (with-test-logging
       (with-app-with-config app
         [jetty9-service
-        webrouting-service]
+         webrouting-service]
         webrouting-plaintext-config
         (let [s                        (get-service app :WebroutingService)
               get-registered-endpoints (partial get-registered-endpoints s)

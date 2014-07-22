@@ -33,31 +33,66 @@
    [:ConfigService get-in-config]]
   (init [this context]
         (let [config (get-in-config [:web-router-service])]
-          (assoc context :web-router-service config)))
+          (core/init! context config)))
 
   (add-context-handler [this svc base-path]
-                       (let [context             (service-context this)
-                             context-path        (core/get-endpoint-from-config context svc)
-                             add-context-handler (:add-context-handler WebserverService)]
-                         (add-context-handler base-path context-path)))
+                       (let [context (service-context this)
+                             ;context-path (core/get-endpoint-from-config context svc)
+                             ;add-context-handler (:add-context-handler WebserverService)
+                             ]
+                         ;(add-context-handler base-path context-path)
+                         (core/add-context-handler-to! context WebserverService svc :default :default base-path [])
+                         ))
 
   (add-context-handler [this svc base-path context-listeners]
-                       (let [context             (service-context this)
-                             context-path        (core/get-endpoint-from-config context svc)
-                             add-context-handler (:add-context-handler WebserverService)]
-                         (add-context-handler base-path context-path context-listeners)))
+                       (let [context (service-context this)
+                             ;context-path        (core/get-endpoint-from-config context svc)
+                             ;add-context-handler (:add-context-handler WebserverService)
+                             ]
+                         ;(add-context-handler base-path context-path context-listeners)
+                         (core/add-context-handler-to! context WebserverService svc :default :default base-path
+                                                       context-listeners)
+                         ))
+
+  (add-context-handler [this svc route-id base-path]
+                       (let [context (service-context this)]
+                         (core/add-context-handler-to! context WebserverService svc route-id :default
+                                                       base-path [])))
+
+  (add-context-handler [this svc route-id base-path context-listeners]
+                       (let [context (service-context this)]
+                         (core/add-context-handler-to! context WebserverService svc route-id :default
+                                                       base-path context-listeners)))
 
   (add-context-handler-to [this svc server-id base-path]
-                           (let [context                 (service-context this)
-                                 context-path            (core/get-endpoint-from-config context svc)
-                                 add-context-handler-to  (:add-context-handler-to WebserverService)]
-                             (add-context-handler-to server-id base-path context-path)))
+                          (let [context (service-context this)
+                                ;context-path            (core/get-endpoint-from-config context svc)
+                                ;add-context-handler-to  (:add-context-handler-to WebserverService)
+                                ]
+                            ;(add-context-handler-to server-id base-path context-path)
+                            (core/add-context-handler-to! context WebserverService svc :default server-id
+                                                          base-path [])
+                            ))
 
   (add-context-handler-to [this svc server-id base-path context-listeners]
-                           (let [context                 (service-context this)
-                                 context-path            (core/get-endpoint-from-config context svc)
-                                 add-context-handler-to  (:add-context-handler-to WebserverService)]
-                             (add-context-handler-to server-id base-path context-path context-listeners)))
+                          (let [context (service-context this)
+                                ;context-path            (core/get-endpoint-from-config context svc)
+                                ;add-context-handler-to  (:add-context-handler-to WebserverService)
+                                ]
+                            ;(add-context-handler-to server-id base-path context-path context-listeners)
+                            (core/add-context-handler-to! context WebserverService svc :default server-id
+                                                          base-path context-listeners)
+                            ))
+
+  (add-context-handler-to [this route-id svc server-id base-path]
+                          (let [context (service-context this)]
+                            (core/add-context-handler-to! context WebserverService svc route-id server-id
+                                                          base-path [])))
+
+  (add-context-handler-to [this svc route-id server-id base-path context-listeners]
+                          (let [context (service-context this)]
+                            (core/add-context-handler-to! context WebserverService svc route-id server-id
+                                                          base-path context-listeners)))
 
   (add-ring-handler [this svc handler]
                     (let [context          (service-context this)
