@@ -17,7 +17,8 @@
          (fn [req#]
            (if (= "/hello/world" (:uri req#))
              {:status 200 :body (str "Hello, World!"
-                                     ((:headers req#) "x-fancy-proxy-header"))}
+                                     ((:headers req#) "x-fancy-proxy-header")
+                                     ((:headers req#) "cookie"))}
              {:status 404 :body "D'oh"}))
          "/hello"))
      (with-app-with-config proxy-app#
@@ -128,7 +129,7 @@
                                  {:headers {"Cookie" absurdly-large-cookie}
                                   :as      :text})]
           (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!")))))
+          (is (= (:body response) (str "Hello, World!" absurdly-large-cookie))))))
 
     (testing "basic proxy support with explicit :orig scheme"
       (with-target-and-proxy-servers
