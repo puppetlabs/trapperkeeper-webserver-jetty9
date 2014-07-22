@@ -73,7 +73,6 @@
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
 
-
     (testing "basic proxy support with add-proxy-route-to"
       (with-target-and-proxy-servers-variant
         {:target       {:host "0.0.0.0"
