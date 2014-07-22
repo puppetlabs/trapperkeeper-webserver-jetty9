@@ -222,6 +222,10 @@ route:
   to add additional headers) before Jetty continues on with the proxy. The
   function must accept two arguments, `[proxy-req req]`. For more information,
   see [below](#callback-fn).
+* `:request-buffer-size`: optional; an integer value to which to set the size
+  of the request buffer used by the HTTP Client. This allows HTTP requests with
+  very large cookies to go through, as a large cookie can cause the request
+  buffer to overflow unless the size is increased. The default is 4096 bytes.
 
 Simple example:
 
