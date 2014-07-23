@@ -294,7 +294,8 @@
                          (HttpClient. ssl-ctxt-factory)
                          (HttpClient.)))]
           (if request-buffer-size
-            (.setRequestBufferSize client request-buffer-size))
+            (.setRequestBufferSize client request-buffer-size)
+            (.setRequestBufferSize client 4096))
           client))
 
       (customizeProxyRequest [proxy-req req]

@@ -94,7 +94,7 @@
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
 
-    (testing (str "proxy explodes on a large cookie if larger request-buffer-size"
+    (testing (str "proxy explodes on a large cookie if larger request-buffer-size "
                   "is not specified")
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
