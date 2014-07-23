@@ -60,7 +60,8 @@
    (schema/optional-key :ssl-config) (schema/either
                                        (schema/eq :use-server-config)
                                        config/WebserverSslPemConfig)
-   (schema/optional-key :callback-fn) (schema/pred ifn?)})
+   (schema/optional-key :callback-fn) (schema/pred ifn?)
+   (schema/optional-key :request-buffer-size) schema/Int})
 
 (def ServerContext
   {:state     Atom
@@ -267,7 +268,8 @@
    target :- ProxyTarget
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
-                                  (get-proxy-client-context-factory (:ssl-config options)))]
+                                  (get-proxy-client-context-factory (:ssl-config options)))
+        request-buffer-size     (:request-buffer-size options)]
     (proxy [ProxyServlet] []
       (rewriteURI [req]
         (let [query (.getQueryString req)
@@ -286,11 +288,15 @@
           (URI/create (.toString uri))))
 
       (newHttpClient []
-        (if custom-ssl-ctxt-factory
-          (HttpClient. custom-ssl-ctxt-factory)
-          (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
-            (HttpClient. ssl-ctxt-factory)
-            (HttpClient.))))
+        (let [client (if custom-ssl-ctxt-factory
+                       (HttpClient. custom-ssl-ctxt-factory)
+                       (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
+                         (HttpClient. ssl-ctxt-factory)
+                         (HttpClient.)))]
+          (if request-buffer-size
+            (.setRequestBufferSize client request-buffer-size)
+            (.setRequestBufferSize client 4096))
+          client))
 
       (customizeProxyRequest [proxy-req req]
         (if-let [callback-fn (:callback-fn options)]

@@ -1,4 +1,5 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-proxy-test
+  (:import (org.httpkit.client TimeoutException))
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
@@ -16,7 +17,8 @@
          (fn [req#]
            (if (= "/hello/world" (:uri req#))
              {:status 200 :body (str "Hello, World!"
-                                     ((:headers req#) "x-fancy-proxy-header"))}
+                                     ((:headers req#) "x-fancy-proxy-header")
+                                     ((:headers req#) "cookie"))}
              {:status 404 :body "D'oh"}))
          "/hello"))
      (with-app-with-config proxy-app#
@@ -91,6 +93,43 @@
         (let [response (http-get "http://localhost:10000/hello-proxy/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
+
+    (testing (str "proxy explodes on a large cookie if larger request-buffer-size "
+                  "is not specified")
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}}
+        (let [response (http-get "http://localhost:9000/hello/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (is (thrown? TimeoutException (http-get "http://localhost:10000/hello-proxy/world"
+                                                {:headers {"Cookie" absurdly-large-cookie}
+                                                 :as      :text
+                                                 :timeout 3000})))))
+
+    (testing "proxy does not explode on a large cookie when properly configured"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:request-buffer-size 8192}}
+        (let [response (http-get "http://localhost:9000/hello/world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get "http://localhost:10000/hello-proxy/world"
+                                 {:headers {"Cookie" absurdly-large-cookie}
+                                  :as      :text})]
+          (is (= (:status response) 200))
+          (is (= (:body response) (str "Hello, World!" absurdly-large-cookie))))))
 
     (testing "basic proxy support with explicit :orig scheme"
       (with-target-and-proxy-servers
