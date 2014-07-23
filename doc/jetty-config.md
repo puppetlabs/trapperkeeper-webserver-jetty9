@@ -158,7 +158,9 @@ ports. You can then specify which server you would like to add handlers to when 
 service functions, and they will be added to the server you specify. If no server-id is specified
 when adding handlers, they will be added to the `:default` server.
 
-Note that you can still set the `webserver` section of your configuration to be an un-nested map
+Note that you are NOT limited to two servers and can configure more according to your needs.
+
+Also note that you can still set the `webserver` section of your configuration to be an un-nested map
 containing a single webserver configuration, like so
 
 ```
