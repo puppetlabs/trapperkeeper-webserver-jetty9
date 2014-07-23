@@ -44,7 +44,8 @@
 
   :test-paths ["test/clj"]
 
-  :profiles {:dev {:source-paths ["examples/ring_app/src"
+  :profiles {:dev {:source-paths ["examples/multiserver_app/src"
+                                  "examples/ring_app/src"
                                   "examples/servlet_app/src/clj"
                                   "examples/war_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
