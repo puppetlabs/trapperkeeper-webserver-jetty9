@@ -37,10 +37,12 @@ ruby Rack applications via JRuby; for more info, see the
 
 ### Example code
 
-Two examples are included with this project:
+Four examples are included with this project:
 
 * A Ring example ([source code](./examples/ring_app))
 * A Java servlet example ([source code](./examples/servlet_app))
+* A WAR example ([source code](./examples/war_app))
+* A multiserver configuration example ([source code](./examples/multiserver_app))
 
 ### Service Protocol
 
