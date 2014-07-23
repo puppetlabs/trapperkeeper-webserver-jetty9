@@ -26,7 +26,8 @@ The web server is configured via the
 [trapperkeeper configuration service](https://github.com/puppetlabs/trapperkeeper#configuration-service);
 so, you can control various properties of the server (ports, SSL, etc.) by adding a `webserver`
 section to one of your Trapperkeeper configuration files, and setting various properties
-therein.  For more info, see [Configuring the Webserver](doc/jetty-config.md).
+therein.  For more info, see [Configuring the Webserver](doc/jetty-config.md). It is possible to configure
+both a single webserver or multiple webservers.
 
 The `webserver-service` currently supports web applications built using
 Clojure's [Ring](https://github.com/ring-clojure/ring) library and Java's Servlet
@@ -47,12 +48,22 @@ This is the protocol for the current implementation of the `:WebserverService`:
 
 ```clj
 (defprotocol WebserverService
-  (add-ring-handler [this handler path])
   (add-context-handler [this base-path context-path] [this base-path context-path context-listeners])
+  (add-context-handler-to [this server-id base-path context-path] [this server-id base-path context-path context-listeners])
+  (add-ring-handler [this handler path])
+  (add-ring-handler-to [this server-id handler path])
   (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
+  (add-servlet-handler-to [this server-id servlet path] [this server-id servlet path servlet-init-params])
   (add-war-handler [this war path])
-  (add-proxy-route [this target path])
-  (join [this]))
+  (add-war-handler-to [this server-id war path]
+  (add-proxy-route [this target path] [this target path options])
+  (add-proxy-route-to [this server-id target path] [this server-id target path options]
+  (override-webserver-settings! [this overrides])
+  (override-webserver-settings-for! [this server-id overrides])
+  (get-registered-endpoints [this])
+  (get-registered-endpoints-from [this server-id])
+  (join [this])
+  (join-server [this server-id])
 ```
 
 Here is a bit more info about each of these functions:
@@ -365,6 +376,34 @@ If a call is made to this function after webserver startup or after another
 call has already been made to this function (e.g., from other service),
 a java.lang.IllegalStateException will be thrown.
 
+#### `get-registered-endpoints`
+
+This function returns a set of maps containing information on each URL endpoint
+registered by the Jetty9 service on the `:default` server. The possible keys appearing
+in each map are detailed below.
+
+* `:type`: The type of the registered endpoint. The possible types are `:context`,
+  `:ring`, `:servlet`, `:war`, and `:proxy`. Returned for every endpoint.
+* `:endpoint`: The registered endpoint. Returned for every endpoint.
+* `:base-path`: The base-path of a context handler. Returned only for endpoints of
+  type `:context`.
+* `:context-listeners`: The context listeners for a context handler. Returned only
+  for endpoints of type `:context` that have context listeners.
+* `:servlet`: The servlet for a servlet handler. Only returned for endpoints of type
+  `:servlet`.
+* `:war-path`: The local path of the war registered by a war handler. Only returned
+  for endpoints of type `:war`.
+* `:target-host`: The targeted host of a proxy request. Only returned for endpoints
+  of type `:proxy`.
+* `:target-port`: The targeted port of a proxy request. Only returned for endpoints
+  of type `:proxy`.
+* `:target-path`: The targeted prefix of a proxy request. Only returned for endpoints
+  of type `:proxy`.
+
+#### `log-registered-endpoints`
+
+This function logs the data returned by `get-registered-endpoints` at the info level.
+
 #### `join`
 
 This function is not recommended for normal use, but is provided for compatibility
@@ -375,6 +414,39 @@ trapperkeeper usage, because trapperkeeper already blocks the main thread and
 waits for a termination condition before allowing the process to exit.  However,
 if you do need this functionality for some reason, you can simply call `(join)`
 to cause your thread to wait for the Jetty server to shut down.
+
+### Server-specific Service Functions
+
+The functions above all automatically perform the specified operations on the server
+with id `:default`. The functions `add-context-handler-to`, `add-ring-handler-to`,
+`add-servlet-handler-to`, `add-war-handler-to`, `add-proxy-route-to`,
+`override-webserver-settings-for!`, `get-registered-endpoints-from`,
+`log-registered-endpoints-from`, and `join-server` all perform the exact same operations
+as their corresponding function detailed above, with the exception that these functions
+each take in a parameter `server-id` as their second parameter. They perform the same
+operation as their corresponding function detailed above with the exception that they
+perform it on the webserver specified by `server-id` rather than the `:default` webserver.
+
+For example, say you configured two servers on different ports. One server has id `:default`
+and is running on `localhost:9000`. The other server has id `:ziggy` and is running on
+`localhost:10000`. Say you've created some ring handler, `ring-handler`, and want it to
+run on path `"/foo"`. If you were to make the following call:
+
+```clj
+(add-ring-handler ring-handler "/foo")
+```
+
+Your ring handler would be added to the `:default` server at the specified endpoint, so
+the address would be `http://localhost:9000/foo`. However, if you called the following:
+
+```clj
+(add-ring-handler-to :ziggy ring-handler "/foo")
+```
+
+Your ring handler would instead be added to the `:ziggy` server at the specified endpoint,
+so the address would be `http://localhost:10000/foo`. Nothing would be added to the
+`:default` server, so `http://localhost:9000/foo` would yield a 404 error unless a separate
+handler had been added at that address on the `:default` server.
 
 ### Service lifecycle phases
 
