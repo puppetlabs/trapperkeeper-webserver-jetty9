@@ -81,10 +81,10 @@
               successful when specifying a specific server"
       (let [override-result (atom nil)
             service1        (tk-services/service
-                              [[:WebserverService override-webserver-settings-for!]]
+                              [[:WebserverService override-webserver-settings!]]
                               (init [this context]
                                     (reset! override-result
-                                            (override-webserver-settings-for!
+                                            (override-webserver-settings!
                                               :ziggy overrides))
                                     context))]
         (with-test-logging

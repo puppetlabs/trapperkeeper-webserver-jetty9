@@ -15,15 +15,10 @@
   (add-servlet-handler [this servlet path] [this servlet path options])
   (add-war-handler [this war path] [this war path options])
   (add-proxy-route [this target path] [this target path options])
-  (override-webserver-settings! [this overrides])
-  (override-webserver-settings-for! [this overrides server-id])
-  (get-registered-endpoints [this])
-  (get-registered-endpoints-from [this server-id])
-  (log-registered-endpoints [this])
-  (log-registered-endpoints-from [this server-id])
-  (join [this])
-  (join-server [this server-id])
-  )
+  (override-webserver-settings! [this overrides] [this server-id overrides])
+  (get-registered-endpoints [this] [this server-id])
+  (log-registered-endpoints [this] [this server-id])
+  (join [this] [this server-id]))
 
 (defservice jetty9-service
   "Provides a Jetty 9 web server as a service"
@@ -83,29 +78,30 @@
                    (core/add-proxy-route! (service-context this) target path options))
 
   (override-webserver-settings! [this overrides]
-                                (override-webserver-settings-for! this :default overrides))
+                                (let [s (core/get-server-context (service-context this) :default)]
+                                  (core/override-webserver-settings! s overrides)))
 
-  (override-webserver-settings-for! [this server-id overrides]
-                                (let [s (server-id ((service-context this) :jetty9-servers))]
-                                  (core/override-webserver-settings! s
-                                                                     overrides)))
+  (override-webserver-settings! [this server-id overrides]
+                                (let [s (core/get-server-context (service-context this) server-id)]
+                                  (core/override-webserver-settings! s overrides)))
 
   (get-registered-endpoints [this]
-                            (get-registered-endpoints-from this :default))
-
-  (get-registered-endpoints-from [this server-id]
-                            (let [s (server-id ((service-context this) :jetty9-servers))]
+                            (let [s (core/get-server-context (service-context this) :default)]
                               (core/get-registered-endpoints s)))
 
+  (get-registered-endpoints [this server-id]
+                            (let [s (core/get-server-context (service-context this) server-id)]
+                              (core/get-registered-endpoints s)))
   (log-registered-endpoints [this]
-                            (log-registered-endpoints-from this :default))
+                            (log/info (str (get-registered-endpoints this :default))))
 
-  (log-registered-endpoints-from [this server-id]
-                            (log/info (str (get-registered-endpoints-from this server-id))))
+  (log-registered-endpoints[this server-id]
+                            (log/info (str (get-registered-endpoints this server-id))))
 
   (join [this]
-        (join-server this :default))
+        (let [s (core/get-server-context (service-context this) :default)]
+          (core/join s)))
 
-  (join-server [this server-id]
-        (let [s (server-id ((service-context this) :jetty9-servers))]
+  (join [this server-id]
+        (let [s (core/get-server-context (service-context this) :default)]
           (core/join s))))

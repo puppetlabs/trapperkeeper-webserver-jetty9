@@ -710,28 +710,3 @@
                    :endpoint    path}]
     (register-endpoint! state endpoint)
     (add-proxy-route s target path options)))
-
-(schema/defn ^:always-validate add-proxy-route-to!
-  ([service-context server-id :- schema/Keyword
-    target path]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type        :proxy
-                         :target-host (:host target)
-                         :target-port (:port target)
-                         :target-path (:path target)
-                         :endpoint     path}]
-      (register-endpoint! state endpoint)
-      (add-proxy-route s target path {})))
-
-  ([service-context server-id :- schema/Keyword
-    target path options]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type        :proxy
-                         :target-host (:host target)
-                         :target-port (:port target)
-                         :target-path (:path target)
-                         :endpoint     path}]
-      (register-endpoint! state endpoint)
-      (add-proxy-route s target path options))))
