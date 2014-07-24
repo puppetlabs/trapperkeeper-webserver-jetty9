@@ -55,30 +55,23 @@
    :path schema/Str
    :port schema/Int})
 
-(def ProxyOptions
-  {(schema/optional-key :scheme) (schema/enum :orig :http :https)
-   (schema/optional-key :ssl-config) (schema/either
-                                       (schema/eq :use-server-config)
-                                       config/WebserverSslPemConfig)
-   (schema/optional-key :callback-fn) (schema/pred ifn?)
-   (schema/optional-key :request-buffer-size) schema/Int
-   (schema/optional-key :server-id) schema/Keyword})
-
-
-(def ContextHandlerOptions
-  {(schema/optional-key :server-id)         schema/Keyword
-   (schema/optional-key :context-listeners) [ServletContextListener]})
-
-(def RingAndWarHandlerOptions
+(def ServerIDOption
   {(schema/optional-key :server-id) schema/Keyword})
 
-(def ServletHandlerOptions
-  {(schema/optional-key :server-id)           schema/Keyword
-   (schema/optional-key :servlet-init-params) {schema/Str schema/Str}})
+(def ContextHandlerOptions
+  (assoc ServerIDOption (schema/optional-key :context-listeners) [ServletContextListener]))
 
-(def ProxyRouteOptions
-  {(schema/optional-key :server-id) schema/Keyword
-   (schema/optional-key :options)   ProxyOptions})
+(def ServletHandlerOptions
+  (assoc ServerIDOption (schema/optional-key :servlet-init-params) {schema/Str schema/Str}))
+
+(def ProxyOptions
+  (assoc ServerIDOption
+    (schema/optional-key :scheme) (schema/enum :orig :http :https)
+    (schema/optional-key :ssl-config) (schema/either
+                                        (schema/eq :use-server-config)
+                                        config/WebserverSslPemConfig)
+    (schema/optional-key :callback-fn) (schema/pred ifn?)
+    (schema/optional-key :request-buffer-size) schema/Int))
 
 (def ServerContext
   {:state     Atom
@@ -664,7 +657,7 @@
     (add-context-handler s base-path context-path context-listeners)))
 
 (schema/defn ^:always-validate add-ring-handler!
-  [context handler path options :- RingAndWarHandlerOptions]
+  [context handler path options :- ServerIDOption]
   (let [defaults {:server-id :default}
         opts     (merge defaults options)
         server-id (:server-id opts)
@@ -691,7 +684,7 @@
     (add-servlet-handler s servlet path servlet-init-params)))
 
 (schema/defn ^:always-validate add-war-handler!
-  [context war path options :- RingAndWarHandlerOptions]
+  [context war path options :- ServerIDOption]
   (let [defaults  {:server-id :default}
         opts      (merge defaults options)
         server-id (:server-id opts)
