@@ -10,10 +10,8 @@
 ;; TODO: this should probably be moved to a separate jar that can be used as
 ;; a dependency for all webserver service implementations
 (defprotocol WebserverService
-  (add-context-handler [this base-path context-path] [this base-path context-path context-listeners])
-  (add-context-handler-to [this base-path context-path server-id] [this base-path context-path context-listeners server-id])
-  (add-ring-handler [this handler path])
-  (add-ring-handler-to [this handler path server-id])
+  (add-context-handler [this base-path context-path] [this base-path context-path options])
+  (add-ring-handler [this handler path] [this handler path options])
   (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
   (add-servlet-handler-to [this servlet path server-id] [this servlet path servlet-init-params server-id])
   (add-war-handler [this war path])
@@ -58,24 +56,16 @@
         context)
 
   (add-context-handler [this base-path context-path]
-                       (add-context-handler-to this :default base-path context-path))
+                       (core/add-context-handler! (service-context this) base-path context-path {}))
 
-  (add-context-handler [this base-path context-path context-listeners]
-                       (add-context-handler-to this :default base-path context-path context-listeners))
-
-  (add-context-handler-to [this server-id base-path context-path]
-                       (core/add-context-handler-to! (service-context this) server-id base-path context-path))
-
-  (add-context-handler-to [this server-id base-path context-path context-listeners]
-                       (core/add-context-handler-to! (service-context this) server-id base-path
-                                                     context-path context-listeners))
+  (add-context-handler [this base-path context-path options]
+                       (core/add-context-handler! (service-context this) base-path context-path options))
 
   (add-ring-handler [this handler path]
-                    (add-ring-handler-to this :default handler path))
+                    (core/add-ring-handler! (service-context this) handler path {}))
 
-  (add-ring-handler-to [this server-id handler path]
-                    (core/add-ring-handler-to! (service-context this) server-id
-                                               handler path))
+  (add-ring-handler [this handler path options]
+                    (core/add-ring-handler! (service-context this) handler path options))
 
   (add-servlet-handler [this servlet path]
                        (add-servlet-handler-to this :default servlet path))

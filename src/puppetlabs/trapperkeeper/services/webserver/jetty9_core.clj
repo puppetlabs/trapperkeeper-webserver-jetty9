@@ -63,6 +63,13 @@
    (schema/optional-key :callback-fn) (schema/pred ifn?)
    (schema/optional-key :request-buffer-size) schema/Int})
 
+(def ContextHandlerOptions
+  {(schema/optional-key :server-id)         schema/Keyword
+   (schema/optional-key :context-listeners) [ServletContextListener]})
+
+(def RingHandlerOptions
+  {(schema/optional-key :server-id) schema/Keyword})
+
 (def ServerContext
   {:state     Atom
    :handlers  ContextHandlerCollection
@@ -630,27 +637,33 @@
       (nil? old-config) (start-server-single-default context config)
       (nil? new-config) (start-server-multiple context config))))
 
-(schema/defn ^:always-validate add-context-handler-to!
-  ([service-context server-id :- schema/Keyword
-    base-path context-path]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type      :context
-                         :base-path base-path
-                         :endpoint  context-path}]
-      (register-endpoint! state endpoint)
-      (add-context-handler s base-path context-path)))
+(schema/defn ^:always-validate add-context-handler!
+  [context base-path context-path options :- ContextHandlerOptions]
+  (let [defaults          {:server-id         :default
+                           :context-listeners []}
+        opts              (merge defaults options)
+        server-id         (:server-id opts)
+        context-listeners (:context-listeners opts)
+        s                 (get-server-context context server-id)
+        state             (:state s)
+        endpoint          {:type              :context
+                           :base-path         base-path
+                           :context-listeners context-listeners
+                           :endpoint          context-path}]
+    (register-endpoint! state endpoint)
+    (add-context-handler s base-path context-path context-listeners)))
 
-  ([service-context server-id :- schema/Keyword
-    base-path context-path context-listeners]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type              :context
-                         :base-path         base-path
-                         :context-listeners context-listeners
-                         :endpoint          context-path}]
-      (register-endpoint! state endpoint)
-      (add-context-handler s base-path context-path context-listeners))))
+(schema/defn ^:always-validate add-ring-handler!
+  [context handler path options :- RingHandlerOptions]
+  (let [defaults {:server-id :default}
+        opts     (merge defaults options)
+        server-id (:server-id opts)
+        s         (get-server-context context server-id)
+        state     (:state s)
+        endpoint  {:type     :ring
+                   :endpoint path}]
+    (register-endpoint! state endpoint)
+    (add-ring-handler s handler path)))
 
 (schema/defn ^:always-validate add-ring-handler-to!
   [service-context server-id :- schema/Keyword

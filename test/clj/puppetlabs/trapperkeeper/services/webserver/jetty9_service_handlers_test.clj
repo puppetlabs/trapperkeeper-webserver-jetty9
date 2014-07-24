@@ -30,10 +30,10 @@
       [jetty9-service]
       jetty-multiserver-plaintext-config
       (let [s                      (get-service app :WebserverService)
-            add-context-handler-to (partial add-context-handler-to s)
+            add-context-handler (partial add-context-handler s)
             path                   "/resources"
             resource               "logback.xml"]
-        (add-context-handler-to :ziggy dev-resources-dir path)
+        (add-context-handler dev-resources-dir path {:server-id :ziggy})
         (let [response (http-get (str "http://localhost:8085" path "/" resource))]
           (is (= (:status response) 200))
           (is (= (:body response) (slurp (str dev-resources-dir resource))))))))
@@ -47,13 +47,13 @@
             path                "/resources"
             body                "Hey there"
             servlet-path        "/hey"
-            servlet             (SimpleServlet. body)]
-        (add-context-handler dev-resources-dir path
-                             [(reify ServletContextListener
-                                (contextInitialized [this event]
-                                  (doto (.addServlet (.getServletContext event) "simple" servlet)
-                                    (.addMapping (into-array [servlet-path]))))
-                                (contextDestroyed [this event]))])
+            servlet             (SimpleServlet. body)
+            context-listeners   [(reify ServletContextListener
+                                   (contextInitialized [this event]
+                                     (doto (.addServlet (.getServletContext event) "simple" servlet)
+                                       (.addMapping (into-array [servlet-path]))))
+                                   (contextDestroyed [this event]))]]
+        (add-context-handler dev-resources-dir path {:context-listeners context-listeners})
         (let [response (http-get (str "http://localhost:8080" path servlet-path))]
           (is (= (:status response) 200))
           (is (= (:body response) body)))))))
@@ -193,8 +193,8 @@
                                       :port 10000
                                       :path "/kermit"}]
         (add-context-handler dev-resources-dir path-context)
-        (add-context-handler dev-resources-dir path-context2 [])
-        (add-context-handler dev-resources-dir path-context3 context-listeners)
+        (add-context-handler dev-resources-dir path-context2 {:context-listeners []})
+        (add-context-handler dev-resources-dir path-context3 {:context-listeners context-listeners})
         (add-ring-handler ring-handler path-ring)
         (add-servlet-handler servlet path-servlet)
         (add-servlet-handler servlet path-servlet2 {})
@@ -203,7 +203,7 @@
         (add-proxy-route target2 path-proxy {})
         (let [endpoints (get-registered-endpoints)]
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
-                              :endpoint path-context}
+                              :endpoint path-context :context-listeners []}
                              {:type :context :base-path dev-resources-dir
                               :context-listeners [] :endpoint path-context2}
                              {:type :context :base-path dev-resources-dir
