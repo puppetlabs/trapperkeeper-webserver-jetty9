@@ -80,11 +80,11 @@
       [jetty9-service]
       jetty-multiserver-plaintext-config
       (let [s                      (get-service app :WebserverService)
-            add-servlet-handler-to (partial add-servlet-handler-to s)
+            add-servlet-handler    (partial add-servlet-handler s)
             body                   "Hey there"
             path                   "/hey"
             servlet                (SimpleServlet. body)]
-        (add-servlet-handler-to :ziggy servlet path)
+        (add-servlet-handler servlet path {:server-id :ziggy})
         (let [response (http-get
                          (str "http://localhost:8085" path))]
           (is (= (:status response) 200))
@@ -99,7 +99,7 @@
             body                "Hey there"
             path                "/hey"
             servlet             (SimpleServlet. body)]
-        (add-servlet-handler servlet path {})
+        (add-servlet-handler servlet path {:servlet-init-params {}})
         (let [response (http-get (str "http://localhost:8080" path))]
           (is (= (:status response) 200))
           (is (= (:body response) body))))))
@@ -117,8 +117,8 @@
             servlet             (SimpleServlet. body)]
         (add-servlet-handler servlet
                              path
-                             {"init-param-one" init-param-one
-                              "init-param-two" init-param-two})
+                             {:servlet-init-params {"init-param-one" init-param-one
+                                                    "init-param-two" init-param-two}})
         (let [response (http-get
                          (str "http://localhost:8080" path "/init-param-one"))]
           (is (= (:status response) 200))
@@ -148,10 +148,10 @@
       [jetty9-service]
       jetty-multiserver-plaintext-config
       (let [s                  (get-service app :WebserverService)
-            add-war-handler-to (partial add-war-handler-to s)
+            add-war-handler    (partial add-war-handler s)
             path               "/test"
             war                "helloWorld.war"]
-        (add-war-handler-to :ziggy (str dev-resources-dir war) path)
+        (add-war-handler (str dev-resources-dir war) path {:server-id :ziggy})
         (let [response (http-get (str "http://localhost:8085" path "/hello"))]
           (is (= (:status response) 200))
           (is (= (:body response)
@@ -197,7 +197,7 @@
         (add-context-handler dev-resources-dir path-context3 {:context-listeners context-listeners})
         (add-ring-handler ring-handler path-ring)
         (add-servlet-handler servlet path-servlet)
-        (add-servlet-handler servlet path-servlet2 {})
+        (add-servlet-handler servlet path-servlet2 {:servlet-init-params {}})
         (add-war-handler (str dev-resources-dir war) path-war)
         (add-proxy-route target path-proxy)
         (add-proxy-route target2 path-proxy {})

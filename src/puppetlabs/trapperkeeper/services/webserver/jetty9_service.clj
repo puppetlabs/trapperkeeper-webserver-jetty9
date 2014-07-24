@@ -12,12 +12,9 @@
 (defprotocol WebserverService
   (add-context-handler [this base-path context-path] [this base-path context-path options])
   (add-ring-handler [this handler path] [this handler path options])
-  (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
-  (add-servlet-handler-to [this servlet path server-id] [this servlet path servlet-init-params server-id])
-  (add-war-handler [this war path])
-  (add-war-handler-to [this war path server-id])
+  (add-servlet-handler [this servlet path] [this servlet path options])
+  (add-war-handler [this war path] [this war path options])
   (add-proxy-route [this target path] [this target path options])
-  (add-proxy-route-to [this target path server-id] [this target path options server-id])
   (override-webserver-settings! [this overrides])
   (override-webserver-settings-for! [this overrides server-id])
   (get-registered-endpoints [this])
@@ -68,36 +65,22 @@
                     (core/add-ring-handler! (service-context this) handler path options))
 
   (add-servlet-handler [this servlet path]
-                       (add-servlet-handler-to this :default servlet path))
+                       (core/add-servlet-handler! (service-context this) servlet path {}))
 
-  (add-servlet-handler [this servlet path servlet-init-params]
-                       (add-servlet-handler-to this :default servlet path servlet-init-params))
-
-  (add-servlet-handler-to [this server-id servlet path]
-                       (core/add-servlet-handler-to! (service-context this) server-id servlet path))
-
-  (add-servlet-handler-to [this server-id servlet path servlet-init-params]
-                       (core/add-servlet-handler-to! (service-context this) server-id servlet
-                                                     path servlet-init-params))
+  (add-servlet-handler [this servlet path options]
+                       (core/add-servlet-handler! (service-context this) servlet path options))
 
   (add-war-handler [this war path]
-                   (add-war-handler-to this :default war path))
+                   (core/add-war-handler! (service-context this) war path {}))
 
-  (add-war-handler-to [this server-id war path]
-                   (core/add-war-handler-to! (service-context this) server-id war path))
+  (add-war-handler [this war path options]
+                   (core/add-war-handler! (service-context this) war path options))
 
   (add-proxy-route [this target path]
-                   (add-proxy-route-to this :default target path))
+                   (core/add-proxy-route! (service-context this) target path {}))
 
   (add-proxy-route [this target path options]
-                   (add-proxy-route-to this :default target path options))
-
-  (add-proxy-route-to [this server-id target path]
-                   (core/add-proxy-route-to! (service-context this) server-id target path))
-
-  (add-proxy-route-to [this server-id target path options]
-                   (core/add-proxy-route-to! (service-context this) server-id
-                                             target path options))
+                   (core/add-proxy-route! (service-context this) target path options))
 
   (override-webserver-settings! [this overrides]
                                 (override-webserver-settings-for! this :default overrides))
