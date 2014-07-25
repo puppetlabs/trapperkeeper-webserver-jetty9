@@ -39,7 +39,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private Utility Functions
 
-(defn get-endpoint-from-config
+(schema/defn ^:always-validate get-endpoint-from-config :- schema/Str
   [context svc route-id]
   (let [config (:web-router-service context)
         endpoint (get-in config [svc route-id])]
@@ -118,10 +118,10 @@
   [context webserver-service
    svc :- schema/Keyword
    target options :- ProxyRouteOptions]
-  (let [defaults server-and-route-defaults
-        opts     (merge defaults options)
-        server-id (:server-id opts)
-        route-id (:route-id opts)
-        path     (get-endpoint-from-config context svc route-id)
+  (let [defaults           server-and-route-defaults
+        opts               (merge defaults options)
+        server-id          (:server-id opts)
+        route-id           (:route-id opts)
+        path               (get-endpoint-from-config context svc route-id)
         add-proxy-route-to (:add-proxy-route-to webserver-service)]
     (add-proxy-route-to server-id target path)))
