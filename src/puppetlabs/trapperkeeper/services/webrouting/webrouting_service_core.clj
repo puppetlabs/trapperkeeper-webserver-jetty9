@@ -39,11 +39,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private Utility Functions
 
-(schema/defn ^:always-validate get-endpoint-from-config :- schema/Str
+(defn get-endpoint-from-config
   [context svc route-id]
   (let [config (:web-router-service context)
         endpoint (get-in config [svc route-id])]
-    endpoint))
+    (if (nil? endpoint)
+      (throw
+        (IllegalArgumentException.
+          "specified service does not appear in configuration file"))
+      endpoint)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle implementations

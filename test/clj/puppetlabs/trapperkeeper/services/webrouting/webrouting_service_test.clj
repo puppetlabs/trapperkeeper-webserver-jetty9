@@ -68,5 +68,5 @@
             body "Hello World!"
             ring-handler (fn [req] {:status 200 :body body})
             svc :this-isn't-real]
-        (is (thrown? clojure.lang.ExceptionInfo (add-ring-handler svc ring-handler)))))))
+        (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler)))))))
 
