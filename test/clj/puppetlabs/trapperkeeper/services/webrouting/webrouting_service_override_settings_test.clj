@@ -73,13 +73,13 @@
         (is (= overrides @override-result)
             "Unexpected response to override-webserver-settings! call.")))
     (testing "config override of all SSL settings before webserver starts is
-              successful with web-routing and override-webserver-settings-for!"
+              successful with web-routing and multiple servers"
       (let [override-result (atom nil)
             service1        (tk-services/service
-                              [[:WebroutingService override-webserver-settings-for!]]
+                              [[:WebroutingService override-webserver-settings!]]
                                (init [this context]
                                  (reset! override-result
-                                         (override-webserver-settings-for!
+                                         (override-webserver-settings!
                                             :ziggy
                                             overrides))
                                   context))]

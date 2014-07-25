@@ -277,23 +277,23 @@
           (log-registered-endpoints)
           (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$"))
           (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$" :info))))))
-  (testing "Retrieve all endpoints with web-routing (-for versions)"
+  (testing "Retrieve all endpoints with web-routing and multiple servers"
     (with-test-logging
       (with-app-with-config app
         [jetty9-service
          webrouting-service]
         webrouting-plaintext-multiserver-config
         (let [s                             (get-service app :WebroutingService)
-              get-registered-endpoints-from (partial get-registered-endpoints-from s)
-              log-registered-endpoints-from (partial log-registered-endpoints-from s)
+              get-registered-endpoints      (partial get-registered-endpoints s)
+              log-registered-endpoints      (partial log-registered-endpoints s)
               add-ring-handler              (partial add-ring-handler s)
               ring-handler                  (fn [req] {:status 200 :body "Hi world"})
               server-id                     :ziggy
               svc                           :puppetlabs.foo/foo-service]
           (add-ring-handler svc ring-handler {:server-id server-id})
-          (let [endpoints (get-registered-endpoints-from server-id)]
+          (let [endpoints (get-registered-endpoints server-id)]
             (is (= endpoints #{{:type :ring :endpoint "/foo"}})))
-          (log-registered-endpoints-from server-id)
+          (log-registered-endpoints server-id)
           (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$"))
           (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$" :info)))))))
 

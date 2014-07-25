@@ -12,14 +12,10 @@
   (add-servlet-handler [this svc servlet] [this svc servlet options])
   (add-war-handler [this svc war] [this svc war options])
   (add-proxy-route [this svc target] [this svc target options])
-  (override-webserver-settings! [this overrides])
-  (override-webserver-settings-for! [this server-id overrides])
-  (get-registered-endpoints [this])
-  (get-registered-endpoints-from [this server-id])
-  (log-registered-endpoints [this])
-  (log-registered-endpoints-from [this server-id])
-  (join [this])
-  (join-server [this server-id]))
+  (override-webserver-settings! [this overrides] [this server-id overrides])
+  (get-registered-endpoints [this] [this server-id])
+  (log-registered-endpoints [this] [this server-id])
+  (join [this] [this server-id]))
 
 (defservice webrouting-service
   "Provides the ability to route handlers to different jetty9 webserver services"
@@ -74,7 +70,7 @@
                                 (let [override-webserver-settings (:override-webserver-settings! WebserverService)]
                                   (override-webserver-settings overrides)))
 
-  (override-webserver-settings-for! [this server-id overrides]
+  (override-webserver-settings! [this server-id overrides]
                                     (let [override-webserver-settings-for (:override-webserver-settings-for! WebserverService)]
                                       (override-webserver-settings-for server-id overrides)))
 
@@ -82,7 +78,7 @@
                             (let [get-registered-endpoints (:get-registered-endpoints WebserverService)]
                               (get-registered-endpoints)))
 
-  (get-registered-endpoints-from [this server-id]
+  (get-registered-endpoints [this server-id]
                             (let [get-registered-endpoints-from (:get-registered-endpoints-from WebserverService)]
                               (get-registered-endpoints-from server-id)))
 
@@ -90,7 +86,7 @@
                             (let [log-registered-endpoints (:log-registered-endpoints WebserverService)]
                               (log-registered-endpoints)))
 
-  (log-registered-endpoints-from [this server-id]
+  (log-registered-endpoints [this server-id]
                                 (let [log-registered-endpoints-from (:log-registered-endpoints-from WebserverService)]
                                   (log-registered-endpoints-from server-id)))
 
@@ -98,6 +94,6 @@
         (let [join (:join WebserverService)]
           (join)))
 
-  (join-server [this server-id]
+  (join [this server-id]
                (let [join-server (:join-server WebserverService)]
                  (join-server server-id))))
