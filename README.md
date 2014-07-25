@@ -402,6 +402,8 @@ in each map are detailed below.
 * `:target-path`: The targeted prefix of a proxy request. Only returned for endpoints
   of type `:proxy`.
 
+The schema for the various types of endpoints can be viewed [here](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj#L71-L96).
+
 #### `log-registered-endpoints`
 
 This function logs the data returned by `get-registered-endpoints` at the info level.
