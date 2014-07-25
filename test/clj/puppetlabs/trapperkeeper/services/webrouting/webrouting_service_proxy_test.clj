@@ -26,40 +26,13 @@
        [jetty9-service
         webrouting-service]
        {:webserver ~proxy
-        :web-router-service {:puppetlabs.foo/foo-service "/hello-proxy"}}
+        :web-router-service {:puppetlabs.foo/foo-service {:default "/hello-proxy"
+                                                          :ziggy   "/goodbye-proxy"}}}
        (let [proxy-webserver# (get-service proxy-app# :WebroutingService)
              svc#             :puppetlabs.foo/foo-service]
          (if ~proxy-opts
            (add-proxy-route proxy-webserver# svc#  ~proxy-config ~proxy-opts)
            (add-proxy-route proxy-webserver# svc#  ~proxy-config)))
-       ~@body)))
-
-(defmacro with-target-and-proxy-servers-variant
-  [{:keys [target proxy proxy-config proxy-opts]} server-id & body]
-  `(with-app-with-config proxy-target-app#
-     [jetty9-service
-      webrouting-service]
-     {:webserver ~target
-      :web-router-service {:puppetlabs.bar/bar-service "/hello"}}
-     (let [target-webserver# (get-service proxy-target-app# :WebroutingService)]
-       (add-ring-handler
-         target-webserver#
-         :puppetlabs.bar/bar-service
-         (fn [req#]
-           (if (= "/hello/world" (:uri req#))
-             {:status 200 :body (str "Hello, World!"
-                                     ((:headers req#) "x-fancy-proxy-header"))}
-             {:status 404 :body "D'oh"}))))
-     (with-app-with-config proxy-app#
-       [jetty9-service
-        webrouting-service]
-       {:webserver ~proxy
-        :web-router-service {:puppetlabs.foo/foo-service "/hello-proxy"}}
-       (let [proxy-webserver# (get-service proxy-app# :WebroutingService)
-             svc#             :puppetlabs.foo/foo-service]
-         (if ~proxy-opts
-           (add-proxy-route-to proxy-webserver# svc# ~server-id ~proxy-config ~proxy-opts)
-           (add-proxy-route-to proxy-webserver# svc# ~server-id ~proxy-config)))
        ~@body)))
 
 (deftest proxy-test-web-routing
@@ -79,8 +52,8 @@
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))))
 
-  (testing "proxy support with web-routing and add-proxy-route-to"
-    (with-target-and-proxy-servers-variant
+  (testing "proxy support with web-routing and multiple servers"
+    (with-target-and-proxy-servers
       {:target       {:host "0.0.0.0"
                       :port 9000}
        :proxy        {:ziggy {:host "0.0.0.0"
@@ -89,8 +62,8 @@
                                 :port 8085}}
        :proxy-config {:host "localhost"
                       :port 9000
-                      :path "/hello"}}
-      :ziggy
+                      :path "/hello"}
+       :proxy-opts   {:server-id :ziggy}}
       (let [response (http-get "http://localhost:9000/hello/world")]
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))
@@ -112,5 +85,22 @@
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))
       (let [response (http-get "http://localhost:10000/hello-proxy/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))))
+
+  (testing "basic https proxy support with multiple web routes"
+    (with-target-and-proxy-servers
+      {:target {:host "0.0.0.0"
+                :port 9000}
+       :proxy  {:host "0.0.0.0"
+                :port 10000}
+       :proxy-config {:host "localhost"
+                      :port 9000
+                      :path "/hello"}
+       :proxy-opts {:route-id :ziggy}}
+      (let [response (http-get "http://localhost:9000/hello/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))
+      (let [response (http-get "http://localhost:10000/goodbye-proxy/world")]
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!"))))))

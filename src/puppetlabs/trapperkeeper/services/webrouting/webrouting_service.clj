@@ -7,16 +7,11 @@
     [schema.core :as schema]))
 
 (defprotocol WebroutingService
-  (add-context-handler [this svc context-path] [this svc context-path context-listeners])
-  (add-context-handler-to [this svc server-id context-path] [this svc server-id context-path context-listeners])
-  (add-ring-handler [this svc handler])
-  (add-ring-handler-to [this svc server-id handler])
-  (add-servlet-handler [this svc servlet] [this svc servlet servlet-init-params])
-  (add-servlet-handler-to [this svc server-id servlet] [this svc server-id servlet servlet-init-params])
-  (add-war-handler [this svc war])
-  (add-war-handler-to [this svc server-id war])
+  (add-context-handler [this svc context-path] [this svc context-path options])
+  (add-ring-handler [this svc handler] [this svc handler options])
+  (add-servlet-handler [this svc servlet] [this svc servlet options])
+  (add-war-handler [this svc war] [this svc war options])
   (add-proxy-route [this svc target] [this svc target options])
-  (add-proxy-route-to [this svc server-id target] [this svc server-id target options])
   (override-webserver-settings! [this overrides])
   (override-webserver-settings-for! [this server-id overrides])
   (get-registered-endpoints [this])
@@ -36,135 +31,44 @@
           (core/init! context config)))
 
   (add-context-handler [this svc base-path]
-                       (let [context (service-context this)
-                             ;context-path (core/get-endpoint-from-config context svc)
-                             ;add-context-handler (:add-context-handler WebserverService)
-                             ]
-                         ;(add-context-handler base-path context-path)
-                         (core/add-context-handler-to! context WebserverService svc :default :default base-path [])
-                         ))
+                       (core/add-context-handler! (service-context this) WebserverService svc
+                                                  base-path {}))
 
-  (add-context-handler [this svc base-path context-listeners]
-                       (let [context (service-context this)
-                             ;context-path        (core/get-endpoint-from-config context svc)
-                             ;add-context-handler (:add-context-handler WebserverService)
-                             ]
-                         ;(add-context-handler base-path context-path context-listeners)
-                         (core/add-context-handler-to! context WebserverService svc :default :default base-path
-                                                       context-listeners)
-                         ))
-
-  (add-context-handler [this svc route-id base-path]
-                       (let [context (service-context this)]
-                         (core/add-context-handler-to! context WebserverService svc route-id :default
-                                                       base-path [])))
-
-  (add-context-handler [this svc route-id base-path context-listeners]
-                       (let [context (service-context this)]
-                         (core/add-context-handler-to! context WebserverService svc route-id :default
-                                                       base-path context-listeners)))
-
-  (add-context-handler-to [this svc server-id base-path]
-                          (let [context (service-context this)
-                                ;context-path            (core/get-endpoint-from-config context svc)
-                                ;add-context-handler-to  (:add-context-handler-to WebserverService)
-                                ]
-                            ;(add-context-handler-to server-id base-path context-path)
-                            (core/add-context-handler-to! context WebserverService svc :default server-id
-                                                          base-path [])
-                            ))
-
-  (add-context-handler-to [this svc server-id base-path context-listeners]
-                          (let [context (service-context this)
-                                ;context-path            (core/get-endpoint-from-config context svc)
-                                ;add-context-handler-to  (:add-context-handler-to WebserverService)
-                                ]
-                            ;(add-context-handler-to server-id base-path context-path context-listeners)
-                            (core/add-context-handler-to! context WebserverService svc :default server-id
-                                                          base-path context-listeners)
-                            ))
-
-  (add-context-handler-to [this route-id svc server-id base-path]
-                          (let [context (service-context this)]
-                            (core/add-context-handler-to! context WebserverService svc route-id server-id
-                                                          base-path [])))
-
-  (add-context-handler-to [this svc route-id server-id base-path context-listeners]
-                          (let [context (service-context this)]
-                            (core/add-context-handler-to! context WebserverService svc route-id server-id
-                                                          base-path context-listeners)))
+  (add-context-handler [this svc base-path options]
+                       (core/add-context-handler! (service-context this) WebserverService svc
+                                                  base-path options))
 
   (add-ring-handler [this svc handler]
-                    (let [context          (service-context this)
-                          endpoint         (core/get-endpoint-from-config context svc)
-                          add-ring-handler (:add-ring-handler WebserverService)]
-                      (add-ring-handler handler endpoint)))
+                    (core/add-ring-handler! (service-context this) WebserverService svc
+                                            handler {}))
 
-  (add-ring-handler-to [this svc server-id handler]
-                       (let [context             (service-context this)
-                             endpoint            (core/get-endpoint-from-config context svc)
-                             add-ring-handler-to (:add-ring-handler-to WebserverService)]
-                         (add-ring-handler-to server-id handler endpoint)))
+  (add-ring-handler [this svc handler options]
+                    (core/add-ring-handler! (service-context this) WebserverService svc
+                                            handler options))
 
   (add-servlet-handler [this svc servlet]
-                       (let [context             (service-context this)
-                             endpoint            (core/get-endpoint-from-config context svc)
-                             add-servlet-handler (:add-servlet-handler WebserverService)]
-                         (add-servlet-handler servlet endpoint)))
+                       (core/add-servlet-handler! (service-context this) WebserverService svc
+                                                  servlet {}))
 
-  (add-servlet-handler [this svc servlet servlet-init-params]
-                       (let [context             (service-context this)
-                             endpoint            (core/get-endpoint-from-config context svc)
-                             add-servlet-handler (:add-servlet-handler WebserverService)]
-                         (add-servlet-handler servlet endpoint servlet-init-params)))
-
-  (add-servlet-handler-to [this svc server-id servlet]
-                          (let [context                (service-context this)
-                                endpoint               (core/get-endpoint-from-config context svc)
-                                add-servlet-handler-to (:add-servlet-handler-to WebserverService)]
-                            (add-servlet-handler-to server-id servlet endpoint)))
-
-  (add-servlet-handler-to [this svc server-id servlet servlet-init-params]
-                          (let [context                (service-context this)
-                                endpoint               (core/get-endpoint-from-config context svc)
-                                add-servlet-handler-to (:add-servlet-handler-to WebserverService)]
-                            (add-servlet-handler-to server-id servlet endpoint servlet-init-params)))
+  (add-servlet-handler [this svc servlet options]
+                       (core/add-servlet-handler! (service-context this) WebserverService svc
+                                                  servlet options))
 
   (add-war-handler [this svc war]
-                   (let [context         (service-context this)
-                         endpoint        (core/get-endpoint-from-config context svc)
-                         add-war-handler (:add-war-handler WebserverService)]
-                     (add-war-handler war endpoint)))
+                   (core/add-war-handler! (service-context this) WebserverService svc
+                                          war {}))
 
-  (add-war-handler-to [this svc server-id war]
-                      (let [context            (service-context this)
-                            endpoint           (core/get-endpoint-from-config context svc)
-                            add-war-handler-to (:add-war-handler-to WebserverService)]
-                        (add-war-handler-to server-id war endpoint)))
+  (add-war-handler [this svc war options]
+                   (core/add-war-handler! (service-context this) WebserverService svc
+                                          war options))
 
   (add-proxy-route [this svc target]
-                   (let [context         (service-context this)
-                         endpoint        (core/get-endpoint-from-config context svc)
-                         add-proxy-route (:add-proxy-route WebserverService)]
-                     (add-proxy-route target endpoint)))
+                   (core/add-proxy-route! (service-context this) WebserverService svc
+                                          target {}))
 
   (add-proxy-route [this svc target options]
-                   (let [context         (service-context this)
-                         endpoint        (core/get-endpoint-from-config context svc)
-                         add-proxy-route (:add-proxy-route WebserverService)]
-                     (add-proxy-route target endpoint options)))
-
-  (add-proxy-route-to [this svc server-id target]
-                      (let [context            (service-context this)
-                            endpoint           (core/get-endpoint-from-config context svc)
-                            add-proxy-route-to (:add-proxy-route-to WebserverService)]
-                        (add-proxy-route-to server-id target endpoint)))
-
-  (add-proxy-route-to [this svc server-id target options]
-                      (let [context            (service-context this)
-                            endpoint           (core/get-endpoint-from-config context svc)
-                            add-proxy-route-to (:add-proxy-route-to WebserverService)]
-                        (add-proxy-route-to server-id target endpoint options)))
+                   (core/add-proxy-route! (service-context this) WebserverService svc
+                                          target options))
 
   (override-webserver-settings! [this overrides]
                                 (let [override-webserver-settings (:override-webserver-settings! WebserverService)]

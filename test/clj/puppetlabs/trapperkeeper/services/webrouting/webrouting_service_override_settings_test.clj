@@ -89,12 +89,12 @@
             [jetty9-service webrouting-service service1]
             webrouting-plaintext-multiserver-config
             (let [s                   (get-service app :WebroutingService)
-                  add-ring-handler-to (partial add-ring-handler-to s)
+                  add-ring-handler    (partial add-ring-handler s)
                   body                "Hi World"
                   path                "/foo"
                   ring-handler        (fn [req] {:status 200 :body body})
                   svc                 :puppetlabs.foo/foo-service]
-              (add-ring-handler-to svc :ziggy ring-handler)
+              (add-ring-handler svc ring-handler {:server-id :ziggy})
               (let [response (http-get
                                (format "https://localhost:%d%s/" ssl-port path)
                                default-options-for-https-client)]
