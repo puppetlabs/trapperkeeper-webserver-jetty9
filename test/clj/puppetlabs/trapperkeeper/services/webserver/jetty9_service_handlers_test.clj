@@ -30,10 +30,10 @@
       [jetty9-service]
       jetty-multiserver-plaintext-config
       (let [s                      (get-service app :WebserverService)
-            add-context-handler-to (partial add-context-handler-to s)
+            add-context-handler (partial add-context-handler s)
             path                   "/resources"
             resource               "logback.xml"]
-        (add-context-handler-to :ziggy dev-resources-dir path)
+        (add-context-handler dev-resources-dir path {:server-id :ziggy})
         (let [response (http-get (str "http://localhost:8085" path "/" resource))]
           (is (= (:status response) 200))
           (is (= (:body response) (slurp (str dev-resources-dir resource))))))))
@@ -47,13 +47,13 @@
             path                "/resources"
             body                "Hey there"
             servlet-path        "/hey"
-            servlet             (SimpleServlet. body)]
-        (add-context-handler dev-resources-dir path
-                             [(reify ServletContextListener
-                                (contextInitialized [this event]
-                                  (doto (.addServlet (.getServletContext event) "simple" servlet)
-                                    (.addMapping (into-array [servlet-path]))))
-                                (contextDestroyed [this event]))])
+            servlet             (SimpleServlet. body)
+            context-listeners   [(reify ServletContextListener
+                                   (contextInitialized [this event]
+                                     (doto (.addServlet (.getServletContext event) "simple" servlet)
+                                       (.addMapping (into-array [servlet-path]))))
+                                   (contextDestroyed [this event]))]]
+        (add-context-handler dev-resources-dir path {:context-listeners context-listeners})
         (let [response (http-get (str "http://localhost:8080" path servlet-path))]
           (is (= (:status response) 200))
           (is (= (:body response) body)))))))
@@ -80,11 +80,11 @@
       [jetty9-service]
       jetty-multiserver-plaintext-config
       (let [s                      (get-service app :WebserverService)
-            add-servlet-handler-to (partial add-servlet-handler-to s)
+            add-servlet-handler    (partial add-servlet-handler s)
             body                   "Hey there"
             path                   "/hey"
             servlet                (SimpleServlet. body)]
-        (add-servlet-handler-to :ziggy servlet path)
+        (add-servlet-handler servlet path {:server-id :ziggy})
         (let [response (http-get
                          (str "http://localhost:8085" path))]
           (is (= (:status response) 200))
@@ -99,7 +99,7 @@
             body                "Hey there"
             path                "/hey"
             servlet             (SimpleServlet. body)]
-        (add-servlet-handler servlet path {})
+        (add-servlet-handler servlet path {:servlet-init-params {}})
         (let [response (http-get (str "http://localhost:8080" path))]
           (is (= (:status response) 200))
           (is (= (:body response) body))))))
@@ -117,8 +117,8 @@
             servlet             (SimpleServlet. body)]
         (add-servlet-handler servlet
                              path
-                             {"init-param-one" init-param-one
-                              "init-param-two" init-param-two})
+                             {:servlet-init-params {"init-param-one" init-param-one
+                                                    "init-param-two" init-param-two}})
         (let [response (http-get
                          (str "http://localhost:8080" path "/init-param-one"))]
           (is (= (:status response) 200))
@@ -148,10 +148,10 @@
       [jetty9-service]
       jetty-multiserver-plaintext-config
       (let [s                  (get-service app :WebserverService)
-            add-war-handler-to (partial add-war-handler-to s)
+            add-war-handler    (partial add-war-handler s)
             path               "/test"
             war                "helloWorld.war"]
-        (add-war-handler-to :ziggy (str dev-resources-dir war) path)
+        (add-war-handler (str dev-resources-dir war) path {:server-id :ziggy})
         (let [response (http-get (str "http://localhost:8085" path "/hello"))]
           (is (= (:status response) 200))
           (is (= (:body response)
@@ -168,7 +168,6 @@
             path-context3            "/goblinking"
             path-ring                "/bert"
             path-servlet             "/foo"
-            path-servlet2            "/misspiggy"
             path-war                 "/bar"
             path-proxy               "/baz"
             get-registered-endpoints (partial get-registered-endpoints s)
@@ -193,24 +192,22 @@
                                       :port 10000
                                       :path "/kermit"}]
         (add-context-handler dev-resources-dir path-context)
-        (add-context-handler dev-resources-dir path-context2 [])
-        (add-context-handler dev-resources-dir path-context3 context-listeners)
+        (add-context-handler dev-resources-dir path-context2 {:context-listeners []})
+        (add-context-handler dev-resources-dir path-context3 {:context-listeners context-listeners})
         (add-ring-handler ring-handler path-ring)
         (add-servlet-handler servlet path-servlet)
-        (add-servlet-handler servlet path-servlet2 {})
         (add-war-handler (str dev-resources-dir war) path-war)
         (add-proxy-route target path-proxy)
         (add-proxy-route target2 path-proxy {})
         (let [endpoints (get-registered-endpoints)]
           (is (= endpoints #{{:type :context :base-path dev-resources-dir
-                              :endpoint path-context}
+                              :endpoint path-context :context-listeners []}
                              {:type :context :base-path dev-resources-dir
                               :context-listeners [] :endpoint path-context2}
                              {:type :context :base-path dev-resources-dir
                               :context-listeners context-listeners :endpoint path-context3}
                              {:type :ring :endpoint path-ring}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet}
-                             {:type :servlet :servlet (type servlet) :endpoint path-servlet2}
                              {:type :war :war-path (str dev-resources-dir war) :endpoint path-war}
                              {:type :proxy :target-host "0.0.0.0" :target-port 9000
                               :endpoint path-proxy :target-path "/ernie"}

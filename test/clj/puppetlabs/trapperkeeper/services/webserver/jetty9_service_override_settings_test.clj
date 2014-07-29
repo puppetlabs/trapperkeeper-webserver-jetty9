@@ -81,10 +81,10 @@
               successful when specifying a specific server"
       (let [override-result (atom nil)
             service1        (tk-services/service
-                              [[:WebserverService override-webserver-settings-for!]]
+                              [[:WebserverService override-webserver-settings!]]
                               (init [this context]
                                     (reset! override-result
-                                            (override-webserver-settings-for!
+                                            (override-webserver-settings!
                                               :ziggy overrides))
                                     context))]
         (with-test-logging
@@ -93,11 +93,11 @@
             [jetty9-service service1]
             jetty-multiserver-plaintext-config
             (let [s                   (get-service app :WebserverService)
-                  add-ring-handler-to (partial add-ring-handler-to s)
+                  add-ring-handler    (partial add-ring-handler s)
                   body                "Hi World"
                   path                "/hi_world"
                   ring-handler        (fn [req] {:status 200 :body body})]
-              (add-ring-handler-to :ziggy ring-handler path)
+              (add-ring-handler ring-handler path {:server-id :ziggy})
               (let [response (http-get
                                (format "https://localhost:%d%s/" ssl-port path)
                                default-options-for-https-client)]

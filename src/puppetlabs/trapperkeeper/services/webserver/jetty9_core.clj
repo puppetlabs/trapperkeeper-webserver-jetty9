@@ -55,13 +55,23 @@
    :path schema/Str
    :port schema/Int})
 
+(def ServerIDOption
+  {(schema/optional-key :server-id) schema/Keyword})
+
+(def ContextHandlerOptions
+  (assoc ServerIDOption (schema/optional-key :context-listeners) [ServletContextListener]))
+
+(def ServletHandlerOptions
+  (assoc ServerIDOption (schema/optional-key :servlet-init-params) {schema/Str schema/Str}))
+
 (def ProxyOptions
-  {(schema/optional-key :scheme) (schema/enum :orig :http :https)
-   (schema/optional-key :ssl-config) (schema/either
-                                       (schema/eq :use-server-config)
-                                       config/WebserverSslPemConfig)
-   (schema/optional-key :callback-fn) (schema/pred ifn?)
-   (schema/optional-key :request-buffer-size) schema/Int})
+  (assoc ServerIDOption
+    (schema/optional-key :scheme) (schema/enum :orig :http :https)
+    (schema/optional-key :ssl-config) (schema/either
+                                        (schema/eq :use-server-config)
+                                        config/WebserverSslPemConfig)
+    (schema/optional-key :callback-fn) (schema/pred ifn?)
+    (schema/optional-key :request-buffer-size) schema/Int))
 
 (def ServerContext
   {:state     Atom
@@ -608,7 +618,10 @@
 
 (defn get-server-context
   [service-context server-id]
-  (server-id (:jetty9-servers service-context)))
+  (let [server-id (if (nil? server-id)
+                    :default
+                    server-id)]
+    (server-id (:jetty9-servers service-context))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service Function Implementations
@@ -630,91 +643,65 @@
       (nil? old-config) (start-server-single-default context config)
       (nil? new-config) (start-server-multiple context config))))
 
-(schema/defn ^:always-validate add-context-handler-to!
-  ([service-context server-id :- schema/Keyword
-    base-path context-path]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type      :context
-                         :base-path base-path
-                         :endpoint  context-path}]
-      (register-endpoint! state endpoint)
-      (add-context-handler s base-path context-path)))
+(schema/defn ^:always-validate add-context-handler!
+  [context base-path context-path options :- ContextHandlerOptions]
+  (let [defaults          {:context-listeners []}
+        opts              (merge defaults options)
+        server-id         (:server-id opts)
+        context-listeners (:context-listeners opts)
+        s                 (get-server-context context server-id)
+        state             (:state s)
+        endpoint          {:type              :context
+                           :base-path         base-path
+                           :context-listeners context-listeners
+                           :endpoint          context-path}]
+    (register-endpoint! state endpoint)
+    (add-context-handler s base-path context-path context-listeners)))
 
-  ([service-context server-id :- schema/Keyword
-    base-path context-path context-listeners]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type              :context
-                         :base-path         base-path
-                         :context-listeners context-listeners
-                         :endpoint          context-path}]
-      (register-endpoint! state endpoint)
-      (add-context-handler s base-path context-path context-listeners))))
-
-(schema/defn ^:always-validate add-ring-handler-to!
-  [service-context server-id :- schema/Keyword
-   handler path]
-  (let [s             (get-server-context service-context server-id)
-        state         (:state s)
-        endpoint      {:type     :ring
-                       :endpoint path}]
+(schema/defn ^:always-validate add-ring-handler!
+  [context handler path options :- ServerIDOption]
+  (let [server-id (:server-id options)
+        s         (get-server-context context server-id)
+        state     (:state s)
+        endpoint  {:type     :ring
+                   :endpoint path}]
     (register-endpoint! state endpoint)
     (add-ring-handler s handler path)))
 
-(schema/defn ^:always-validate add-servlet-handler-to!
-  ([service-context server-id :- schema/Keyword
-    servlet path]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type    :servlet
-                         :servlet (type servlet)
-                         :endpoint path}]
-      (register-endpoint! state endpoint)
-      (add-servlet-handler s servlet path)))
+(schema/defn ^:always-validate add-servlet-handler!
+  [context servlet path options :- ServletHandlerOptions]
+  (let [defaults            {:servlet-init-params {}}
+        opts                (merge defaults options)
+        server-id           (:server-id opts)
+        servlet-init-params (:servlet-init-params opts)
+        s                   (get-server-context context server-id)
+        state               (:state s)
+        endpoint            {:type     :servlet
+                             :servlet  (type servlet)
+                             :endpoint path}]
+    (register-endpoint! state endpoint)
+    (add-servlet-handler s servlet path servlet-init-params)))
 
-  ([service-context server-id :- schema/Keyword
-    servlet path servlet-init-params]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type    :servlet
-                         :servlet (type servlet)
-                         :endpoint path}]
-      (register-endpoint! state endpoint)
-      (add-servlet-handler s servlet path servlet-init-params))))
-
-(schema/defn ^:always-validate add-war-handler-to!
-  [service-context server-id :- schema/Keyword
-   war path]
-  (let [s             (get-server-context service-context server-id)
-        state         (:state s)
-        endpoint      {:type     :war
-                       :war-path war
-                       :endpoint path}]
+(schema/defn ^:always-validate add-war-handler!
+  [context war path options :- ServerIDOption]
+  (let [server-id (:server-id options)
+        s         (get-server-context context server-id)
+        state     (:state s)
+        endpoint  {:type     :war
+                   :war-path war
+                   :endpoint path}]
     (register-endpoint! state endpoint)
     (add-war-handler s war path)))
 
-(schema/defn ^:always-validate add-proxy-route-to!
-  ([service-context server-id :- schema/Keyword
-    target path]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type        :proxy
-                         :target-host (:host target)
-                         :target-port (:port target)
-                         :target-path (:path target)
-                         :endpoint     path}]
-      (register-endpoint! state endpoint)
-      (add-proxy-route s target path {})))
-
-  ([service-context server-id :- schema/Keyword
-    target path options]
-    (let [s             (get-server-context service-context server-id)
-          state         (:state s)
-          endpoint      {:type        :proxy
-                         :target-host (:host target)
-                         :target-port (:port target)
-                         :target-path (:path target)
-                         :endpoint     path}]
-      (register-endpoint! state endpoint)
-      (add-proxy-route s target path options))))
+(schema/defn ^:always-validate add-proxy-route!
+  [context target path options]
+  (let [server-id (:server-id options)
+        s         (get-server-context context server-id)
+        state     (:state s)
+        endpoint  {:type        :proxy
+                   :target-host (:host target)
+                   :target-port (:port target)
+                   :target-path (:path target)
+                   :endpoint    path}]
+    (register-endpoint! state endpoint)
+    (add-proxy-route s target path options)))

@@ -40,11 +40,11 @@
       [jetty9-service]
       config
       (let [s                   (tk-app/get-service app :WebserverService)
-            add-ring-handler-to (partial add-ring-handler-to s)
+            add-ring-handler    (partial add-ring-handler s)
             body                "Hi World"
             path                "/hi_world"
             ring-handler        (fn [req] {:status 200 :body body})]
-        (add-ring-handler-to server-id ring-handler path)
+        (add-ring-handler ring-handler path {:server-id server-id})
         (let [response (http-get
                          (format "%s%s/" base-url path)
                          http-get-options)]
@@ -94,13 +94,13 @@
     (with-app-with-config app
       [jetty9-service]
       jetty-multiserver-plaintext-config
-      (let [s (tk-app/get-service app :WebserverService)
-            add-ring-handler-to (partial add-ring-handler-to s)
-            body "Hi World"
-            path "/hi_world"
+      (let [s                (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            body             "Hi World"
+            path             "/hi_world"
             ring-handler (fn [req] {:status 200 :body body})]
-        (add-ring-handler-to :ziggy ring-handler path)
-        (add-ring-handler-to :default ring-handler path)
+        (add-ring-handler ring-handler path {:server-id :ziggy})
+        (add-ring-handler ring-handler path {:server-id :default})
         (let [response1 (http-get "http://localhost:8080/hi_world/" {:as :text})
               response2 (http-get "http://localhost:8085/hi_world/" {:as :text})]
           (is (= (:status response1) 200))
