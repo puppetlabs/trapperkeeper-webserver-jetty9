@@ -73,12 +73,11 @@
   (let [defaults               (assoc server-and-route-defaults
                                  :context-listeners [])
         opts                   (merge defaults options)
-        server-id              (:server-id opts)
         route-id               (:route-id opts)
-        context-listeners      (:context-listeners opts)
         context-path           (get-endpoint-from-config context svc route-id)
-        add-context-handler-to (:add-context-handler-to webserver-service)]
-    (add-context-handler-to server-id base-path context-path context-listeners)))
+        add-context-handler    (:add-context-handler webserver-service)
+        opts                   (dissoc opts :route-id)]
+    (add-context-handler base-path context-path opts)))
 
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
@@ -86,11 +85,11 @@
    handler options :- ServerAndRouteOptions]
   (let [defaults            server-and-route-defaults
         opts                (merge defaults options)
-        server-id           (:server-id opts)
         route-id            (:route-id opts)
         path                (get-endpoint-from-config context svc route-id)
-        add-ring-handler-to (:add-ring-handler-to webserver-service)]
-    (add-ring-handler-to server-id handler path)))
+        add-ring-handler    (:add-ring-handler webserver-service)
+        opts                (dissoc opts :route-id)]
+    (add-ring-handler handler path opts)))
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context webserver-service
@@ -99,12 +98,11 @@
   (let [defaults               (assoc server-and-route-defaults
                                  :servlet-init-params {})
         opts                   (merge defaults options)
-        server-id              (:server-id opts)
         route-id               (:route-id opts)
         path                   (get-endpoint-from-config context svc route-id)
-        servlet-init-params    (:servlet-init-params opts)
-        add-servlet-handler-to (:add-servlet-handler-to webserver-service)]
-    (add-servlet-handler-to server-id servlet path servlet-init-params)))
+        add-servlet-handler    (:add-servlet-handler webserver-service)
+        opts                   (dissoc opts :route-id)]
+    (add-servlet-handler servlet path opts)))
 
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service
@@ -112,11 +110,11 @@
    war options :- ServerAndRouteOptions]
   (let [defaults           server-and-route-defaults
         opts               (merge defaults options)
-        server-id          (:server-id opts)
         route-id           (:route-id opts)
         path               (get-endpoint-from-config context svc route-id)
-        add-war-handler-to (:add-war-handler-to webserver-service)]
-    (add-war-handler-to server-id war path)))
+        add-war-handler    (:add-war-handler webserver-service)
+        opts               (dissoc opts :route-id)]
+    (add-war-handler war path opts)))
 
 (schema/defn ^:always-validate add-proxy-route!
   [context webserver-service
@@ -124,8 +122,8 @@
    target options :- ProxyRouteOptions]
   (let [defaults           server-and-route-defaults
         opts               (merge defaults options)
-        server-id          (:server-id opts)
         route-id           (:route-id opts)
         path               (get-endpoint-from-config context svc route-id)
-        add-proxy-route-to (:add-proxy-route-to webserver-service)]
-    (add-proxy-route-to server-id target path)))
+        add-proxy-route    (:add-proxy-route webserver-service)
+        opts               (dissoc opts :route-id)]
+    (add-proxy-route target path opts)))

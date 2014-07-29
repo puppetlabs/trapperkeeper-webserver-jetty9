@@ -71,29 +71,29 @@
                                   (override-webserver-settings overrides)))
 
   (override-webserver-settings! [this server-id overrides]
-                                    (let [override-webserver-settings-for (:override-webserver-settings-for! WebserverService)]
-                                      (override-webserver-settings-for server-id overrides)))
+                                    (let [override-webserver-settings (:override-webserver-settings! WebserverService)]
+                                      (override-webserver-settings server-id overrides)))
 
   (get-registered-endpoints [this]
                             (let [get-registered-endpoints (:get-registered-endpoints WebserverService)]
                               (get-registered-endpoints)))
 
   (get-registered-endpoints [this server-id]
-                            (let [get-registered-endpoints-from (:get-registered-endpoints-from WebserverService)]
-                              (get-registered-endpoints-from server-id)))
+                            (let [get-registered-endpoints (:get-registered-endpoints WebserverService)]
+                              (get-registered-endpoints server-id)))
 
   (log-registered-endpoints [this]
                             (let [log-registered-endpoints (:log-registered-endpoints WebserverService)]
                               (log-registered-endpoints)))
 
   (log-registered-endpoints [this server-id]
-                                (let [log-registered-endpoints-from (:log-registered-endpoints-from WebserverService)]
-                                  (log-registered-endpoints-from server-id)))
+                                (let [log-registered-endpoints (:log-registered-endpoints WebserverService)]
+                                  (log-registered-endpoints server-id)))
 
   (join [this]
         (let [join (:join WebserverService)]
           (join)))
 
   (join [this server-id]
-               (let [join-server (:join-server WebserverService)]
-                 (join-server server-id))))
+               (let [join (:join WebserverService)]
+                 (join server-id))))
