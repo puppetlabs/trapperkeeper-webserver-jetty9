@@ -386,7 +386,11 @@ in each map are detailed below.
 
 * `:type`: The type of the registered endpoint. The possible types are `:context`,
   `:ring`, `:servlet`, `:war`, and `:proxy`. Returned for every endpoint.
-* `:endpoint`: The registered endpoint. Returned for every endpoint.
+* `:endpoint`: The registered endpoint. Returned for every endpoint. This is set to
+  the `path` variable passed in to the handler service functions (or the `context-path`
+  variable if using `add-context-handler`). So for example, if you passed in
+  `"/hello"` as the path to a ring handler, the value attached to the `:endpoint` key
+  in the map would be `"/hello"`
 * `:base-path`: The base-path of a context handler. Returned only for endpoints of
   type `:context`.
 * `:context-listeners`: The context listeners for a context handler. Returned only
