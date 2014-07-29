@@ -618,7 +618,10 @@
 
 (defn get-server-context
   [service-context server-id]
-  (server-id (:jetty9-servers service-context)))
+  (let [server-id (if (nil? server-id)
+                    :default
+                    server-id)]
+    (server-id (:jetty9-servers service-context))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service Function Implementations
@@ -642,8 +645,7 @@
 
 (schema/defn ^:always-validate add-context-handler!
   [context base-path context-path options :- ContextHandlerOptions]
-  (let [defaults          {:server-id         :default
-                           :context-listeners []}
+  (let [defaults          {:context-listeners []}
         opts              (merge defaults options)
         server-id         (:server-id opts)
         context-listeners (:context-listeners opts)
@@ -658,9 +660,7 @@
 
 (schema/defn ^:always-validate add-ring-handler!
   [context handler path options :- ServerIDOption]
-  (let [defaults {:server-id :default}
-        opts     (merge defaults options)
-        server-id (:server-id opts)
+  (let [server-id (:server-id options)
         s         (get-server-context context server-id)
         state     (:state s)
         endpoint  {:type     :ring
@@ -670,8 +670,7 @@
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context servlet path options :- ServletHandlerOptions]
-  (let [defaults            {:server-id           :default
-                             :servlet-init-params {}}
+  (let [defaults            {:servlet-init-params {}}
         opts                (merge defaults options)
         server-id           (:server-id opts)
         servlet-init-params (:servlet-init-params opts)
@@ -685,9 +684,7 @@
 
 (schema/defn ^:always-validate add-war-handler!
   [context war path options :- ServerIDOption]
-  (let [defaults  {:server-id :default}
-        opts      (merge defaults options)
-        server-id (:server-id opts)
+  (let [server-id (:server-id options)
         s         (get-server-context context server-id)
         state     (:state s)
         endpoint  {:type     :war
@@ -698,9 +695,7 @@
 
 (schema/defn ^:always-validate add-proxy-route!
   [context target path options]
-  (let [defaults {:server-id :default}
-        opts     (merge defaults options)
-        server-id (:server-id opts)
+  (let [server-id (:server-id options)
         s         (get-server-context context server-id)
         state     (:state s)
         endpoint  {:type        :proxy
