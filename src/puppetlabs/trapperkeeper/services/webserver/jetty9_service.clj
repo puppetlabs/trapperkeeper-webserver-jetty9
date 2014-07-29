@@ -93,7 +93,7 @@
                             (let [s (core/get-server-context (service-context this) server-id)]
                               (core/get-registered-endpoints s)))
   (log-registered-endpoints [this]
-                            (log/info (str (get-registered-endpoints this :default))))
+                            (log/info (str (get-registered-endpoints this))))
 
   (log-registered-endpoints[this server-id]
                             (log/info (str (get-registered-endpoints this server-id))))
@@ -103,5 +103,5 @@
           (core/join s)))
 
   (join [this server-id]
-        (let [s (core/get-server-context (service-context this) :default)]
+        (let [s (core/get-server-context (service-context this) server-id)]
           (core/join s))))

@@ -168,7 +168,6 @@
             path-context3            "/goblinking"
             path-ring                "/bert"
             path-servlet             "/foo"
-            path-servlet2            "/misspiggy"
             path-war                 "/bar"
             path-proxy               "/baz"
             get-registered-endpoints (partial get-registered-endpoints s)
@@ -197,7 +196,6 @@
         (add-context-handler dev-resources-dir path-context3 {:context-listeners context-listeners})
         (add-ring-handler ring-handler path-ring)
         (add-servlet-handler servlet path-servlet)
-        (add-servlet-handler servlet path-servlet2 {:servlet-init-params {}})
         (add-war-handler (str dev-resources-dir war) path-war)
         (add-proxy-route target path-proxy)
         (add-proxy-route target2 path-proxy {})
@@ -210,7 +208,6 @@
                               :context-listeners context-listeners :endpoint path-context3}
                              {:type :ring :endpoint path-ring}
                              {:type :servlet :servlet (type servlet) :endpoint path-servlet}
-                             {:type :servlet :servlet (type servlet) :endpoint path-servlet2}
                              {:type :war :war-path (str dev-resources-dir war) :endpoint path-war}
                              {:type :proxy :target-host "0.0.0.0" :target-port 9000
                               :endpoint path-proxy :target-path "/ernie"}
