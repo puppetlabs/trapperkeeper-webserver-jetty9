@@ -3,10 +3,6 @@
   (:require [schema.core :as schema]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]))
 
-(def server-and-route-defaults
-  {:server-id :default
-   :route-id  :default})
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
@@ -42,6 +38,9 @@
 (defn get-endpoint-from-config
   [context svc route-id]
   (let [config (:web-router-service context)
+        route-id (if (nil? route-id)
+                   :default
+                   route-id)
         endpoint (get-in config [svc route-id])]
     (if (nil? endpoint)
       (throw
@@ -70,60 +69,48 @@
    svc :- schema/Keyword
    base-path
    options :- ContextHandlerOptions]
-  (let [defaults               (assoc server-and-route-defaults
-                                 :context-listeners [])
-        opts                   (merge defaults options)
-        route-id               (:route-id opts)
+  (let [route-id               (:route-id options)
         context-path           (get-endpoint-from-config context svc route-id)
         add-context-handler    (:add-context-handler webserver-service)
-        opts                   (dissoc opts :route-id)]
+        opts                   (dissoc options :route-id)]
     (add-context-handler base-path context-path opts)))
 
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
    svc :- schema/Keyword
    handler options :- ServerAndRouteOptions]
-  (let [defaults            server-and-route-defaults
-        opts                (merge defaults options)
-        route-id            (:route-id opts)
+  (let [route-id            (:route-id options)
         path                (get-endpoint-from-config context svc route-id)
         add-ring-handler    (:add-ring-handler webserver-service)
-        opts                (dissoc opts :route-id)]
+        opts                (dissoc options :route-id)]
     (add-ring-handler handler path opts)))
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context webserver-service
    svc :- schema/Keyword
    servlet options :- ServletHandlerOptions]
-  (let [defaults               (assoc server-and-route-defaults
-                                 :servlet-init-params {})
-        opts                   (merge defaults options)
-        route-id               (:route-id opts)
+  (let [route-id               (:route-id options)
         path                   (get-endpoint-from-config context svc route-id)
         add-servlet-handler    (:add-servlet-handler webserver-service)
-        opts                   (dissoc opts :route-id)]
+        opts                   (dissoc options :route-id)]
     (add-servlet-handler servlet path opts)))
 
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service
    svc :- schema/Keyword
    war options :- ServerAndRouteOptions]
-  (let [defaults           server-and-route-defaults
-        opts               (merge defaults options)
-        route-id           (:route-id opts)
+  (let [route-id           (:route-id options)
         path               (get-endpoint-from-config context svc route-id)
         add-war-handler    (:add-war-handler webserver-service)
-        opts               (dissoc opts :route-id)]
+        opts               (dissoc options :route-id)]
     (add-war-handler war path opts)))
 
 (schema/defn ^:always-validate add-proxy-route!
   [context webserver-service
    svc :- schema/Keyword
    target options :- ProxyRouteOptions]
-  (let [defaults           server-and-route-defaults
-        opts               (merge defaults options)
-        route-id           (:route-id opts)
+  (let [route-id           (:route-id options)
         path               (get-endpoint-from-config context svc route-id)
         add-proxy-route    (:add-proxy-route webserver-service)
-        opts               (dissoc opts :route-id)]
+        opts               (dissoc options :route-id)]
     (add-proxy-route target path opts)))
