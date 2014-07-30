@@ -89,6 +89,13 @@ Then your routes will be served at `/my-app/foo` and `my-app/bar`.
 You may specify `""` as the value for `path` if you are only registering a single
 handler and do not need to prefix the URL.
 
+There is also a three argument version of this function which takes these arguments:
+`[handler path options]`. `options` is a map containing a single optional key,
+`:server-id`, which specifies which server you want to add the ring-handler to. If
+`:server-id` is specified, the ring handler will be added to the server with id
+`:server-id`. If no `:server-id` is specified, or the two argument version is called,
+the ring handler will be added to the `:default` server.
+
 Here's an example of how to use the `:WebserverService`:
 
 ```clj
@@ -99,6 +106,20 @@ Here's an example of how to use the `:WebserverService`:
       (add-ring-handler my-app "/my-app")
       context))
 ```
+
+This would add your ring handler to the `:default` server at endpoint "/my-app".
+Alternatively, if you did this:
+
+```clj
+(defservice MyWebService
+   [[:WebserverService add-ring-handler]]
+   ;; initialization
+   (init [this context]
+      (add-ring-handler my-app "/my-app" {:server-id :ziggy})
+      context))
+```
+it would add your ring handler to the server with id `:ziggy` at endpoint "/my-app",
+rather than the `:default` server.
 
 *NOTE FOR COMPOJURE APPS*: If you are using compojure, it's important to note
 that compojure requires use of the [`context` macro](https://github.com/weavejester/compojure/wiki/Nesting-routes)
@@ -140,10 +161,13 @@ at `/css`:
 ```
 
 There is also a three argument version of the function which takes these arguments:
-`[base-path context-path context-listeners]`, where the first two arguments are the
-same as in the two argument version and the `context-listeners` is a list of objects
-implementing the [ServletContextListener]
-(http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
+`[base-path context-path options]`, where the first two arguments are the
+same as in the two argument version and `options` is a map containing two optional keys,
+`:server-id` and `:context-listeners`. The value stored in `:server-id` specifies which server
+to add the context handler to, similar to how it is done in `add-ring-handler`. Again, like
+`add-ring-handler`, if this key is absent or the two argument version is called, the context handler
+will be added to the `:default` server. The value stored in `:context-listeners` is a list
+of objects implementing the [ServletContextListener] (http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
 interface. These listeners are registered with the context created for serving the
 static content and receive notifications about the lifecycle events in the context
 as defined in the ServletContextListener interface. Of particular interest is the
@@ -164,8 +188,11 @@ a container for hosting an arbitrary ruby rack application - see [here]
 is a normal Java [Servlet](http://docs.oracle.com/javaee/7/api/javax/servlet/Servlet.html).
 The `path` is the URL prefix at which the servlet will be registered.  
 There is also a three argument version of the function which takes these arguments:
-`[servlet path servlet-init-params]`, where the first two arguments are the same as
-in the two argument version and the `servlet-init-params` is a map of servlet init
+`[servlet path options]`, where the first two arguments are the same as
+in the two argument version and options is a map containing two optional keys, `:server-id` and
+`:servlet-init-params`. As in `add-ring-handler`, `:server-id` specifies which server to add
+the handler to, with `:default` used if `:server-id` is absent or the two-argument version is
+called. The value stored at the `:servlet-init-params` key is a map of servlet init
 parameters.
 
 For example, to host a servlet at `/my-app`:
@@ -200,6 +227,12 @@ For example, to host `resources/cas.war` WAR at `/cas`:
     (add-war-handler "resources/cas.war" "/cas")
     context))
 ```
+
+There is also a three-argument version that takes these parameters:
+`[war path options]`. `options` is a map containing a single optional
+key, `:server-id`. As with `add-ring-handler`, this determines which
+server the handler is added to. If this key is absent or the two argument
+version is called, the handler will be added to the `:default` server.
 
 #### `add-proxy-route`
 
@@ -239,6 +272,9 @@ route:
   of the request buffer used by the HTTP Client. This allows HTTP requests with
   very large cookies to go through, as a large cookie can cause the request
   buffer to overflow unless the size is increased. The default is 4096 bytes.
+* `:server-id`: optional; the id of the server to which to add the proxy handler. If absent,
+  the handler will be added to the `:default` server. If the two argument version of this function
+  is called, the handler will also be added to the `:default` server.
 
 Simple example:
 
@@ -378,6 +414,10 @@ If a call is made to this function after webserver startup or after another
 call has already been made to this function (e.g., from other service),
 a java.lang.IllegalStateException will be thrown.
 
+A three argument version is available which takes these parameters: `[server-id overrides]`.
+`server-id` is the id of the server for which you wish to override the settings. If the
+two argument version is called, they will be overridden for the `:default` server.
+
 #### `get-registered-endpoints`
 
 This function returns a set of maps containing information on each URL endpoint
@@ -408,9 +448,17 @@ in each map are detailed below.
 
 The schema for the various types of endpoints can be viewed [here](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj#L71-L96).
 
+There is also a version that takes one argument, `[server-id]`, which specifies which server
+for which you want to pull the endpoints. If this parameter is absent, the endpoints will be
+pulled for the `:default` server.
+
 #### `log-registered-endpoints`
 
 This function logs the data returned by `get-registered-endpoints` at the info level.
+
+There is a version of this function that takes a single argument, `[server-id]`. This
+specifies which server for which you want to log the endpoints. If this is absent,
+the endpoints registered on the `:default` server will be logged.
 
 #### `join`
 
@@ -423,38 +471,9 @@ waits for a termination condition before allowing the process to exit.  However,
 if you do need this functionality for some reason, you can simply call `(join)`
 to cause your thread to wait for the Jetty server to shut down.
 
-### Server-specific Service Functions
-
-The functions above all automatically perform the specified operations on the server
-with id `:default`. The functions `add-context-handler-to`, `add-ring-handler-to`,
-`add-servlet-handler-to`, `add-war-handler-to`, `add-proxy-route-to`,
-`override-webserver-settings-for!`, `get-registered-endpoints-from`,
-`log-registered-endpoints-from`, and `join-server` all perform the exact same operations
-as their corresponding function detailed above, with the exception that these functions
-each take in a parameter `server-id` as their second parameter. They perform the same
-operation as their corresponding function detailed above with the exception that they
-perform it on the webserver specified by `server-id` rather than the `:default` webserver.
-
-For example, say you configured two servers on different ports. One server has id `:default`
-and is running on `localhost:9000`. The other server has id `:ziggy` and is running on
-`localhost:10000`. Say you've created some ring handler, `ring-handler`, and want it to
-run on path `"/foo"`. If you were to make the following call:
-
-```clj
-(add-ring-handler ring-handler "/foo")
-```
-
-Your ring handler would be added to the `:default` server at the specified endpoint, so
-the address would be `http://localhost:9000/foo`. However, if you called the following:
-
-```clj
-(add-ring-handler-to :ziggy ring-handler "/foo")
-```
-
-Your ring handler would instead be added to the `:ziggy` server at the specified endpoint,
-so the address would be `http://localhost:10000/foo`. Nothing would be added to the
-`:default` server, so `http://localhost:9000/foo` would yield a 404 error unless a separate
-handler had been added at that address on the `:default` server.
+There is another version of this function that takes a single argument, `[server-id]`.
+This is the id of the server you want to join. If this is not specified, then
+the `:default` server will be joined.
 
 ### Service lifecycle phases
 
