@@ -20,24 +20,24 @@
 
 (defservice hello-proxy-service
   [[:ConfigService get-in-config]
-   [:WebserverService add-proxy-route-to add-ring-handler-to]]
+   [:WebserverService add-proxy-route add-ring-handler]]
   (init [this context]
     (log/info "Initializing hello webservice")
     (let [url-prefix (get-in-config [:hello-web :url-prefix])]
       ; Since we're using the -to versions of the below functions and are specifying
       ; server-id :ziggy, these will be added to the :ziggy server specified in the
       ; config file.
-      (add-proxy-route-to
-        :ziggy
+      (add-proxy-route
         {:host "localhost"
          :port 8080
          :path "/hello"}
-        "/hello")
-      (add-ring-handler-to
-        :ziggy
+        "/hello"
+        {:server-id :ziggy})
+      (add-ring-handler
         (fn [req]
           {:status 200
            :headers {"Content-Type" "text/plain"}
            :body "Goodbye world"})
-        "/goodbye")
+        "/goodbye"
+        {:server-id :ziggy})
       (assoc context :url-prefix url-prefix))))
