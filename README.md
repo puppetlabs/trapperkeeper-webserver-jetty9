@@ -50,22 +50,15 @@ This is the protocol for the current implementation of the `:WebserverService`:
 
 ```clj
 (defprotocol WebserverService
-  (add-context-handler [this base-path context-path] [this base-path context-path context-listeners])
-  (add-context-handler-to [this server-id base-path context-path] [this server-id base-path context-path context-listeners])
-  (add-ring-handler [this handler path])
-  (add-ring-handler-to [this server-id handler path])
-  (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
-  (add-servlet-handler-to [this server-id servlet path] [this server-id servlet path servlet-init-params])
-  (add-war-handler [this war path])
-  (add-war-handler-to [this server-id war path]
+  (add-context-handler [this base-path context-path] [this base-path context-path options])
+  (add-ring-handler [this handler path] [this handler path options])
+  (add-servlet-handler [this servlet path] [this servlet path options])
+  (add-war-handler [this war path] [this war path options])
   (add-proxy-route [this target path] [this target path options])
-  (add-proxy-route-to [this server-id target path] [this server-id target path options]
-  (override-webserver-settings! [this overrides])
-  (override-webserver-settings-for! [this server-id overrides])
-  (get-registered-endpoints [this])
-  (get-registered-endpoints-from [this server-id])
-  (join [this])
-  (join-server [this server-id])
+  (override-webserver-settings! [this overrides] [this server-id overrides])
+  (get-registered-endpoints [this] [this server-id])
+  (log-registered-endpoints [this] [this server-id])
+  (join [this] [this server-id])
 ```
 
 Here is a bit more info about each of these functions:
