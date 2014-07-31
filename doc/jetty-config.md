@@ -128,3 +128,46 @@ value.
 Optional. This describes a path to a Certificate Revocation List file. Incoming
 SSL connections will be rejected if the client certificate matches a
 revocation entry in the file.
+
+## Configuring multiple webservers on isolated ports
+
+It is possible to configure multiple webservers on isolated ports within a single Jetty9
+webservice. In order to configure multiple webservers, change the `webserver` section of your
+Trapperkeeper configuration files to be a nested map. Each key in this map is the id of a server, and
+its value is the configuration for that server. At least one server must have an id of default.
+
+For example, say you wanted to configure two servers on localhost, one on port 9000 and one on port
+10000. The webserver section of your configuration file would look something like this:
+
+```
+webserver: {
+    default: {
+        host: localhost
+        port: 9000
+    }
+
+    ziggy: {
+        host: localhost
+        port: 10000
+    }
+}
+```
+
+This configuration would cause the Jetty9 service to create two different Jetty servers on isolated
+ports. You can then specify which server you would like to add handlers to when calling the Jetty9
+service functions, and they will be added to the server you specify. If no server-id is specified
+when adding handlers, they will be added to the `:default` server.
+
+Note that you are NOT limited to two servers and can configure more according to your needs.
+
+Also note that you can still set the `webserver` section of your configuration to be an un-nested map
+containing a single webserver configuration, like so
+
+```
+webserver: {
+    host: localhost
+    port: 9000
+}
+```
+
+In this case, the Jetty9 Service will simply create a single webserver and give it id `:default`.

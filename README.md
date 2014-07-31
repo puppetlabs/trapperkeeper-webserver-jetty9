@@ -26,7 +26,8 @@ The web server is configured via the
 [trapperkeeper configuration service](https://github.com/puppetlabs/trapperkeeper#configuration-service);
 so, you can control various properties of the server (ports, SSL, etc.) by adding a `webserver`
 section to one of your Trapperkeeper configuration files, and setting various properties
-therein.  For more info, see [Configuring the Webserver](doc/jetty-config.md).
+therein.  For more info, see [Configuring the Webserver](doc/jetty-config.md). It is possible to configure
+both a single webserver or multiple webservers.
 
 The `webserver-service` currently supports web applications built using
 Clojure's [Ring](https://github.com/ring-clojure/ring) library and Java's Servlet
@@ -36,10 +37,12 @@ ruby Rack applications via JRuby; for more info, see the
 
 ### Example code
 
-Two examples are included with this project:
+Four examples are included with this project:
 
 * A Ring example ([source code](./examples/ring_app))
 * A Java servlet example ([source code](./examples/servlet_app))
+* A WAR example ([source code](./examples/war_app))
+* A multiserver configuration example ([source code](./examples/multiserver_app))
 
 ### Service Protocol
 
@@ -47,12 +50,15 @@ This is the protocol for the current implementation of the `:WebserverService`:
 
 ```clj
 (defprotocol WebserverService
-  (add-ring-handler [this handler path])
-  (add-context-handler [this base-path context-path] [this base-path context-path context-listeners])
-  (add-servlet-handler [this servlet path] [this servlet path servlet-init-params])
-  (add-war-handler [this war path])
-  (add-proxy-route [this target path])
-  (join [this]))
+  (add-context-handler [this base-path context-path] [this base-path context-path options])
+  (add-ring-handler [this handler path] [this handler path options])
+  (add-servlet-handler [this servlet path] [this servlet path options])
+  (add-war-handler [this war path] [this war path options])
+  (add-proxy-route [this target path] [this target path options])
+  (override-webserver-settings! [this overrides] [this server-id overrides])
+  (get-registered-endpoints [this] [this server-id])
+  (log-registered-endpoints [this] [this server-id])
+  (join [this] [this server-id])
 ```
 
 Here is a bit more info about each of these functions:
@@ -76,6 +82,13 @@ Then your routes will be served at `/my-app/foo` and `my-app/bar`.
 You may specify `""` as the value for `path` if you are only registering a single
 handler and do not need to prefix the URL.
 
+There is also a three argument version of this function which takes these arguments:
+`[handler path options]`. `options` is a map containing a single optional key,
+`:server-id`, which specifies which server you want to add the ring-handler to. If
+`:server-id` is specified, the ring handler will be added to the server with id
+`:server-id`. If no `:server-id` is specified, or the two argument version is called,
+the ring handler will be added to the `:default` server.
+
 Here's an example of how to use the `:WebserverService`:
 
 ```clj
@@ -86,6 +99,20 @@ Here's an example of how to use the `:WebserverService`:
       (add-ring-handler my-app "/my-app")
       context))
 ```
+
+This would add your ring handler to the `:default` server at endpoint "/my-app".
+Alternatively, if you did this:
+
+```clj
+(defservice MyWebService
+   [[:WebserverService add-ring-handler]]
+   ;; initialization
+   (init [this context]
+      (add-ring-handler my-app "/my-app" {:server-id :ziggy})
+      context))
+```
+it would add your ring handler to the server with id `:ziggy` at endpoint "/my-app",
+rather than the `:default` server.
 
 *NOTE FOR COMPOJURE APPS*: If you are using compojure, it's important to note
 that compojure requires use of the [`context` macro](https://github.com/weavejester/compojure/wiki/Nesting-routes)
@@ -127,10 +154,13 @@ at `/css`:
 ```
 
 There is also a three argument version of the function which takes these arguments:
-`[base-path context-path context-listeners]`, where the first two arguments are the
-same as in the two argument version and the `context-listeners` is a list of objects
-implementing the [ServletContextListener]
-(http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
+`[base-path context-path options]`, where the first two arguments are the
+same as in the two argument version and `options` is a map containing two optional keys,
+`:server-id` and `:context-listeners`. The value stored in `:server-id` specifies which server
+to add the context handler to, similar to how it is done in `add-ring-handler`. Again, like
+`add-ring-handler`, if this key is absent or the two argument version is called, the context handler
+will be added to the `:default` server. The value stored in `:context-listeners` is a list
+of objects implementing the [ServletContextListener] (http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
 interface. These listeners are registered with the context created for serving the
 static content and receive notifications about the lifecycle events in the context
 as defined in the ServletContextListener interface. Of particular interest is the
@@ -151,8 +181,11 @@ a container for hosting an arbitrary ruby rack application - see [here]
 is a normal Java [Servlet](http://docs.oracle.com/javaee/7/api/javax/servlet/Servlet.html).
 The `path` is the URL prefix at which the servlet will be registered.  
 There is also a three argument version of the function which takes these arguments:
-`[servlet path servlet-init-params]`, where the first two arguments are the same as
-in the two argument version and the `servlet-init-params` is a map of servlet init
+`[servlet path options]`, where the first two arguments are the same as
+in the two argument version and options is a map containing two optional keys, `:server-id` and
+`:servlet-init-params`. As in `add-ring-handler`, `:server-id` specifies which server to add
+the handler to, with `:default` used if `:server-id` is absent or the two-argument version is
+called. The value stored at the `:servlet-init-params` key is a map of servlet init
 parameters.
 
 For example, to host a servlet at `/my-app`:
@@ -187,6 +220,12 @@ For example, to host `resources/cas.war` WAR at `/cas`:
     (add-war-handler "resources/cas.war" "/cas")
     context))
 ```
+
+There is also a three-argument version that takes these parameters:
+`[war path options]`. `options` is a map containing a single optional
+key, `:server-id`. As with `add-ring-handler`, this determines which
+server the handler is added to. If this key is absent or the two argument
+version is called, the handler will be added to the `:default` server.
 
 #### `add-proxy-route`
 
@@ -226,6 +265,9 @@ route:
   of the request buffer used by the HTTP Client. This allows HTTP requests with
   very large cookies to go through, as a large cookie can cause the request
   buffer to overflow unless the size is increased. The default is 4096 bytes.
+* `:server-id`: optional; the id of the server to which to add the proxy handler. If absent,
+  the handler will be added to the `:default` server. If the two argument version of this function
+  is called, the handler will also be added to the `:default` server.
 
 Simple example:
 
@@ -365,6 +407,52 @@ If a call is made to this function after webserver startup or after another
 call has already been made to this function (e.g., from other service),
 a java.lang.IllegalStateException will be thrown.
 
+A three argument version is available which takes these parameters: `[server-id overrides]`.
+`server-id` is the id of the server for which you wish to override the settings. If the
+two argument version is called, they will be overridden for the `:default` server.
+
+#### `get-registered-endpoints`
+
+This function returns a set of maps containing information on each URL endpoint
+registered by the Jetty9 service on the `:default` server. The possible keys appearing
+in each map are detailed below.
+
+* `:type`: The type of the registered endpoint. The possible types are `:context`,
+  `:ring`, `:servlet`, `:war`, and `:proxy`. Returned for every endpoint.
+* `:endpoint`: The registered endpoint. Returned for every endpoint. This is set to
+  the `path` variable passed in to the handler service functions (or the `context-path`
+  variable if using `add-context-handler`). So for example, if you passed in
+  `"/hello"` as the path to a ring handler, the value attached to the `:endpoint` key
+  in the map would be `"/hello"`
+* `:base-path`: The base-path of a context handler. Returned only for endpoints of
+  type `:context`.
+* `:context-listeners`: The context listeners for a context handler. Returned only
+  for endpoints of type `:context` that have context listeners.
+* `:servlet`: The servlet for a servlet handler. Only returned for endpoints of type
+  `:servlet`.
+* `:war-path`: The local path of the war registered by a war handler. Only returned
+  for endpoints of type `:war`.
+* `:target-host`: The targeted host of a proxy request. Only returned for endpoints
+  of type `:proxy`.
+* `:target-port`: The targeted port of a proxy request. Only returned for endpoints
+  of type `:proxy`.
+* `:target-path`: The targeted prefix of a proxy request. Only returned for endpoints
+  of type `:proxy`.
+
+The schema for the various types of endpoints can be viewed [here](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj#L71-L96).
+
+There is also a version that takes one argument, `[server-id]`, which specifies which server
+for which you want to pull the endpoints. If this parameter is absent, the endpoints will be
+pulled for the `:default` server.
+
+#### `log-registered-endpoints`
+
+This function logs the data returned by `get-registered-endpoints` at the info level.
+
+There is a version of this function that takes a single argument, `[server-id]`. This
+specifies which server for which you want to log the endpoints. If this is absent,
+the endpoints registered on the `:default` server will be logged.
+
 #### `join`
 
 This function is not recommended for normal use, but is provided for compatibility
@@ -375,6 +463,10 @@ trapperkeeper usage, because trapperkeeper already blocks the main thread and
 waits for a termination condition before allowing the process to exit.  However,
 if you do need this functionality for some reason, you can simply call `(join)`
 to cause your thread to wait for the Jetty server to shut down.
+
+There is another version of this function that takes a single argument, `[server-id]`.
+This is the id of the server you want to join. If this is not specified, then
+the `:default` server will be joined.
 
 ### Service lifecycle phases
 
