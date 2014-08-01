@@ -6,6 +6,7 @@
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
+           (org.eclipse.jetty.util.log Log)
            (javax.servlet.http HttpServletRequest HttpServletResponse)
            (java.util.concurrent Executors)
            (org.eclipse.jetty.servlets.gzip GzipHandler)
@@ -70,6 +71,8 @@
     (schema/optional-key :ssl-config) (schema/either
                                         (schema/eq :use-server-config)
                                         config/WebserverSslPemConfig)
+    (schema/optional-key :app-config) (schema/pred map?)
+    (schema/optional-key :authorize-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int))
 
@@ -282,20 +285,38 @@
         request-buffer-size     (:request-buffer-size options)]
     (proxy [ProxyServlet] []
       (rewriteURI [req]
-        (let [query (.getQueryString req)
-              scheme (let [target-scheme (:scheme options)]
-                       (condp = target-scheme
-                         nil (.getScheme req)
-                         :orig (.getScheme req)
-                         :http "http"
-                         :https "https"))
-              context-path (.getPathInfo req)
-              uri (str scheme "://" (:host target) ":" (:port target)
-                       "/" (:path target) context-path)]
-          (when query
-            (.append uri "?")
-            (.append uri query))
-          (URI/create (.toString uri))))
+        (let [target-uri (let [query (.getQueryString req)
+                        scheme (let [target-scheme (:scheme options)]
+                                 (condp = target-scheme
+                                   nil (.getScheme req)
+                                   :orig (.getScheme req)
+                                   :http "http"
+                                   :https "https"))
+                        context-path (.getPathInfo req)
+                        target-path (:path target)
+                        uri (str scheme "://" (:host target) ":" (:port target)
+                                 (when (not (str/blank? target-path)) (str "/" target-path))
+                                 context-path
+                                 (when query (str "?" query)))]
+                    (URI/create uri))]
+          (let [authorization (if-let [authorize-fn (:authorize-fn options)]
+                                (authorize-fn req target-uri (:app-config options))
+                                {:authorized true})]
+            (if (:authorized authorization)
+              target-uri
+              (URI/create (:redirect authorization))))))
+
+      ; for the latest version of the jetty client it's necessary to override
+      ; the createLogger method to avoid a NullPointerException on the package name
+      ; since the class generated in clojure does not have any package
+      (createLogger []
+        (let [servlet-name (str/replace (-> .getServletName .getServletConfig 'this) "-" ".")
+              class (.getClass 'this)]
+          (Log/getLogger (if-let [package (.getPackage class)]
+                           (if (.startsWith servlet-name (.getName package))
+                             (str (.getName class) "." servlet-name)
+                             servlet-name)
+                           servlet-name))))
 
       (newHttpClient []
         (let [client (if custom-ssl-ctxt-factory

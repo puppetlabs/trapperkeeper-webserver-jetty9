@@ -1,5 +1,6 @@
 (def tk-version "0.4.2")
-(def ks-version "0.7.1")
+(def ks-version "0.7.2")
+(def jetty-version "9.1.0.v20131115")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.5.3-SNAPSHOT"
   :description "We are trapperkeeper.  We are one."
@@ -9,7 +10,7 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.logging "0.2.6"]
-                 [prismatic/schema "0.2.1"]
+                 [prismatic/schema "0.2.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/certificate-authority "0.1.5"]
@@ -17,12 +18,12 @@
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
                  ;; Jetty Webserver
-                 [org.eclipse.jetty/jetty-server "9.1.0.v20131115"
+                 [org.eclipse.jetty/jetty-server ~jetty-version
                   :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
-                 [org.eclipse.jetty/jetty-servlet "9.1.0.v20131115"]
-                 [org.eclipse.jetty/jetty-servlets "9.1.0.v20131115"]
-                 [org.eclipse.jetty/jetty-webapp "9.1.0.v20131115"]
-                 [org.eclipse.jetty/jetty-proxy "9.1.0.v20131115"]
+                 [org.eclipse.jetty/jetty-servlet ~jetty-version]
+                 [org.eclipse.jetty/jetty-servlets ~jetty-version]
+                 [org.eclipse.jetty/jetty-webapp ~jetty-version]
+                 [org.eclipse.jetty/jetty-proxy ~jetty-version]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
                    
@@ -50,7 +51,7 @@
                                   "examples/war_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[puppetlabs/http-client "0.1.7"]
+                   :dependencies [[puppetlabs/http-client "0.2.0-SNAPSHOT"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]
