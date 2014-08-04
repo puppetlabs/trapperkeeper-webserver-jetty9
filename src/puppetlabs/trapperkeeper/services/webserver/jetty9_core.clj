@@ -177,7 +177,8 @@
 (defn- connection-factory
   []
   (let [http-config (doto (HttpConfiguration.)
-                      (.setSendDateHeader true))]
+                      (.setSendDateHeader true)
+                      (.setRequestHeaderSize 16192))]
     (into-array ConnectionFactory
                 [(HttpConnectionFactory. http-config)])))
 
@@ -313,7 +314,8 @@
                          (HttpClient.)))]
           (if request-buffer-size
             (.setRequestBufferSize client request-buffer-size)
-            (.setRequestBufferSize client 4096))
+            (.setRequestBufferSize client 8192))
+          (.setResponseBufferSize client 16000)
           client))
 
       (customizeProxyRequest [proxy-req req]

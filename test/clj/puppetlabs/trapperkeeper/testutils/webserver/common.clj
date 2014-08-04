@@ -46,7 +46,7 @@
    :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"
    :as :text})
 
-(def absurdly-large-cookie
+(def large-cookie
   (str
     "puppet_enterprise_console=BAh7DEkiD3Nlc3Npb25faWQGOgZFRiJFMWZjMjVjMzk2NzM5MW"
     "ZmZDQ3NDEx%0AYzE2ZDNjNWQ5OTlmNWExYTVjOGU5NzA2OGQ0OWZhMDdjZWMwYzY3NzI5NUki%0AH"
@@ -98,3 +98,6 @@
     "ssRjstVDoOQHByb3RvY29sZgYyOgpAdXNlckkiGHRlc3RAcHVwcGV0bGFicy5jb20GOwBUOhZAZXh0"
     "cmFfYXR0cmlidXRlc3sASSIPZmlsdGVydXNlcgY7AEZAXkkiGXVzZXJuYW1lX3Nlc3Npb25fa2V5Bj"
     "sARkBe--4aaa7f88f10137c85d99a851bc08490934a2da80"))
+
+(def absurdly-large-cookie
+  (apply str (repeat 8192 "a")))

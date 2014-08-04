@@ -113,7 +113,7 @@
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
-         :proxy-opts   {:request-buffer-size 8192}
+         :proxy-opts   {:request-buffer-size 16192}
          :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
