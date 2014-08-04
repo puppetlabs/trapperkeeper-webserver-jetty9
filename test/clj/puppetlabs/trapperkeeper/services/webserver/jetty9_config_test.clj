@@ -42,42 +42,51 @@
   (testing "process-config successfully builds a WebserverConfig for plaintext connector"
     (is (expected-http-config?
           {:port 8000}
-          {:http {:host default-host :port 8000}}))
+          {:http {:host default-host :port 8000 :request-size default-request-size}}))
 
     (is (expected-http-config?
           {:port 8000 :host "foo.local"}
-          {:http {:host "foo.local" :port 8000}}))
+          {:http {:host "foo.local" :port 8000 :request-size default-request-size}}))
 
     (is (expected-http-config?
           {:host "foo.local"}
-          {:http {:host "foo.local" :port default-http-port}}))
+          {:http {:host "foo.local" :port default-http-port :request-size default-request-size}}))
 
     (is (expected-http-config?
           {:port 8000 :max-threads 500}
-          {:http        {:host default-host :port 8000}
-           :max-threads 500})))
+          {:http        {:host default-host :port 8000 :request-size default-request-size}
+           :max-threads 500}))
+
+    (is (expected-http-config?
+          {:port 8000 :request-size 16192}
+          {:http {:host default-host :port 8000 :request-size 16192}})))
 
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local"})
-          {:https {:host "foo.local" :port default-https-port}}))
+          {:https {:host "foo.local" :port default-https-port :request-size default-request-size}}))
 
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-port 8001})
-          {:https {:host default-host :port 8001}}))
+          {:https {:host default-host :port 8001 :request-size default-request-size}}))
 
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :ssl-port 8001})
-          {:https {:host "foo.local" :port 8001}})))
+          {:https {:host "foo.local" :port 8001 :request-size default-request-size}}))
+
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-host "foo.local" :ssl-port 8001 :request-size 16192})
+          {:https {:host "foo.local" :port 8001 :request-size 16192}})))
 
   (testing "jks ssl config"
     (is (expected-https-config?
           (merge valid-ssl-keystore-config
                  {:ssl-port 8001})
-          {:https {:host default-host :port 8001}})))
+          {:https {:host default-host :port 8001 :request-size default-request-size}})))
 
   (testing "cipher suites"
     (is (expected-https-config?
@@ -86,7 +95,8 @@
           {:https
             {:host default-host
              :port 8001
-             :cipher-suites ["FOO" "BAR"]}})))
+             :cipher-suites ["FOO" "BAR"]
+             :request-size default-request-size}})))
 
   (testing "protocols"
     (is (expected-https-config?
@@ -95,7 +105,8 @@
           {:https
             {:host default-host
              :port 8001
-             :protocols ["FOO" "BAR"]}})))
+             :protocols ["FOO" "BAR"]
+             :request-size default-request-size}})))
 
   (testing "ssl-crl-path"
     (is (expected-https-config?
@@ -106,7 +117,8 @@
           {:https
             {:host default-host
              :port 8001
-             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}})))
+             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"
+             :request-size default-request-size}})))
 
   (testing "client auth"
     (letfn [(get-client-auth [config]
@@ -135,8 +147,8 @@
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :port 8000})
-          {:http  {:host default-host :port 8000}
-           :https {:host "foo.local" :port default-https-port}})))
+          {:http  {:host default-host :port 8000 :request-size default-request-size}
+           :https {:host "foo.local" :port default-https-port :request-size default-request-size}})))
 
   (testing "process-config fails for invalid server config"
     (are [config]

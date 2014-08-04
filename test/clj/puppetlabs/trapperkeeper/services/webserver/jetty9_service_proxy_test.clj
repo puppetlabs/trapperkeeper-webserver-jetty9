@@ -89,9 +89,11 @@
                   "is not specified")
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
-                        :port 9000}
+                        :port 9000
+                        :request-size 16192}
          :proxy        {:host "0.0.0.0"
-                        :port 10000}
+                        :port 10000
+                        :request-size 16192}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
@@ -107,9 +109,11 @@
     (testing "proxy does not explode on a large cookie when properly configured"
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
-                        :port 9000}
+                        :port 9000
+                        :request-size 16192}
          :proxy        {:host "0.0.0.0"
-                        :port 10000}
+                        :port 10000
+                        :request-size 16192}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}

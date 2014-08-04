@@ -10,6 +10,10 @@
 (def jetty-plaintext-config
   {:webserver {:port 8080}})
 
+(def jetty-plaintext-large-request-config
+  {:webserver {:port 8080
+               :request-size 16192}})
+
 (def jetty-multiserver-plaintext-config
   {:webserver {:foo   {:port 8085}
                :default {:port 8080}}})

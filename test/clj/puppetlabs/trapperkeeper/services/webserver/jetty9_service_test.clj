@@ -457,3 +457,35 @@
       (is (.isStarted jetty-server)
           "the default server was never started")
       (tk-app/stop app))))
+
+(deftest large-request-test
+  (testing (str "request to Jetty fails with a 413 error if the request header "
+                "is too large and a larger one is not set")
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s                   (tk-app/get-service app :WebserverService)
+            add-ring-handler    (partial add-ring-handler s)
+            body                "Hi World"
+            path                "/hi_world"
+            ring-handler        (fn [req] {:status 200 :body body})]
+        (add-ring-handler ring-handler path)
+        (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
+                                                                   :as      :text})]
+          (is (= (:status response) 413))))))
+
+  (testing (str "request to Jetty succeeds with a large cookie if the request header "
+                "size is properly set")
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-large-request-config
+      (let [s                   (tk-app/get-service app :WebserverService)
+            add-ring-handler    (partial add-ring-handler s)
+            body                "Hi World"
+            path                "/hi_world"
+            ring-handler        (fn [req] {:status 200 :body body})]
+        (add-ring-handler ring-handler path)
+        (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
+                                                                   :as      :text})]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hi World")))))))
