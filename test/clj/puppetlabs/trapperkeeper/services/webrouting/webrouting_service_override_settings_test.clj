@@ -13,6 +13,16 @@
 
 (def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
+(defprotocol TestDummy
+  (dummy [this]))
+
+(tk-services/defservice test-dummy
+  TestDummy
+  []
+  (dummy [this]
+         "This is a dummy function. Please ignore."))
+
+
 (deftest test-override-webserver-settings!-with-web-routing
   (let [ssl-port  9001
         overrides {:ssl-port ssl-port
@@ -42,14 +52,14 @@
         (with-test-logging
           (with-app-with-config
             app
-            [jetty9-service webrouting-service service1]
-            webrouting-plaintext-config
+            [jetty9-service webrouting-service service1 test-dummy]
+            webrouting-plaintext-override-config
             (let [s                (get-service app :WebroutingService)
                   add-ring-handler (partial add-ring-handler s)
                   body             "Hi World"
                   path             "/foo"
                   ring-handler     (fn [req] {:status 200 :body body})
-                  svc              :puppetlabs.foo/foo-service]
+                  svc              (get-service app :TestDummy)]
               (add-ring-handler svc ring-handler)
               (let [response (http-get
                                (format "https://localhost:%d%s/" ssl-port path)
@@ -86,14 +96,14 @@
         (with-test-logging
           (with-app-with-config
             app
-            [jetty9-service webrouting-service service1]
-            webrouting-plaintext-multiserver-config
+            [jetty9-service webrouting-service service1 test-dummy]
+            webrouting-plaintext-multiserver-override-config
             (let [s                   (get-service app :WebroutingService)
                   add-ring-handler    (partial add-ring-handler s)
                   body                "Hi World"
                   path                "/foo"
                   ring-handler        (fn [req] {:status 200 :body body})
-                  svc                 :puppetlabs.foo/foo-service]
+                  svc                 (get-service app :TestDummy)]
               (add-ring-handler svc ring-handler {:server-id :ziggy})
               (let [response (http-get
                                (format "https://localhost:%d%s/" ssl-port path)

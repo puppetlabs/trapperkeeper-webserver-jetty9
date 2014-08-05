@@ -1,7 +1,8 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-core
   (:import (javax.servlet ServletContextListener))
   (:require [schema.core :as schema]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]))
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
+            [puppetlabs.trapperkeeper.services :as tk-services]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -54,11 +55,9 @@
 (schema/defn ^:always-validate init!
   [context config :- WebroutingServiceConfig]
   (let [configuration (into {} (for [[svc svc-config] config]
-                        (let [single (schema/check schema/Str svc-config)
-                              multi  (schema/check WebroutingMultipleConfig svc-config)]
-                          (cond
-                            (nil? single) [svc {:default svc-config}]
-                            (nil? multi)  [svc svc-config]))))]
+                                 (cond
+                                   (nil? (schema/check schema/Str svc-config)) [svc {:default svc-config}]
+                                   (nil? (schema/check WebroutingMultipleConfig svc-config)) [svc svc-config])))]
     (assoc context :web-router-service configuration)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -66,10 +65,11 @@
 
 (schema/defn ^:always-validate add-context-handler!
   [context webserver-service
-   svc :- schema/Keyword
+   svc :- tk-services/Service
    base-path
    options :- ContextHandlerOptions]
-  (let [route-id               (:route-id options)
+  (let [svc                    (keyword (tk-services/service-symbol svc))
+        route-id               (:route-id options)
         context-path           (get-endpoint-from-config context svc route-id)
         add-context-handler    (:add-context-handler webserver-service)
         opts                   (dissoc options :route-id)]
@@ -77,9 +77,10 @@
 
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
-   svc :- schema/Keyword
+   svc :- tk-services/Service
    handler options :- ServerAndRouteOptions]
-  (let [route-id            (:route-id options)
+  (let [svc                 (keyword (tk-services/service-symbol svc))
+        route-id            (:route-id options)
         path                (get-endpoint-from-config context svc route-id)
         add-ring-handler    (:add-ring-handler webserver-service)
         opts                (dissoc options :route-id)]
@@ -87,9 +88,10 @@
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context webserver-service
-   svc :- schema/Keyword
+   svc :- tk-services/Service
    servlet options :- ServletHandlerOptions]
-  (let [route-id               (:route-id options)
+  (let [svc                    (keyword (tk-services/service-symbol svc))
+        route-id               (:route-id options)
         path                   (get-endpoint-from-config context svc route-id)
         add-servlet-handler    (:add-servlet-handler webserver-service)
         opts                   (dissoc options :route-id)]
@@ -97,9 +99,10 @@
 
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service
-   svc :- schema/Keyword
+   svc :- tk-services/Service
    war options :- ServerAndRouteOptions]
-  (let [route-id           (:route-id options)
+  (let [svc                (keyword (tk-services/service-symbol svc))
+        route-id           (:route-id options)
         path               (get-endpoint-from-config context svc route-id)
         add-war-handler    (:add-war-handler webserver-service)
         opts               (dissoc options :route-id)]
@@ -107,9 +110,10 @@
 
 (schema/defn ^:always-validate add-proxy-route!
   [context webserver-service
-   svc :- schema/Keyword
+   svc :- tk-services/Service
    target options :- ProxyRouteOptions]
-  (let [route-id           (:route-id options)
+  (let [svc                (keyword (tk-services/service-symbol svc))
+        route-id           (:route-id options)
         path               (get-endpoint-from-config context svc route-id)
         add-proxy-route    (:add-proxy-route webserver-service)
         opts               (dissoc options :route-id)]

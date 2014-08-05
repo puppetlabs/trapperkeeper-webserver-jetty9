@@ -22,12 +22,15 @@
 (defprotocol TestService
   (hello [this]))
 
+(defprotocol NotReal
+  (dummy [this]))
+
 (tk-services/defservice test-service
   TestService
   [[:WebroutingService add-ring-handler]]
   (init [this context]
-    (let [service (get-service this :TestService)
-          svc (keyword (tk-services/service-symbol service))
+    (let [svc (get-service this :TestService)
+          ;svc (keyword (tk-services/service-symbol service))
           body "Hello World!"
           ring-handler (fn [req] {:status 200 :body body})]
       (add-ring-handler svc ring-handler)
@@ -37,6 +40,12 @@
                                           :route-id :bowie}))
     context)
   (hello [this]
+         "This is a dummy function. Please disregard."))
+
+(tk-services/defservice not-real
+  NotReal
+  []
+  (dummy [this]
          "This is a dummy function. Please disregard."))
 
 (deftest webrouting-service-test
@@ -63,10 +72,10 @@
       app
       [jetty9-service webrouting-service]
       webrouting-plaintext-config
-      (let [s (tk-app/get-service app :WebroutingService)
+      (let [s (tk-app/get-service app :NotReal)
             add-ring-handler (partial add-ring-handler s)
             body "Hello World!"
             ring-handler (fn [req] {:status 200 :body body})
-            svc :this-isn't-real]
+            svc (tk-app/get-service app :NotReal)]
         (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler)))))))
 
