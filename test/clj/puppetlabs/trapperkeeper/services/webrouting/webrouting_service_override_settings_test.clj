@@ -22,6 +22,17 @@
   (dummy [this]
          "This is a dummy function. Please ignore."))
 
+(def webrouting-plaintext-override-config
+  {:webserver {:port 8080}
+   :web-router-service
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-override-settings-test/test-dummy "/foo"}})
+
+(def webrouting-plaintext-multiserver-override-config
+  {:webserver {:default {:port 8080}
+               :ziggy   {:port 9000}}
+   :web-router-service
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-override-settings-test/test-dummy "/foo"}})
+
 
 (deftest test-override-webserver-settings!-with-web-routing
   (let [ssl-port  9001

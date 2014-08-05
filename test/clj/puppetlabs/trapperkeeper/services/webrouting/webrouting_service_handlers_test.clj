@@ -22,6 +22,19 @@
   (dummy [this]
          "This is a dummy function. Please ignore."))
 
+(def webrouting-plaintext-multiserver-config
+  {:webserver {:default {:port 8080}
+               :ziggy {:port 9000}}
+   :web-router-service
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test/test-dummy "/foo"}})
+
+(def webrouting-plaintext-multiroute-config
+  {:webserver {:port 8080}
+   :web-router-service
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test/test-dummy
+        {:default "/foo"
+         :ziggy   "/bar"}}})
+
 (deftest static-content-test-web-routing
   (testing "static content context with web routing"
     (with-app-with-config app
