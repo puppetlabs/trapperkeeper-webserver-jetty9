@@ -90,10 +90,10 @@
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000
-                        :request-size 16192}
+                        :request-header-max-size 16192}
          :proxy        {:host "0.0.0.0"
                         :port 10000
-                        :request-size 16192}
+                        :request-header-max-size 16192}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
@@ -110,10 +110,10 @@
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000
-                        :request-size 16192}
+                        :request-header-max-size 16192}
          :proxy        {:host "0.0.0.0"
                         :port 10000
-                        :request-size 16192}
+                        :request-header-max-size 16192}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}

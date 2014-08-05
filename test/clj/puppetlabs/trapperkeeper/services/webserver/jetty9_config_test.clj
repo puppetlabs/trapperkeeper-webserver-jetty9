@@ -22,7 +22,8 @@
   [config expected]
   (= (-> expected
          (update-in [:max-threads] (fnil identity default-max-threads))
-         (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable)))
+         (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable))
+         (update-in [:http :request-header-max-size] (fnil identity default-request-header-size)))
      (process-config config)))
 
 (defn expected-https-config?
@@ -34,6 +35,7 @@
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
            (update-in [:https :client-auth] (fnil identity default-client-auth))
+           (update-in [:https :request-header-max-size] (fnil identity default-request-header-size))
            (update-in [:https :ssl-crl-path] identity))
        (-> actual
            (update-in [:https] dissoc :keystore-config)))))
@@ -42,51 +44,51 @@
   (testing "process-config successfully builds a WebserverConfig for plaintext connector"
     (is (expected-http-config?
           {:port 8000}
-          {:http {:host default-host :port 8000 :request-size default-request-size}}))
+          {:http {:host default-host :port 8000}}))
 
     (is (expected-http-config?
           {:port 8000 :host "foo.local"}
-          {:http {:host "foo.local" :port 8000 :request-size default-request-size}}))
+          {:http {:host "foo.local" :port 8000}}))
 
     (is (expected-http-config?
           {:host "foo.local"}
-          {:http {:host "foo.local" :port default-http-port :request-size default-request-size}}))
+          {:http {:host "foo.local" :port default-http-port}}))
 
     (is (expected-http-config?
           {:port 8000 :max-threads 500}
-          {:http        {:host default-host :port 8000 :request-size default-request-size}
+          {:http        {:host default-host :port 8000}
            :max-threads 500}))
 
     (is (expected-http-config?
-          {:port 8000 :request-size 16192}
-          {:http {:host default-host :port 8000 :request-size 16192}})))
+          {:port 8000 :request-header-max-size 16192}
+          {:http {:host default-host :port 8000 :request-header-max-size 16192}})))
 
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local"})
-          {:https {:host "foo.local" :port default-https-port :request-size default-request-size}}))
+          {:https {:host "foo.local" :port default-https-port}}))
 
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-port 8001})
-          {:https {:host default-host :port 8001 :request-size default-request-size}}))
+          {:https {:host default-host :port 8001}}))
 
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :ssl-port 8001})
-          {:https {:host "foo.local" :port 8001 :request-size default-request-size}}))
+          {:https {:host "foo.local" :port 8001}}))
 
     (is (expected-https-config?
           (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local" :ssl-port 8001 :request-size 16192})
-          {:https {:host "foo.local" :port 8001 :request-size 16192}})))
+                 {:ssl-host "foo.local" :ssl-port 8001 :request-header-max-size 16192})
+          {:https {:host "foo.local" :port 8001 :request-header-max-size 16192}})))
 
   (testing "jks ssl config"
     (is (expected-https-config?
           (merge valid-ssl-keystore-config
                  {:ssl-port 8001})
-          {:https {:host default-host :port 8001 :request-size default-request-size}})))
+          {:https {:host default-host :port 8001}})))
 
   (testing "cipher suites"
     (is (expected-https-config?
@@ -95,8 +97,7 @@
           {:https
             {:host default-host
              :port 8001
-             :cipher-suites ["FOO" "BAR"]
-             :request-size default-request-size}})))
+             :cipher-suites ["FOO" "BAR"]}})))
 
   (testing "protocols"
     (is (expected-https-config?
@@ -105,8 +106,7 @@
           {:https
             {:host default-host
              :port 8001
-             :protocols ["FOO" "BAR"]
-             :request-size default-request-size}})))
+             :protocols ["FOO" "BAR"]}})))
 
   (testing "ssl-crl-path"
     (is (expected-https-config?
@@ -117,8 +117,7 @@
           {:https
             {:host default-host
              :port 8001
-             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"
-             :request-size default-request-size}})))
+             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}})))
 
   (testing "client auth"
     (letfn [(get-client-auth [config]
@@ -147,8 +146,8 @@
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :port 8000})
-          {:http  {:host default-host :port 8000 :request-size default-request-size}
-           :https {:host "foo.local" :port default-https-port :request-size default-request-size}})))
+          {:http  {:host default-host :port 8000 :request-header-max-size default-request-header-size}
+           :https {:host "foo.local" :port default-https-port}})))
 
   (testing "process-config fails for invalid server config"
     (are [config]

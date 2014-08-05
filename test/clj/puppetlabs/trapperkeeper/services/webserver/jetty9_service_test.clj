@@ -483,9 +483,9 @@
             add-ring-handler    (partial add-ring-handler s)
             body                "Hi World"
             path                "/hi_world"
-            ring-handler        (fn [req] {:status 200 :body body})]
+            ring-handler        (fn [req] {:status 200 :body (str body ((:headers req) "cookie"))})]
         (add-ring-handler ring-handler path)
         (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
                                                                    :as      :text})]
           (is (= (:status response) 200))
-          (is (= (:body response) "Hi World")))))))
+          (is (= (:body response) (str "Hi World" absurdly-large-cookie))))))))

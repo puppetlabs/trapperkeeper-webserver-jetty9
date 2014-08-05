@@ -27,7 +27,8 @@
 (def default-max-threads 100)
 (def default-client-auth :need)
 (def default-jmx-enable "true")
-(def default-request-size 8192)
+(def default-request-header-buffer-size 8192)
+(def default-request-header-size 8192)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -36,7 +37,7 @@
   {(schema/optional-key :port)            schema/Int
    (schema/optional-key :host)            schema/Str
    (schema/optional-key :max-threads)     schema/Int
-   (schema/optional-key :request-size)    schema/Int
+   (schema/optional-key :request-header-max-size)    schema/Int
    (schema/optional-key :ssl-port)        schema/Int
    (schema/optional-key :ssl-host)        schema/Str
    (schema/optional-key :ssl-key)         schema/Str
@@ -76,7 +77,7 @@
 (def WebserverConnector
   {:host         schema/Str
    :port         schema/Int
-   :request-size schema/Int})
+   :request-header-max-size schema/Int})
 
 (def WebserverSslContextFactory
   {:keystore-config                    WebserverSslKeystoreConfig
@@ -196,7 +197,7 @@
   (if (some #(contains? config %) #{:port :host})
     {:host         (or (:host config) default-host)
      :port         (or (:port config) default-http-port)
-     :request-size (or (:request-size config) default-request-size)}))
+     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)}))
 
 (schema/defn ^:always-validate
   maybe-get-https-connector :- (schema/maybe WebserverSslConnector)
@@ -204,7 +205,7 @@
   (if (some #(contains? config %) #{:ssl-port :ssl-host})
     {:host (or (:ssl-host config) default-host)
      :port (or (:ssl-port config) default-https-port)
-     :request-size (or (:request-size config) default-request-size)
+     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
      :keystore-config (get-keystore-config! config)
      :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
      :protocols (:ssl-protocols config)

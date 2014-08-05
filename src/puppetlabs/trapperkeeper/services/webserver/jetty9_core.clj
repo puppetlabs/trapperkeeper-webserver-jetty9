@@ -188,7 +188,7 @@
   [server            :- Server
    ssl-ctxt-factory  :- SslContextFactory
    config :- config/WebserverSslConnector]
-  (let [request-size (:request-size config)]
+  (let [request-size (:request-header-max-size config)]
     (doto (ServerConnector. server ssl-ctxt-factory (connection-factory request-size))
       (.setPort (:port config))
       (.setHost (:host config)))))
@@ -197,7 +197,7 @@
   plaintext-connector :- ServerConnector
   [server :- Server
    config :- config/WebserverConnector]
-  (let [request-size (:request-size config)]
+  (let [request-size (:request-header-max-size config)]
     (doto (ServerConnector. server (connection-factory request-size))
       (.setPort (:port config))
       (.setHost (:host config)))))
@@ -316,7 +316,7 @@
                          (HttpClient.)))]
           (if request-buffer-size
             (.setRequestBufferSize client request-buffer-size)
-            (.setRequestBufferSize client 8192))
+            (.setRequestBufferSize client config/default-request-header-buffer-size))
           client))
 
       (customizeProxyRequest [proxy-req req]
@@ -375,8 +375,7 @@
     :ssl-host     - the hostname to listen on for SSL connections
     :ssl-port     - the SSL port to listen on (defaults to 8081)
     :max-threads  - the maximum number of threads to use (default 100)
-    :header-size  - the maximum size of the request header. only necessary to set for
-                    requests with exceedingly large cookies (default 8192)
+    :header-size  - the maximum size of an HTTP request header (default 8192)
 
     SSL may be configured via PEM files by providing all three of the following
     settings:

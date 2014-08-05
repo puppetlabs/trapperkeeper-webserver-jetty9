@@ -12,7 +12,7 @@
 
 (def jetty-plaintext-large-request-config
   {:webserver {:port 8080
-               :request-size 16192}})
+               :request-header-max-size 16192}})
 
 (def jetty-multiserver-plaintext-config
   {:webserver {:foo   {:port 8085}
