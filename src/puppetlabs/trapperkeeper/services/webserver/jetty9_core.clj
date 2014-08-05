@@ -370,12 +370,12 @@
   create-webserver :- ServerContext
     "Create a Jetty webserver according to the supplied options:
 
-    :host         - the hostname to listen on
-    :port         - the port to listen on (defaults to 8080)
-    :ssl-host     - the hostname to listen on for SSL connections
-    :ssl-port     - the SSL port to listen on (defaults to 8081)
-    :max-threads  - the maximum number of threads to use (default 100)
-    :header-size  - the maximum size of an HTTP request header (default 8192)
+    :host                     - the hostname to listen on
+    :port                     - the port to listen on (defaults to 8080)
+    :ssl-host                 - the hostname to listen on for SSL connections
+    :ssl-port                 - the SSL port to listen on (defaults to 8081)
+    :max-threads              - the maximum number of threads to use (default 100)
+    :request-header-max-size  - the maximum size of an HTTP request header (default 8192)
 
     SSL may be configured via PEM files by providing all three of the following
     settings:

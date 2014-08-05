@@ -34,9 +34,9 @@
 ;;; Schemas
 
 (def WebserverRawConfig
-  {(schema/optional-key :port)            schema/Int
-   (schema/optional-key :host)            schema/Str
-   (schema/optional-key :max-threads)     schema/Int
+  {(schema/optional-key :port)                       schema/Int
+   (schema/optional-key :host)                       schema/Str
+   (schema/optional-key :max-threads)                schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
    (schema/optional-key :ssl-port)        schema/Int
    (schema/optional-key :ssl-host)        schema/Str
