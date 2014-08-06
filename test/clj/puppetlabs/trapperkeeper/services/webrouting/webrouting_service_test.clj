@@ -30,7 +30,6 @@
   [[:WebroutingService add-ring-handler]]
   (init [this context]
     (let [svc (get-service this :TestService)
-          ;svc (keyword (tk-services/service-symbol service))
           body "Hello World!"
           ring-handler (fn [req] {:status 200 :body body})]
       (add-ring-handler svc ring-handler)

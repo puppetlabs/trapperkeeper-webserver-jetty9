@@ -75,42 +75,6 @@
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))))
 
-  (testing "proxy support with web-routing and multiple servers"
-    (with-target-and-proxy-servers
-      {:target       {:host "0.0.0.0"
-                      :port 9000}
-       :proxy        {:ziggy {:host "0.0.0.0"
-                              :port 10000}
-                      :default {:host "0.0.0.0"
-                                :port 8085}}
-       :proxy-config {:host "localhost"
-                      :port 9000
-                      :path "/hello"}
-       :proxy-opts   {:server-id :ziggy}}
-      (let [response (http-get "http://localhost:9000/hello/world")]
-        (is (= (:status response) 200))
-        (is (= (:body response) "Hello, World!")))
-      (let [response (http-get "http://localhost:10000/hello-proxy/world")]
-        (is (= (:status response) 200))
-        (is (= (:body response) "Hello, World!")))))
-
-  (testing "basic https proxy support with web-routing and empty options"
-    (with-target-and-proxy-servers
-      {:target {:host "0.0.0.0"
-                :port 9000}
-       :proxy  {:host "0.0.0.0"
-                :port 10000}
-       :proxy-config {:host "localhost"
-                      :port 9000
-                      :path "/hello"}
-                      :proxy-opts {}}
-      (let [response (http-get "http://localhost:9000/hello/world")]
-        (is (= (:status response) 200))
-        (is (= (:body response) "Hello, World!")))
-      (let [response (http-get "http://localhost:10000/hello-proxy/world")]
-        (is (= (:status response) 200))
-        (is (= (:body response) "Hello, World!")))))
-
   (testing "basic https proxy support with multiple web routes"
     (with-target-and-proxy-servers
       {:target {:host "0.0.0.0"
