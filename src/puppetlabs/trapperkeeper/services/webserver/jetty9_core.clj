@@ -292,10 +292,13 @@
               context-path (.getPathInfo req)
               uri (str scheme "://" (:host target) ":" (:port target)
                        "/" (:path target) context-path)]
-          (when query
-            (.append uri "?")
-            (.append uri query))
-          (URI/create (.toString uri))))
+          (if query
+            (-> uri
+                (.concat "?")
+                (.concat query)
+                (.toString)
+                (URI/create))
+            (URI/create (.toString uri)))))
 
       (newHttpClient []
         (let [client (if custom-ssl-ctxt-factory
