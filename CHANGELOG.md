@@ -1,3 +1,19 @@
+## 0.6.0
+* The `WebserverService` can now run multiple Jetty servers, on different ports.
+* Added a new `WebroutingService` to provide a centralized, configuration-based
+  way to configure all of the URL paths at which services will register web applications
+  (Ring handlers, Servlets, etc.)
+* Added JMX reporting to the `jetty9-service`
+* Added `get-registered-endpoints` and `log-registered-endpoints` functions
+  to the `WebserverService`
+* Minor bug fixes and improvements:
+  * [TK-21](https://tickets.puppetlabs.com/browse/TK-21),
+    [TK-22](https://tickets.puppetlabs.com/browse/TK-22),
+    [TK-31](https://tickets.puppetlabs.com/browse/TK-31),
+    [TK-43](https://tickets.puppetlabs.com/browse/TK-43)
+* Upgraded trapperkeeper dependency to version 0.4.3
+* Upgraded kitchensink dependency to version 0.7.2
+
 ## 0.5.2
  * Update trapperkeeper dependency to version 0.4.2.
  * Update kitchensink dependency to version 0.7.1.
