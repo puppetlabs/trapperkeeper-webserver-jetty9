@@ -1,6 +1,5 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-core
-  (:import (javax.servlet ServletContextListener)
-           (java.net NoRouteToHostException))
+  (:import (javax.servlet ServletContextListener))
   (:require [schema.core :as schema]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9-core]

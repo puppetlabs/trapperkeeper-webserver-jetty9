@@ -50,7 +50,7 @@
        {:webserver ~proxy
         :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy2
                                                          {:default "/hello-proxy"
-                                                          :ziggy   "/goodbye-proxy"}}}
+                                                          :foo   "/goodbye-proxy"}}}
        (let [proxy-webserver# (get-service proxy-app# :WebroutingService)
              svc#             (get-service proxy-app# :DummyService2)]
          (if ~proxy-opts
@@ -84,7 +84,7 @@
        :proxy-config {:host "localhost"
                       :port 9000
                       :path "/hello"}
-       :proxy-opts {:route-id :ziggy}}
+       :proxy-opts {:route-id :foo}}
       (let [response (http-get "http://localhost:9000/hello/world")]
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))

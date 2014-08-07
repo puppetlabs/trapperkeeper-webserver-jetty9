@@ -24,7 +24,7 @@
 
 (def webrouting-plaintext-multiserver-config
   {:webserver {:default {:port 8080}
-               :ziggy {:port 9000}}
+               :foo {:port 9000}}
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test/test-dummy "/foo"}})
 
@@ -33,7 +33,7 @@
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test/test-dummy
         {:default "/foo"
-         :ziggy   "/bar"}}})
+         :foo   "/bar"}}})
 
 (deftest add-context-handler-test
   (testing "static content context with web routing"
@@ -62,7 +62,7 @@
             resource            "logback.xml"
             svc                 (get-service app :TestDummy)]
         (add-context-handler svc dev-resources-dir)
-        (add-context-handler svc dev-resources-dir {:route-id :ziggy})
+        (add-context-handler svc dev-resources-dir {:route-id :foo})
         (let [response (http-get (str "http://localhost:8080/foo/" resource))]
           (is (= (:status response) 200))
           (is (= (:body response) (slurp (str dev-resources-dir resource)))))
@@ -99,7 +99,7 @@
             ring-handler     (fn [req] {:status 200 :body body})
             svc              (get-service app :TestDummy)]
         (add-ring-handler svc ring-handler)
-        (add-ring-handler svc ring-handler {:route-id :ziggy})
+        (add-ring-handler svc ring-handler {:route-id :foo})
         (let [response (http-get "http://localhost:8080/foo")]
           (is (= (:status response) 200))
           (is (= (:body response) body)))
@@ -136,7 +136,7 @@
             servlet             (SimpleServlet. body)
             svc                 (get-service app :TestDummy)]
         (add-servlet-handler svc servlet)
-        (add-servlet-handler svc servlet {:route-id :ziggy})
+        (add-servlet-handler svc servlet {:route-id :foo})
         (let [response (http-get "http://localhost:8080/foo")]
           (is (= (:status response) 200))
           (is (= (:body response) body)))
@@ -172,7 +172,7 @@
             war             "helloWorld.war"
             svc             (get-service app :TestDummy)]
         (add-war-handler svc (str dev-resources-dir war))
-        (add-war-handler svc (str dev-resources-dir war) {:route-id :ziggy})
+        (add-war-handler svc (str dev-resources-dir war) {:route-id :foo})
         (let [response (http-get "http://localhost:8080/foo/hello")]
           (is (= (:status response) 200))
           (is (= (:body response)
@@ -214,7 +214,7 @@
               log-registered-endpoints      (partial log-registered-endpoints s)
               add-ring-handler              (partial add-ring-handler s)
               ring-handler                  (fn [req] {:status 200 :body "Hi world"})
-              server-id                     :ziggy
+              server-id                     :foo
               svc                           (get-service app :TestDummy)]
           (add-ring-handler svc ring-handler {:server-id server-id})
           (let [endpoints (get-registered-endpoints server-id)]

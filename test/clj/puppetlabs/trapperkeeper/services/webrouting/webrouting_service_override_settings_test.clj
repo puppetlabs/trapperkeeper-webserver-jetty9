@@ -29,7 +29,7 @@
 
 (def webrouting-plaintext-multiserver-override-config
   {:webserver {:default {:port 8080}
-               :ziggy   {:port 9000}}
+               :foo   {:port 9000}}
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-override-settings-test/test-dummy "/foo"}})
 

@@ -33,10 +33,10 @@
           body "Hello World!"
           ring-handler (fn [req] {:status 200 :body body})]
       (add-ring-handler svc ring-handler)
-      (add-ring-handler svc ring-handler {:route-id :bowie})
-      (add-ring-handler svc ring-handler {:server-id :ziggy})
-      (add-ring-handler svc ring-handler {:server-id :ziggy
-                                          :route-id :bowie}))
+      (add-ring-handler svc ring-handler {:route-id :bar})
+      (add-ring-handler svc ring-handler {:server-id :foo})
+      (add-ring-handler svc ring-handler {:server-id :foo
+                                          :route-id :bar}))
     context)
   (hello [this]
          "This is a dummy function. Please disregard."))
@@ -49,11 +49,11 @@
 
 (def webrouting-plaintext-multiserver-multiroute-config
   {:webserver {:default {:port 8080}
-               :ziggy   {:port 9000}}
+               :foo   {:port 9000}}
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service
        {:default "/foo"
-        :bowie   "/bar"}}})
+        :bar   "/bar"}}})
 
 (deftest webrouting-service-test
   (testing "Other services can successfully use webrouting service"
