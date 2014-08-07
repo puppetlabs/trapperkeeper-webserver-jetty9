@@ -2,6 +2,7 @@
   (:import
     (org.eclipse.jetty.server.handler ContextHandler ContextHandlerCollection))
   (:require [clojure.test :refer :all]
+            [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
@@ -41,6 +42,17 @@
             ;; We should not receive a content-encoding header in the uncompressed case
             (is (nil? (get-in resp [:headers "content-encoding"]))
                 (format "Expected uncompressed response, got this response: %s" resp))))))))
+
+(deftest jmx
+  (testing "by deefault Jetty JMX support is enabled"
+    (with-test-webserver #() _
+      (testing "and should return a valid Jetty MBeans object"
+        (let [mbeans (jmx/mbean-names "org.eclipse.jetty.jmx:*")]
+          (is (not (empty? mbeans)))))
+
+      (testing "and should not return data when we query for something unexpected"
+        (let [mbeans (jmx/mbean-names "foobarbaz:*")]
+          (is (empty? mbeans)))))))
 
 (deftest override-webserver-settings!-tests
   (letfn [(webserver-context [state]

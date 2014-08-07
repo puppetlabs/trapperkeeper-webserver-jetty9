@@ -23,9 +23,10 @@
                  [org.eclipse.jetty/jetty-servlets "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-webapp "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-proxy "9.1.0.v20131115"]
+                 [org.eclipse.jetty/jetty-jmx "9.1.0.v20131115"]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
-                   
+
   :plugins [[lein-release "1.0.5"]]
 
   :lein-release {:scm         :git
@@ -54,6 +55,7 @@
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]
+                                  [org.clojure/java.jmx "0.2.0"]
                                   [spyscope "0.1.4"]]
                     :injections [(require 'spyscope.core)]}
 
