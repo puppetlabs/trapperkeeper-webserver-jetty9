@@ -77,9 +77,9 @@
   (testing "Error occurs when specifying service that does not exist in config file"
     (with-app-with-config
       app
-      [jetty9-service webrouting-service]
+      [jetty9-service webrouting-service not-real]
       webrouting-plaintext-config
-      (let [s (tk-app/get-service app :NotReal)
+      (let [s (tk-app/get-service app :WebroutingService)
             add-ring-handler (partial add-ring-handler s)
             body "Hello World!"
             ring-handler (fn [req] {:status 200 :body body})
