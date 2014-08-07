@@ -19,7 +19,9 @@
            (java.net URI)
            (java.security Security)
            (org.eclipse.jetty.client HttpClient)
-           (clojure.lang Atom))
+           (clojure.lang Atom)
+           (java.lang.management ManagementFactory)
+           (org.eclipse.jetty.jmx MBeanContainer))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
             [clojure.set :as set]
@@ -203,6 +205,11 @@
   [webserver-context :- ServerContext
    config :- config/WebserverConfig]
   (let [server (Server. (QueuedThreadPool. (:max-threads config)))]
+    (when (:jmx-enable config)
+      (let [mb-container (MBeanContainer. (ManagementFactory/getPlatformMBeanServer))]
+        (doto server
+          (.addEventListener mb-container)
+          (.addBean mb-container))))
     (when (:http config)
       (let [connector (plaintext-connector server (:http config))]
         (.addConnector server connector)))

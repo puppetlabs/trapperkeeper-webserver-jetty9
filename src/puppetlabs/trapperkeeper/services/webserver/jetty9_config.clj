@@ -6,7 +6,7 @@
             [me.raynes.fs :as fs]
             [schema.core :as schema]
             [puppetlabs.certificate-authority.core :as ssl]
-            [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid]]))
+            [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid parse-bool]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants / Defaults
@@ -26,6 +26,7 @@
 (def default-host "localhost")
 (def default-max-threads 100)
 (def default-client-auth :need)
+(def default-jmx-enable "true")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -46,7 +47,8 @@
    (schema/optional-key :cipher-suites)   [schema/Str]
    (schema/optional-key :ssl-protocols)   [schema/Str]
    (schema/optional-key :client-auth)     schema/Str
-   (schema/optional-key :ssl-crl-path)    schema/Str})
+   (schema/optional-key :ssl-crl-path)    schema/Str
+   (schema/optional-key :jmx-enable)      schema/Str})
 
 (def MultiWebserverRawConfig
   {:default WebserverRawConfig
@@ -95,7 +97,8 @@
     HasConnector
     {(schema/optional-key :http)  WebserverConnector
      (schema/optional-key :https) WebserverSslConnector
-     :max-threads                 schema/Int}))
+     :max-threads                 schema/Int
+     :jmx-enable                  schema/Bool}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Conversion functions (raw config -> schema)
@@ -228,7 +231,8 @@
   (let [result (-> {}
                    (maybe-add-http-connector config)
                    (maybe-add-https-connector config)
-                   (assoc :max-threads (get config :max-threads default-max-threads)))]
+                   (assoc :max-threads (get config :max-threads default-max-threads))
+                   (assoc :jmx-enable (parse-bool (get config :jmx-enable default-jmx-enable))))]
     (when-not (some #(contains? result %) [:http :https])
       (throw (IllegalArgumentException.
                "Either host, port, ssl-host, or ssl-port must be specified on the config in order for the server to be started")))

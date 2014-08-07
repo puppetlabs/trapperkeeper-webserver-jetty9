@@ -4,7 +4,8 @@
             [clojure.java.io :refer [resource]]
             [schema.core :as schema]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]))
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+            [puppetlabs.kitchensink.core :refer [parse-bool]]))
 
 (def valid-ssl-pem-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
@@ -20,7 +21,8 @@
 (defn expected-http-config?
   [config expected]
   (= (-> expected
-         (update-in [:max-threads] (fnil identity default-max-threads)))
+         (update-in [:max-threads] (fnil identity default-max-threads))
+         (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable)))
      (process-config config)))
 
 (defn expected-https-config?
@@ -28,6 +30,7 @@
   (let [actual (process-config config)]
     (= (-> expected
            (update-in [:max-threads] (fnil identity default-max-threads))
+           (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable))
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
            (update-in [:https :client-auth] (fnil identity default-client-auth))
