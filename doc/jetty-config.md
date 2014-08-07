@@ -146,7 +146,7 @@ webserver: {
         port: 9000
     }
 
-    ziggy: {
+    foo: {
         host: localhost
         port: 10000
     }

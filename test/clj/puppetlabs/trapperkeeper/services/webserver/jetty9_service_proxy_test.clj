@@ -16,11 +16,11 @@
   (ring-params/wrap-params query-params-handler))
 
 (defn proxy-ring-handler
-  [req#]
-  (if (= "/hello/world" (:uri req#))
+  [req]
+  (if (= "/hello/world" (:uri req))
     {:status 200 :body (str "Hello, World!"
-                            ((:headers req#) "x-fancy-proxy-header")
-                            ((:headers req#) "cookie"))}
+                            ((:headers req) "x-fancy-proxy-header")
+                            ((:headers req) "cookie"))}
     {:status 404 :body "D'oh"}))
 
 (defmacro with-target-and-proxy-servers
@@ -69,14 +69,14 @@
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000}
-         :proxy        {:ziggy {:host "0.0.0.0"
+         :proxy        {:foo {:host "0.0.0.0"
                                 :port 10000}
                         :default {:host "0.0.0.0"
                                   :port 8085}}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
-         :proxy-opts   {:server-id :ziggy}
+         :proxy-opts   {:server-id :foo}
          :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
@@ -299,7 +299,7 @@
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!!!!")))))
 
-    (testing "basic proxy support"
+    (testing "basic proxy support with query parameters"
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000}
@@ -309,9 +309,30 @@
                         :port 9000
                         :path "/hello"}
          :ring-handler app-wrapped}
-        (let [response (http-get "http://localhost:9000/hello?akira=kurosawa")]
+        (let [response (http-get "http://localhost:9000/hello?foo=bar")]
           (is (= (:status response) 200))
-          (is (= (:body response) (str {"akira" "kurosawa"}))))
-        (let [response (http-get "http://localhost:10000/hello-proxy?akira=kurosawa")]
+          (is (= (:body response) (str {"foo" "bar"}))))
+        (let [response (http-get "http://localhost:10000/hello-proxy?foo=bar")]
           (is (= (:status response) 200))
-          (is (= (:body response) (str {"akira" "kurosawa"}))))))))
+          (is (= (:body response) (str {"foo" "bar"}))))))
+
+    (testing "basic proxy support with multiple query parameters"
+      (let [params {"foo"   "bar"
+                    "baz"   "lux"
+                    "hello" "world"}
+            query "?foo=bar&baz=lux&hello=world"]
+        (with-target-and-proxy-servers
+          {:target       {:host "0.0.0.0"
+                          :port 9000}
+           :proxy        {:host "0.0.0.0"
+                          :port 10000}
+           :proxy-config {:host "localhost"
+                          :port 9000
+                          :path "/hello"}
+           :ring-handler app-wrapped}
+          (let [response (http-get (str "http://localhost:9000/hello" query))]
+            (is (= (:status response) 200))
+            (is (= (read-string (:body response)) params)))
+          (let [response (http-get (str "http://localhost:10000/hello-proxy" query))]
+            (is (= (:status response) 200))
+            (is (= (read-string (:body response)) params))))))))

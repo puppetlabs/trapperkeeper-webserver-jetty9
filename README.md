@@ -108,10 +108,10 @@ Alternatively, if you did this:
    [[:WebserverService add-ring-handler]]
    ;; initialization
    (init [this context]
-      (add-ring-handler my-app "/my-app" {:server-id :ziggy})
+      (add-ring-handler my-app "/my-app" {:server-id :foo})
       context))
 ```
-it would add your ring handler to the server with id `:ziggy` at endpoint "/my-app",
+it would add your ring handler to the server with id `:foo` at endpoint "/my-app",
 rather than the `:default` server.
 
 *NOTE FOR COMPOJURE APPS*: If you are using compojure, it's important to note

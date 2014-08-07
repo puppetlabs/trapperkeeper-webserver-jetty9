@@ -85,7 +85,7 @@
                               (init [this context]
                                     (reset! override-result
                                             (override-webserver-settings!
-                                              :ziggy overrides))
+                                              :foo overrides))
                                     context))]
         (with-test-logging
           (with-app-with-config
@@ -97,7 +97,7 @@
                   body                "Hi World"
                   path                "/hi_world"
                   ring-handler        (fn [req] {:status 200 :body body})]
-              (add-ring-handler ring-handler path {:server-id :ziggy})
+              (add-ring-handler ring-handler path {:server-id :foo})
               (let [response (http-get
                                (format "https://localhost:%d%s/" ssl-port path)
                                default-options-for-https-client)]
