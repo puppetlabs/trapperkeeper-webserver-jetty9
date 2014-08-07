@@ -290,8 +290,9 @@
                          :http "http"
                          :https "https"))
               context-path (.getPathInfo req)
-              uri (str scheme "://" (:host target) ":" (:port target)
-                       "/" (:path target) context-path)]
+              uri (StringBuilder. (str scheme "://" (:host target)
+                                       ":" (:port target)
+                                       "/" (:path target) context-path))]
           (when query
             (.append uri "?")
             (.append uri query))

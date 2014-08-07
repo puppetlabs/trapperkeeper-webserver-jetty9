@@ -25,19 +25,19 @@
     (log/info "Initializing hello webservice")
     (let [url-prefix (get-in-config [:hello-web :url-prefix])]
       ; Since we're using the -to versions of the below functions and are specifying
-      ; server-id :ziggy, these will be added to the :ziggy server specified in the
+      ; server-id :foo, these will be added to the :foo server specified in the
       ; config file.
       (add-proxy-route
         {:host "localhost"
          :port 8080
          :path "/hello"}
         "/hello"
-        {:server-id :ziggy})
+        {:server-id :foo})
       (add-ring-handler
         (fn [req]
           {:status 200
            :headers {"Content-Type" "text/plain"}
            :body "Goodbye world"})
         "/goodbye"
-        {:server-id :ziggy})
+        {:server-id :foo})
       (assoc context :url-prefix url-prefix))))

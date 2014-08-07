@@ -99,7 +99,7 @@
             body             "Hi World"
             path             "/hi_world"
             ring-handler (fn [req] {:status 200 :body body})]
-        (add-ring-handler ring-handler path {:server-id :ziggy})
+        (add-ring-handler ring-handler path {:server-id :foo})
         (add-ring-handler ring-handler path {:server-id :default})
         (let [response1 (http-get "http://localhost:8080/hi_world/" {:as :text})
               response2 (http-get "http://localhost:8085/hi_world/" {:as :text})]
@@ -368,7 +368,7 @@
                                      context))
             app              (boot-service-and-jetty-with-multiserver-config
                                test-service)
-            jetty-server1     (get-jetty-server-from-app-context app :ziggy)
+            jetty-server1     (get-jetty-server-from-app-context app :foo)
             jetty-server2     (get-jetty-server-from-app-context app :default)]
         (is (.isStarted jetty-server1)
             "First Jetty server was never started before call to run-app")

@@ -4,22 +4,34 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [ring.middleware.params :as ring-params]))
+
+(defn query-params-handler
+  [req]
+  {:status 200
+   :body   (str (:query-params req))})
+
+(def app-wrapped
+  (ring-params/wrap-params query-params-handler))
+
+(defn proxy-ring-handler
+  [req]
+  (if (= "/hello/world" (:uri req))
+    {:status 200 :body (str "Hello, World!"
+                            ((:headers req) "x-fancy-proxy-header")
+                            ((:headers req) "cookie"))}
+    {:status 404 :body "D'oh"}))
 
 (defmacro with-target-and-proxy-servers
-  [{:keys [target proxy proxy-config proxy-opts]} & body]
+  [{:keys [target proxy proxy-config proxy-opts ring-handler]} & body]
   `(with-app-with-config proxy-target-app#
      [jetty9-service]
      {:webserver ~target}
      (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
        (add-ring-handler
          target-webserver#
-         (fn [req#]
-           (if (= "/hello/world" (:uri req#))
-             {:status 200 :body (str "Hello, World!"
-                                     ((:headers req#) "x-fancy-proxy-header")
-                                     ((:headers req#) "cookie"))}
-             {:status 404 :body "D'oh"}))
+         ~ring-handler
          "/hello"))
      (with-app-with-config proxy-app#
        [jetty9-service]
@@ -44,7 +56,8 @@
                         :port 10000}
          :proxy-config {:host "localhost"
                         :port 9000
-                        :path "/hello"}}
+                        :path "/hello"}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -56,14 +69,15 @@
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000}
-         :proxy        {:ziggy {:host "0.0.0.0"
+         :proxy        {:foo {:host "0.0.0.0"
                                 :port 10000}
                         :default {:host "0.0.0.0"
                                   :port 8085}}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
-         :proxy-opts   {:server-id :ziggy}}
+         :proxy-opts   {:server-id :foo}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -80,7 +94,8 @@
                         :port 10000}
          :proxy-config {:host "localhost"
                         :port 9000
-                        :path "/hello"}}
+                        :path "/hello"}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -98,7 +113,8 @@
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
-         :proxy-opts   {:request-buffer-size 8192}}
+         :proxy-opts   {:request-buffer-size 8192}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -117,7 +133,8 @@
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
-         :proxy-opts   {:scheme :orig}}
+         :proxy-opts   {:scheme :orig}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -135,7 +152,8 @@
                                :ssl-port 10001})
          :proxy-config {:host "localhost"
                         :port 9001
-                        :path "/hello"}}
+                        :path "/hello"}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -154,7 +172,8 @@
          :proxy-config {:host "localhost"
                         :port 9001
                         :path "/hello"}
-         :proxy-opts   {:scheme :orig}}
+         :proxy-opts   {:scheme :orig}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -173,7 +192,8 @@
          :proxy-config {:host "localhost"
                         :port 9001
                         :path "/hello"}
-         :proxy-opts   {:ssl-config :use-server-config}}
+         :proxy-opts   {:ssl-config :use-server-config}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -192,7 +212,8 @@
                         :port 9000
                         :path "/hello"}
          :proxy-opts   {:scheme     :https
-                        :ssl-config common-ssl-config}}
+                        :ssl-config common-ssl-config}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "https://localhost:9000/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -210,7 +231,8 @@
          :proxy-config {:host "localhost"
                         :port 9001
                         :path "/hello"}
-         :proxy-opts   {:scheme :http}}
+         :proxy-opts   {:scheme :http}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9001/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -227,7 +249,8 @@
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
-         :proxy-opts   {:callback-fn  callback-fn}}
+         :proxy-opts   {:callback-fn  callback-fn}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -246,7 +269,8 @@
          :proxy-config {:host "localhost"
                         :port 9001
                         :path "/hello"}
-         :proxy-opts   {:callback-fn  callback-fn}}
+         :proxy-opts   {:callback-fn  callback-fn}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
@@ -266,10 +290,49 @@
                         :path "/hello"}
          :proxy-opts   {:scheme       :https
                         :ssl-config   common-ssl-config
-                        :callback-fn  callback-fn}}
+                        :callback-fn  callback-fn}
+         :ring-handler proxy-ring-handler}
         (let [response (http-get "https://localhost:9000/hello/world" default-options-for-https-client)]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
         (let [response (http-get "http://localhost:10000/hello-proxy/world")]
           (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!!!!")))))))
+          (is (= (:body response) "Hello, World!!!!")))))
+
+    (testing "basic proxy support with query parameters"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :ring-handler app-wrapped}
+        (let [response (http-get "http://localhost:9000/hello?foo=bar")]
+          (is (= (:status response) 200))
+          (is (= (:body response) (str {"foo" "bar"}))))
+        (let [response (http-get "http://localhost:10000/hello-proxy?foo=bar")]
+          (is (= (:status response) 200))
+          (is (= (:body response) (str {"foo" "bar"}))))))
+
+    (testing "basic proxy support with multiple query parameters"
+      (let [params {"foo"   "bar"
+                    "baz"   "lux"
+                    "hello" "world"}
+            query "?foo=bar&baz=lux&hello=world"]
+        (with-target-and-proxy-servers
+          {:target       {:host "0.0.0.0"
+                          :port 9000}
+           :proxy        {:host "0.0.0.0"
+                          :port 10000}
+           :proxy-config {:host "localhost"
+                          :port 9000
+                          :path "/hello"}
+           :ring-handler app-wrapped}
+          (let [response (http-get (str "http://localhost:9000/hello" query))]
+            (is (= (:status response) 200))
+            (is (= (read-string (:body response)) params)))
+          (let [response (http-get (str "http://localhost:10000/hello-proxy" query))]
+            (is (= (:status response) 200))
+            (is (= (read-string (:body response)) params))))))))
