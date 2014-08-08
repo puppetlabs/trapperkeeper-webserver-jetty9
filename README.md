@@ -5,7 +5,7 @@
 This project provides a webserver service for use with the
 [trapperkeeper service framework](https://github.com/puppetlabs/trapperkeeper)
 To use this service in your trapperkeeper application, simply add this
-project as a dependency in your leinengen project file, and then add the
+project as a dependency in your leiningen project file, and then add the
 webserver service to your [`bootstrap.cfg`](https://github.com/puppetlabs/trapperkeeper#bootstrapping)
 file, via:
 
