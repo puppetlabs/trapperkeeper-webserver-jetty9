@@ -13,7 +13,7 @@ be assigned route-id `:default`. This can be done like so:
 
 ```
 web-router-service: {
-    puppetlabs.foo/foo-service: "/foo"
+    "puppetlabs.foo/foo-service": "/foo"
 }
 ```
 
@@ -24,7 +24,7 @@ for that endpoint. This can be done like so:
 
 ```
 web-router-service: {
-    puppetlabs.foo/foo-service: {
+    "puppetlabs.foo/foo-service": {
         default: "/foo"
         bar:     "/bar"
     }
@@ -40,4 +40,10 @@ more information.
 
 Please note that, when configuring endpoints in this way, there must be
 an endpoint with route-id `:default`.
+
+Also note that, because the webrouting service is built on top of the
+webserver service, the webserver service will need to be included in your
+`bootstrap.cfg` file, and the webserver service will need to be configured in
+your trapperkeeper configuration files. Please see
+[Configuring the Webserver](doc/jetty-config.md) for more details.
 

@@ -48,7 +48,8 @@
   :profiles {:dev {:source-paths ["examples/multiserver_app/src"
                                   "examples/ring_app/src"
                                   "examples/servlet_app/src/clj"
-                                  "examples/war_app/src"]
+                                  "examples/war_app/src"
+                                  "examples/webrouting_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
                    :dependencies [[puppetlabs/http-client "0.1.7"]
