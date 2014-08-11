@@ -134,7 +134,9 @@ revocation entry in the file.
 It is possible to configure multiple webservers on isolated ports within a single Jetty9
 webservice. In order to configure multiple webservers, change the `webserver` section of your
 Trapperkeeper configuration files to be a nested map. Each key in this map is the id of a server, and
-its value is the configuration for that server. At least one server must have an id of default.
+its value is the configuration for that server.
+
+Please note that there MUST be a server with an id of `:default`.
 
 For example, say you wanted to configure two servers on localhost, one on port 9000 and one on port
 10000. The webserver section of your configuration file would look something like this:
