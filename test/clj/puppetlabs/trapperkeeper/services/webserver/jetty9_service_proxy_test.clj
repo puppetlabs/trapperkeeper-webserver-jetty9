@@ -23,6 +23,17 @@
                             ((:headers req) "cookie"))}
     {:status 404 :body "D'oh"}))
 
+(defn test-handler
+  [req]
+  {:status 200
+   :body   "Hello, World!"})
+
+(defn redirect-test
+  [req]
+  {:status  302
+   :headers {"Location" "http://localhost:9000/hello"}
+   :body    ""})
+
 (defmacro with-target-and-proxy-servers
   [{:keys [target proxy proxy-config proxy-opts ring-handler]} & body]
   `(with-app-with-config proxy-target-app#
@@ -33,6 +44,29 @@
          target-webserver#
          ~ring-handler
          "/hello"))
+     (with-app-with-config proxy-app#
+       [jetty9-service]
+       {:webserver ~proxy}
+       (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
+         (if ~proxy-opts
+           (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy" ~proxy-opts)
+           (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy")))
+       ~@body)))
+
+(defmacro with-target-and-proxy-servers-redirect
+  [{:keys [target proxy proxy-config proxy-opts ring-handler-target ring-handler-redirect]} & body]
+  `(with-app-with-config proxy-target-app#
+     [jetty9-service]
+     {:webserver ~target}
+     (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
+       (add-ring-handler
+         target-webserver#
+         ~ring-handler-target
+         "/hello")
+       (add-ring-handler
+         target-webserver#
+         ~ring-handler-redirect
+         "/redirect"))
      (with-app-with-config proxy-app#
        [jetty9-service]
        {:webserver ~proxy}
@@ -339,4 +373,25 @@
             (is (= (read-string (:body response)) params)))
           (let [response (http-get (str "http://localhost:10000/hello-proxy" query))]
             (is (= (:status response) 200))
-            (is (= (read-string (:body response)) params))))))))
+            (is (= (read-string (:body response)) params))))))
+
+    (testing "redirect test with proxy"
+      (with-target-and-proxy-servers-redirect
+        {:target                {:host "0.0.0.0"
+                                 :port 9000}
+         :proxy                 {:host "0.0.0.0"
+                                 :port 10000}
+         :proxy-config          {:host "localhost"
+                                 :port 9000
+                                 :path "/redirect"}
+         :ring-handler-target   test-handler
+         :ring-handler-redirect redirect-test}
+        (let [response (http-get (str "http://localhost:9000/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:9000/redirect"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))))))
