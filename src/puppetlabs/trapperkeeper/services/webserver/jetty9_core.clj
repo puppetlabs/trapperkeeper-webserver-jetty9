@@ -639,9 +639,16 @@
 (defn get-server-context
   [service-context server-id]
   (let [server-id (if (nil? server-id)
-                    :default
+                    (:default-server service-context)
                     server-id)]
     (server-id (:jetty9-servers service-context))))
+
+(defn build-server-contexts
+  [context config]
+  (assoc context :jetty9-servers (into {} (for [[server-id] config]
+                                            (if (= :default-server server-id)
+                                              nil
+                                              [server-id (initialize-context)])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service Function Implementations
@@ -651,9 +658,12 @@
   (let [old-config (schema/check config/WebserverRawConfig config)
         new-config (schema/check config/MultiWebserverRawConfig config)]
     (cond
-          (nil? old-config) (assoc context :jetty9-servers {:default (initialize-context)})
-          (nil? new-config) (assoc context :jetty9-servers (into {} (for [[server-id] config]
-                                                          [server-id (initialize-context)]))))))
+      (nil? old-config)
+        (let [context (assoc context :jetty9-servers {:default (initialize-context)})]
+          (assoc context :default-server :default))
+      (nil? new-config)
+        (let [context (build-server-contexts context config)]
+          (assoc context :default-server (keyword (:default-server config)))))))
 
 (schema/defn ^:always-validate start!
   [context config :- config/WebserverServiceRawConfig]

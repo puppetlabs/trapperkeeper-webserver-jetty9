@@ -54,8 +54,8 @@
    (schema/optional-key :jmx-enable)      schema/Str})
 
 (def MultiWebserverRawConfig
-  {:default WebserverRawConfig
-   schema/Keyword WebserverRawConfig})
+  {:default-server schema/Str
+   schema/Keyword  WebserverRawConfig})
 
 (def WebserverServiceRawConfig
   (schema/either WebserverRawConfig MultiWebserverRawConfig))

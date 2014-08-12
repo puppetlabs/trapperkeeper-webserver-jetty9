@@ -87,7 +87,7 @@ There is also a three argument version of this function which takes these argume
 `:server-id`, which specifies which server you want to add the ring-handler to. If
 `:server-id` is specified, the ring handler will be added to the server with id
 `:server-id`. If no `:server-id` is specified, or the two argument version is called,
-the ring handler will be added to the `:default` server.
+the ring handler will be added to the default server.
 
 Here's an example of how to use the `:WebserverService`:
 
@@ -100,7 +100,7 @@ Here's an example of how to use the `:WebserverService`:
       context))
 ```
 
-This would add your ring handler to the `:default` server at endpoint "/my-app".
+This would add your ring handler to the default server at endpoint "/my-app".
 Alternatively, if you did this:
 
 ```clj
@@ -112,7 +112,7 @@ Alternatively, if you did this:
       context))
 ```
 it would add your ring handler to the server with id `:foo` at endpoint "/my-app",
-rather than the `:default` server.
+rather than the default server.
 
 *NOTE FOR COMPOJURE APPS*: If you are using compojure, it's important to note
 that compojure requires use of the [`context` macro](https://github.com/weavejester/compojure/wiki/Nesting-routes)
@@ -159,7 +159,7 @@ same as in the two argument version and `options` is a map containing two option
 `:server-id` and `:context-listeners`. The value stored in `:server-id` specifies which server
 to add the context handler to, similar to how it is done in `add-ring-handler`. Again, like
 `add-ring-handler`, if this key is absent or the two argument version is called, the context handler
-will be added to the `:default` server. The value stored in `:context-listeners` is a list
+will be added to the default server. The value stored in `:context-listeners` is a list
 of objects implementing the [ServletContextListener] (http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
 interface. These listeners are registered with the context created for serving the
 static content and receive notifications about the lifecycle events in the context
@@ -184,7 +184,7 @@ There is also a three argument version of the function which takes these argumen
 `[servlet path options]`, where the first two arguments are the same as
 in the two argument version and options is a map containing two optional keys, `:server-id` and
 `:servlet-init-params`. As in `add-ring-handler`, `:server-id` specifies which server to add
-the handler to, with `:default` used if `:server-id` is absent or the two-argument version is
+the handler to, with the default server used if `:server-id` is absent or the two-argument version is
 called. The value stored at the `:servlet-init-params` key is a map of servlet init
 parameters.
 
@@ -225,7 +225,7 @@ There is also a three-argument version that takes these parameters:
 `[war path options]`. `options` is a map containing a single optional
 key, `:server-id`. As with `add-ring-handler`, this determines which
 server the handler is added to. If this key is absent or the two argument
-version is called, the handler will be added to the `:default` server.
+version is called, the handler will be added to the default server.
 
 #### `add-proxy-route`
 
@@ -266,8 +266,8 @@ route:
   very large cookies to go through, as a large cookie can cause the request
   buffer to overflow unless the size is increased. The default is 4096 bytes.
 * `:server-id`: optional; the id of the server to which to add the proxy handler. If absent,
-  the handler will be added to the `:default` server. If the two argument version of this function
-  is called, the handler will also be added to the `:default` server.
+  the handler will be added to the default server. If the two argument version of this function
+  is called, the handler will also be added to the default server.
 
 Simple example:
 
@@ -409,12 +409,12 @@ a java.lang.IllegalStateException will be thrown.
 
 A three argument version is available which takes these parameters: `[server-id overrides]`.
 `server-id` is the id of the server for which you wish to override the settings. If the
-two argument version is called, they will be overridden for the `:default` server.
+two argument version is called, they will be overridden for the default server.
 
 #### `get-registered-endpoints`
 
 This function returns a set of maps containing information on each URL endpoint
-registered by the Jetty9 service on the `:default` server. The possible keys appearing
+registered by the Jetty9 service on the default server. The possible keys appearing
 in each map are detailed below.
 
 * `:type`: The type of the registered endpoint. The possible types are `:context`,
@@ -443,7 +443,7 @@ The schema for the various types of endpoints can be viewed [here](https://githu
 
 There is also a version that takes one argument, `[server-id]`, which specifies which server
 for which you want to pull the endpoints. If this parameter is absent, the endpoints will be
-pulled for the `:default` server.
+pulled for the default server.
 
 #### `log-registered-endpoints`
 
@@ -451,7 +451,7 @@ This function logs the data returned by `get-registered-endpoints` at the info l
 
 There is a version of this function that takes a single argument, `[server-id]`. This
 specifies which server for which you want to log the endpoints. If this is absent,
-the endpoints registered on the `:default` server will be logged.
+the endpoints registered on the default server will be logged.
 
 #### `join`
 
@@ -466,7 +466,7 @@ to cause your thread to wait for the Jetty server to shut down.
 
 There is another version of this function that takes a single argument, `[server-id]`.
 This is the id of the server you want to join. If this is not specified, then
-the `:default` server will be joined.
+the default server will be joined.
 
 ### Service lifecycle phases
 

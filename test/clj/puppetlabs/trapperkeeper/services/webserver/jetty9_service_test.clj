@@ -64,7 +64,7 @@
 
 (defn validate-ring-handler-default
   ([base-url config]
-   (validate-ring-handler base-url config {:as :text}))
+   (validate-ring-handler-default base-url config {:as :text}))
   ([base-url config http-get-options]
    (with-app-with-config app
      [jetty9-service]
@@ -97,7 +97,8 @@
   (testing "ring request on single server with new syntax over http succeeds"
     (validate-ring-handler
       "http://localhost:8080"
-      {:webserver {:default {:port 8080}}}
+      {:webserver {:default        {:port 8080}
+                   :default-server "default"}}
       {:as :text}
       :default))
 
@@ -111,7 +112,7 @@
             path             "/hi_world"
             ring-handler (fn [req] {:status 200 :body body})]
         (add-ring-handler ring-handler path {:server-id :foo})
-        (add-ring-handler ring-handler path {:server-id :default})
+        (add-ring-handler ring-handler path {:server-id :bar})
         (let [response1 (http-get "http://localhost:8080/hi_world/" {:as :text})
               response2 (http-get "http://localhost:8085/hi_world/" {:as :text})]
           (is (= (:status response1) 200))
@@ -373,7 +374,7 @@
             app              (boot-service-and-jetty-with-multiserver-config
                                test-service)
             jetty-server1     (get-jetty-server-from-app-context app :foo)
-            jetty-server2     (get-jetty-server-from-app-context app :default)]
+            jetty-server2     (get-jetty-server-from-app-context app :bar)]
         (is (.isStarted jetty-server1)
             "First Jetty server was never started before call to run-app")
         (is (.isStarted jetty-server2)
