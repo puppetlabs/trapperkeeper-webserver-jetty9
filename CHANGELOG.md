@@ -1,3 +1,8 @@
+## 0.6.1
+* Add configuration option `request-header-max-size`
+* Increase default buffer sizes for request and response
+* Update test dependencies to latest version of puppetlabs/http-client (0.2.1)
+
 ## 0.6.0
 * The `WebserverService` can now run multiple Jetty servers, on different ports.
 * Added a new `WebroutingService` to provide a centralized, configuration-based
