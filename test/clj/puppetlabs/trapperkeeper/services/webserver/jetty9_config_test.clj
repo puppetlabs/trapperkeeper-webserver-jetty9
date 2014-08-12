@@ -22,7 +22,8 @@
   [config expected]
   (= (-> expected
          (update-in [:max-threads] (fnil identity default-max-threads))
-         (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable)))
+         (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable))
+         (update-in [:http :request-header-max-size] (fnil identity default-request-header-size)))
      (process-config config)))
 
 (defn expected-https-config?
@@ -34,6 +35,7 @@
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
            (update-in [:https :client-auth] (fnil identity default-client-auth))
+           (update-in [:https :request-header-max-size] (fnil identity default-request-header-size))
            (update-in [:https :ssl-crl-path] identity))
        (-> actual
            (update-in [:https] dissoc :keystore-config)))))
@@ -55,7 +57,11 @@
     (is (expected-http-config?
           {:port 8000 :max-threads 500}
           {:http        {:host default-host :port 8000}
-           :max-threads 500})))
+           :max-threads 500}))
+
+    (is (expected-http-config?
+          {:port 8000 :request-header-max-size 16192}
+          {:http {:host default-host :port 8000 :request-header-max-size 16192}})))
 
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?
@@ -71,7 +77,12 @@
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :ssl-port 8001})
-          {:https {:host "foo.local" :port 8001}})))
+          {:https {:host "foo.local" :port 8001}}))
+
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-host "foo.local" :ssl-port 8001 :request-header-max-size 16192})
+          {:https {:host "foo.local" :port 8001 :request-header-max-size 16192}})))
 
   (testing "jks ssl config"
     (is (expected-https-config?
@@ -135,7 +146,7 @@
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :port 8000})
-          {:http  {:host default-host :port 8000}
+          {:http  {:host default-host :port 8000 :request-header-max-size default-request-header-size}
            :https {:host "foo.local" :port default-https-port}})))
 
   (testing "process-config fails for invalid server config"

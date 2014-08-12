@@ -22,6 +22,13 @@ This sets the maximum number of threads assigned to responding to HTTP and HTTPS
 requests, effectively changing how many concurrent requests can be made at one
 time. Defaults to 100.
 
+### `request-header-max-size`
+
+This sets the maximum size of an HTTP Request Header. If a header is sent
+that exceeds this value, Jetty will return an HTTP 413 Error response. This
+defaults to 8192 bytes, and only needs to be configured if an exceedingly large
+header is being sent in an HTTP Request.
+
 ### `ssl-host`
 
 This sets the hostname to listen on for _encrypted_ HTTPS traffic. If not

@@ -89,9 +89,11 @@
                   "is not specified")
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
-                        :port 9000}
+                        :port 9000
+                        :request-header-max-size 16192}
          :proxy        {:host "0.0.0.0"
-                        :port 10000}
+                        :port 10000
+                        :request-header-max-size 16192}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
@@ -107,13 +109,15 @@
     (testing "proxy does not explode on a large cookie when properly configured"
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
-                        :port 9000}
+                        :port 9000
+                        :request-header-max-size 16192}
          :proxy        {:host "0.0.0.0"
-                        :port 10000}
+                        :port 10000
+                        :request-header-max-size 16192}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
-         :proxy-opts   {:request-buffer-size 8192}
+         :proxy-opts   {:request-buffer-size 16192}
          :ring-handler proxy-ring-handler}
         (let [response (http-get "http://localhost:9000/hello/world")]
           (is (= (:status response) 200))

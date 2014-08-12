@@ -175,9 +175,10 @@
 ;;; Jetty Server / Connector Functions
 
 (defn- connection-factory
-  []
+  [request-header-size]
   (let [http-config (doto (HttpConfiguration.)
-                      (.setSendDateHeader true))]
+                      (.setSendDateHeader true)
+                      (.setRequestHeaderSize request-header-size))]
     (into-array ConnectionFactory
                 [(HttpConnectionFactory. http-config)])))
 
@@ -187,17 +188,19 @@
   [server            :- Server
    ssl-ctxt-factory  :- SslContextFactory
    config :- config/WebserverSslConnector]
-  (doto (ServerConnector. server ssl-ctxt-factory (connection-factory))
-    (.setPort (:port config))
-    (.setHost (:host config))))
+  (let [request-size (:request-header-max-size config)]
+    (doto (ServerConnector. server ssl-ctxt-factory (connection-factory request-size))
+      (.setPort (:port config))
+      (.setHost (:host config)))))
 
 (schema/defn ^:always-validate
   plaintext-connector :- ServerConnector
   [server :- Server
    config :- config/WebserverConnector]
-  (doto (ServerConnector. server (connection-factory))
-    (.setPort (:port config))
-    (.setHost (:host config))))
+  (let [request-size (:request-header-max-size config)]
+    (doto (ServerConnector. server (connection-factory request-size))
+      (.setPort (:port config))
+      (.setHost (:host config)))))
 
 (schema/defn ^:always-validate
   create-server :- Server
@@ -313,7 +316,7 @@
                          (HttpClient.)))]
           (if request-buffer-size
             (.setRequestBufferSize client request-buffer-size)
-            (.setRequestBufferSize client 4096))
+            (.setRequestBufferSize client config/default-request-header-buffer-size))
           client))
 
       (customizeProxyRequest [proxy-req req]
@@ -367,11 +370,12 @@
   create-webserver :- ServerContext
     "Create a Jetty webserver according to the supplied options:
 
-    :host         - the hostname to listen on
-    :port         - the port to listen on (defaults to 8080)
-    :ssl-host     - the hostname to listen on for SSL connections
-    :ssl-port     - the SSL port to listen on (defaults to 8081)
-    :max-threads  - the maximum number of threads to use (default 100)
+    :host                     - the hostname to listen on
+    :port                     - the port to listen on (defaults to 8080)
+    :ssl-host                 - the hostname to listen on for SSL connections
+    :ssl-port                 - the SSL port to listen on (defaults to 8081)
+    :max-threads              - the maximum number of threads to use (default 100)
+    :request-header-max-size  - the maximum size of an HTTP request header (default 8192)
 
     SSL may be configured via PEM files by providing all three of the following
     settings:
