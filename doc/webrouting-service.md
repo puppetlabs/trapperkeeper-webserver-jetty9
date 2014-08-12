@@ -4,6 +4,37 @@ This project additionally provides a webrouting service, which acts as a
 wrapper around the Trapperkeeper Webserver Service, also contained in this
 project. This service is for use with the
 [trapperkeeper service framework.](https://github.com/puppetlabs/trapperkeeper)
+
+The Webrouting Service is an optional service that allows you to manage the
+configuration of your web service URLs in a different manner. It is a thin
+wrapper around the Webserver Service, and it allows you to consolidate all
+of your URL endpoints in a single section of your trapperkeeper configuration.
+
+When using the Webserver Service to directly register web endpoints, the endpoints
+get scattered throughout the code base, and it can be difficult to determine what
+endpoints are running in your server and which services registered them. With the
+webrouting service, all this information is stored in your configuration file. It
+is easy to determine which endpoints are running on your server and which services
+registered those endpoints.
+
+For example:
+
+```
+web-router-service: {
+    "puppetlabs.foo/foo-service": "/foo"
+    "puppetlabs.bar/bar-service": {
+        bar: "/bar"
+        baz: "/baz"
+    }
+}
+```
+
+The services specified in the above configuration would use the Webrouting Service
+instead of the Webserver Service to register web endpoints. A
+developer/user/administrator can simply look at the trapperkeeper configuration and
+determine there are web endpoints registered at '/foo', '/bar/, and '/baz', and that
+these are registered in the clojure namespaces 'puppetlabs.foo' and 'puppetlabs.bar'.
+
 To use this service in your trapperkeeper application, simply add this project
 as a dependency in your leiningen project file, and then add the webrouting
 service to your [`bootstrap.cfg`](https://github.com/puppetlabs/trapperkeeper#bootstrapping)
