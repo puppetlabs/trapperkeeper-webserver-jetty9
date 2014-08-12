@@ -24,6 +24,7 @@
                  [org.eclipse.jetty/jetty-webapp "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-proxy "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-jmx "9.1.0.v20131115"]
+                 [org.apache.httpcomponents/httpclient "4.3.2"]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
 
