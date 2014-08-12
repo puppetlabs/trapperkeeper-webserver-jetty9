@@ -485,3 +485,9 @@ consumer to setup SSL keys and perform other operations needed before the server
 In the start lifecycle phase the Jetty server object is created, the `ContextHandlerCollection` is added to it, and the server is then started. Adding handlers 
 after this phase should still work fine, but it is recommended that handlers be added 
 during the consuming service's `init` phase.
+
+## Webrouting Service
+
+This project also provides a Webrouting service, which is intended for use in
+place of the Webserver Service. Documentation is available for it
+[here](doc/webrouting-service.md).
