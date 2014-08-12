@@ -1,10 +1,9 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
-  (:import  (java.net BindException)
+  (:import  (org.eclipse.jetty.server Server)
+            (org.apache.http ConnectionClosedException)
+            (java.io IOException)
             (java.security.cert CRLException)
-            (java.util.concurrent ExecutionException)
-            (javax.net.ssl SSLHandshakeException)
-            (org.eclipse.jetty.server Server)
-            (org.httpkit ProtocolException))
+            (java.net BindException))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [clojure.tools.logging :as log]
@@ -24,6 +23,18 @@
             [schema.core :as schema]))
 
 (use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
+
+(defmacro ssl-exception-thrown?
+  [& body]
+  `(try
+    ~@body
+    (throw (IllegalStateException. "Expected SSL Exception to be thrown!"))
+    (catch ConnectionClosedException e#
+      true)
+    (catch IOException e#
+      (if (= "Connection reset by peer" (.getMessage e#))
+        true
+        (throw e#)))))
 
 (def unauthorized-pem-options-for-https
   (-> default-options-for-https-client
@@ -111,8 +122,7 @@
   (testing "ring request succeeds with multiple servers and default add-ring-handler"
     (validate-ring-handler-default
       "http://localhost:8080"
-      jetty-multiserver-plaintext-config))
-  )
+      jetty-multiserver-plaintext-config)))
 
 (deftest port-test
   (testing "webserver bootstrap throws IllegalArgumentException when neither
@@ -193,12 +203,11 @@
     ; should default to 'need' to validate the client certificate.  In this
     ; case, the validation should fail because the client is providing a
     ; certificate which the CA cannot validate.
-    (is (thrown?
-          ProtocolException
-          (validate-ring-handler
-            "https://localhost:8081"
-            jetty-ssl-pem-config
-            unauthorized-pem-options-for-https))))
+    (is (true? (ssl-exception-thrown?
+                 (validate-ring-handler
+                   "https://localhost:8081"
+                   jetty-ssl-pem-config
+                   unauthorized-pem-options-for-https)))))
 
   (testing "ring request over SSL fails with the server's client-auth setting
             not set and the client configured to not provide a certificate"
@@ -206,41 +215,37 @@
     ; should default to 'need' to validate the client certificate.  In this
     ; case, the validation should fail because the client is not providing a
     ; certificate
-    (is (thrown?
-          ProtocolException
-          (validate-ring-handler
-            "https://localhost:8081"
-            jetty-ssl-pem-config
-            (dissoc default-options-for-https-client :ssl-cert :ssl-key)))))
+    (is (true? (ssl-exception-thrown?
+                 (validate-ring-handler
+                   "https://localhost:8081"
+                   jetty-ssl-pem-config
+                   (dissoc default-options-for-https-client :ssl-cert :ssl-key))))))
 
   (testing "ring request over SSL fails with a server client-auth setting
             of 'need' and the client configured to provide a certificate which
             the CA cannot validate"
-    (is (thrown?
-          ProtocolException
-          (validate-ring-handler
-            "https://localhost:8081"
-            jetty-ssl-client-need-config
-            unauthorized-pem-options-for-https))))
+    (is (true? (ssl-exception-thrown?
+                 (validate-ring-handler
+                   "https://localhost:8081"
+                   jetty-ssl-client-need-config
+                   unauthorized-pem-options-for-https)))))
 
   (testing "ring request over SSL fails with a server client-auth setting
             of 'need' and the client configured to not provide a certificate"
-    (is (thrown?
-          ProtocolException
-          (validate-ring-handler
-            "https://localhost:8081"
-            jetty-ssl-client-need-config
-            (dissoc default-options-for-https-client :ssl-cert :ssl-key)))))
+    (is (true? (ssl-exception-thrown?
+                 (validate-ring-handler
+                   "https://localhost:8081"
+                   jetty-ssl-client-need-config
+                   (dissoc default-options-for-https-client :ssl-cert :ssl-key))))))
 
   (testing "ring request over SSL fails with a server client-auth setting
             of 'want' and the client configured to provide a certificate which
             the CA cannot validate"
-    (is (thrown?
-          ProtocolException
-          (validate-ring-handler
-            "https://localhost:8081"
-            jetty-ssl-client-want-config
-            unauthorized-pem-options-for-https)))))
+    (is (true? (ssl-exception-thrown?
+                 (validate-ring-handler
+                   "https://localhost:8081"
+                   jetty-ssl-client-want-config
+                   unauthorized-pem-options-for-https))))))
 
 (deftest crl-success-test
   (testing (str "ring request over SSL succeeds when no client certificates "
@@ -265,15 +270,14 @@
 (deftest crl-failure-test
   (testing (str "ring request over SSL fails when the client certificate has "
                 "been revoked")
-    (is (thrown?
-          ProtocolException
-          (validate-ring-handler
-            "https://localhost:8081"
-            (assoc-in
-              jetty-ssl-client-need-config
-              [:webserver :ssl-crl-path]
-              "./dev-resources/config/jetty/ssl/crls/crls_localhost_revoked.pem")
-            default-options-for-https-client))))
+    (is (true? (ssl-exception-thrown?
+                 (validate-ring-handler
+                   "https://localhost:8081"
+                   (assoc-in
+                     jetty-ssl-client-need-config
+                     [:webserver :ssl-crl-path]
+                     "./dev-resources/config/jetty/ssl/crls/crls_localhost_revoked.pem")
+                   default-options-for-https-client)))))
 
   (testing (str "jetty throws startup exception if non-CRL PEM is specified "
                 "as ssl-crl-path")

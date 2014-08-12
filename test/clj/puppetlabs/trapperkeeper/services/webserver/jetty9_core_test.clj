@@ -31,14 +31,14 @@
         (testing "a gzipped response when requests"
           ;; The client/get function asks for compression by default
           (let [resp (http-client/get (format "http://localhost:%d/" port))]
-            (is (= (resp :body) body))
-            (is (= (get-in resp [:headers :content-encoding]) "gzip")
+            (is (= (slurp (resp :body)) body))
+            (is (= (get-in resp [:orig-content-encoding]) "gzip")
                 (format "Expected gzipped response, got this response: %s" resp))))
 
         (testing "an uncompressed response by default"
           ;; The client/get function asks for compression by default
           (let [resp (http-client/get (format "http://localhost:%d/" port) {:decompress-body false})]
-            (is (= (resp :body) body))
+            (is (= (slurp (resp :body)) body))
             ;; We should not receive a content-encoding header in the uncompressed case
             (is (nil? (get-in resp [:headers "content-encoding"]))
                 (format "Expected uncompressed response, got this response: %s" resp))))))))
