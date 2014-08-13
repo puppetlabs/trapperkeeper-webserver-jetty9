@@ -24,6 +24,21 @@
 
 (use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
 
+(def default-server-config
+  {:webserver {:foo {:port 8080}
+               :bar {:port 9000
+                     :default-server true}}})
+
+(def default-server-faulty-config
+  {:webserver {:foo {:port 8080
+                     :default-server true}
+               :bar {:port 9000
+                     :default-server true}}})
+
+(def no-default-config
+  {:webserver {:foo {:port 8080}
+               :bar {:port 9000}}})
+
 (defmacro ssl-exception-thrown?
   [& body]
   `(try
@@ -97,8 +112,8 @@
   (testing "ring request on single server with new syntax over http succeeds"
     (validate-ring-handler
       "http://localhost:8080"
-      {:webserver {:default        {:port 8080}
-                   :default-server "default"}}
+      {:webserver {:default        {:port           8080
+                                    :default-server true}}}
       {:as :text}
       :default))
 
@@ -494,3 +509,31 @@
                                                                    :as      :text})]
           (is (= (:status response) 200))
           (is (= (:body response) (str "Hi World" absurdly-large-cookie))))))))
+
+(deftest default-server-test
+  (testing "handler added to user-specified default server if no server-id is given"
+    (with-app-with-config app
+      [jetty9-service]
+      default-server-config
+      (let [s                (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            body             "Hi World"
+            path             "/hi_world"
+            ring-handler     (fn [req] {:status 200 :body body})]
+        (add-ring-handler ring-handler path)
+        (let [response (http-get "http://localhost:9000/hi_world")]
+          (is (= (:status response 200)))
+          (is (= (:body response) body))))))
+
+  (testing (str "exception thrown if user does not specify a "
+                "default server and no server-id is given")
+    (with-app-with-config app
+      [jetty9-service]
+      no-default-config
+      (let [s                (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            body             "Hi World"
+            path             "/hi_world"
+            ring-handler     (fn [req] {:status 200 :body body})]
+        (is (thrown? IllegalArgumentException
+                     (add-ring-handler ring-handler path)))))))

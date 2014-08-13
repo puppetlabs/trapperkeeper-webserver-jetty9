@@ -143,17 +143,11 @@ webservice. In order to configure multiple webservers, change the `webserver` se
 Trapperkeeper configuration files to be a nested map. Each key in this map is the id of a server, and
 its value is the configuration for that server.
 
-Please note that when configuring multiple servers, you MUST include a `:default-server` key in your
-webserver configuration. The value stored in this key is a string containing the name of the webserver
-you want to be the default. This is the server that handlers will be added to when no server-id is
-specified.
-
 For example, say you wanted to configure two servers on localhost, one on port 9000 and one on port
 10000. The webserver section of your configuration file would look something like this:
 
 ```
 webserver: {
-    default-server: "bar"
     bar: {
         host: localhost
         port: 9000
@@ -168,9 +162,40 @@ webserver: {
 
 This configuration would cause the Jetty9 service to create two different Jetty servers on isolated
 ports. You can then specify which server you would like to add handlers to when calling the Jetty9
-service functions, and they will be added to the server you specify. If no server-id is specified
-when adding handlers, they will be added to the default server. The default server in this case is
-the server with id `:bar`.
+service functions, and they will be added to the server you specify.
+
+Please note that, with the above configuration, you MUST specify a server-id when calling a service
+function, or else the operation will fail. If you would like to have a multi-server configuration
+and NOT specify a server-id when calling some service functions, you can optionally specify a
+default server in your configuration file. Then, if no server-id is specified when performing
+an operation, the operation will automatically be performed on the default server.
+
+To specify a default server, add a `:default-server` key with a value of `true` to the configuration
+information for one of your servers in your trapperkeeper configuration. For example:
+
+```
+webserver: {
+    bar: {
+        host:           localhost
+        port:           9000
+        default-server: true
+    }
+
+    foo: {
+        host: localhost
+        port: 10000
+    }
+}
+```
+
+The above configuration would set up two servers as in the previous example, except
+the server with id `:bar` would be set as the default server. Calling a service function
+without specifying a server-id will cause the operation to be performed on the server with
+id `:bar`.
+
+Please note that only one server can be specified as the default server. Please also note that
+setting a default server is optional. It is only required if you are planning to call a service
+function without passing in a server-id in a multi-server set-up.
 
 Note that you are NOT limited to two servers and can configure more according to your needs.
 

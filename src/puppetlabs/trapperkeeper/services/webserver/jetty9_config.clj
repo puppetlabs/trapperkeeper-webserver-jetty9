@@ -38,24 +38,35 @@
    (schema/optional-key :host)                       schema/Str
    (schema/optional-key :max-threads)                schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
-   (schema/optional-key :ssl-port)        schema/Int
-   (schema/optional-key :ssl-host)        schema/Str
-   (schema/optional-key :ssl-key)         schema/Str
-   (schema/optional-key :ssl-cert)        schema/Str
-   (schema/optional-key :ssl-ca-cert)     schema/Str
-   (schema/optional-key :keystore)        schema/Str
-   (schema/optional-key :truststore)      schema/Str
-   (schema/optional-key :key-password)    schema/Str
-   (schema/optional-key :trust-password)  schema/Str
-   (schema/optional-key :cipher-suites)   [schema/Str]
-   (schema/optional-key :ssl-protocols)   [schema/Str]
-   (schema/optional-key :client-auth)     schema/Str
-   (schema/optional-key :ssl-crl-path)    schema/Str
-   (schema/optional-key :jmx-enable)      schema/Str})
+   (schema/optional-key :ssl-port)                   schema/Int
+   (schema/optional-key :ssl-host)                   schema/Str
+   (schema/optional-key :ssl-key)                    schema/Str
+   (schema/optional-key :ssl-cert)                   schema/Str
+   (schema/optional-key :ssl-ca-cert)                schema/Str
+   (schema/optional-key :keystore)                   schema/Str
+   (schema/optional-key :truststore)                 schema/Str
+   (schema/optional-key :key-password)               schema/Str
+   (schema/optional-key :trust-password)             schema/Str
+   (schema/optional-key :cipher-suites)              [schema/Str]
+   (schema/optional-key :ssl-protocols)              [schema/Str]
+   (schema/optional-key :client-auth)                schema/Str
+   (schema/optional-key :ssl-crl-path)               schema/Str
+   (schema/optional-key :jmx-enable)                 schema/Str
+   (schema/optional-key :default-server)             schema/Bool})
+
+(def MultiWebserverRawConfigUnvalidated
+  {schema/Keyword  WebserverRawConfig})
+
+(defn one-default?
+  [config]
+  (->> config
+       vals
+       (filter :default-server)
+       count
+       (>= 1)))
 
 (def MultiWebserverRawConfig
-  {:default-server schema/Str
-   schema/Keyword  WebserverRawConfig})
+  (schema/both MultiWebserverRawConfigUnvalidated (schema/pred one-default? 'one-default?)))
 
 (def WebserverServiceRawConfig
   (schema/either WebserverRawConfig MultiWebserverRawConfig))

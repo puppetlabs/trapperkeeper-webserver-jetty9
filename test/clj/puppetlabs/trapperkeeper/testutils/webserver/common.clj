@@ -15,9 +15,9 @@
                :request-header-max-size 16192}})
 
 (def jetty-multiserver-plaintext-config
-  {:webserver {:default-server "bar"
-               :foo            {:port 8085}
-               :bar            {:port 8080}}})
+  {:webserver {:foo            {:port 8085}
+               :bar            {:port           8080
+                                :default-server true}}})
 
 (def jetty-ssl-jks-config
   {:webserver {:port            8080
