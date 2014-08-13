@@ -488,6 +488,6 @@ during the consuming service's `init` phase.
 
 ## Webrouting Service
 
-This project also provides a Webrouting service, which is intended for use in
-place of the Webserver Service. Documentation is available for it
+This project provides a secondary Webrouting Service, which in many cases
+is preferable for use over the Webserver Service. Documentation is available for it
 [here](doc/webrouting-service.md).
