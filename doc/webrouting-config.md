@@ -80,6 +80,8 @@ server with id `:foo` at path "/foo". Adding a handler to endpoint
 
 Note that, if no server is specified for an endpoint and there are
 multiple servers, the endpoint will be added to the default server.
+If no default server is set, a server MUST be provided for every
+endpoint.
 
 Also note that, because the webrouting service is built on top of the
 webserver service, the webserver service will need to be included in your

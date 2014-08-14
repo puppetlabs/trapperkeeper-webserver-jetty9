@@ -47,9 +47,9 @@
          "This is a dummy function. Please disregard."))
 
 (def webrouting-plaintext-multiserver-multiroute-config
-  {:webserver {:default        {:port           8080
-                                :default-server true}
-               :foo            {:port 9000}}
+  {:webserver {:bar {:port           8080
+                     :default-server true}
+               :foo {:port 9000}}
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service
        {:default "/foo"
