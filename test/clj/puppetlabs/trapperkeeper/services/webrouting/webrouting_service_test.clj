@@ -55,12 +55,6 @@
        {:default "/foo"
         :bar   "/bar"}}})
 
-(def webrouting-invalid-config
-  {:webserver {:port 8000}
-   :web-router-service
-     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/not-real
-       {:bar "/bar"}}})
-
 (deftest webrouting-service-test
   (testing "Other services can successfully use webrouting service"
     (with-app-with-config
