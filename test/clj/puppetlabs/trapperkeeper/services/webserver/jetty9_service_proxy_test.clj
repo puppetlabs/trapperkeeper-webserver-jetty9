@@ -68,10 +68,11 @@
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000}
-         :proxy        {:foo {:host "0.0.0.0"
-                                :port 10000}
-                        :default {:host "0.0.0.0"
-                                  :port 8085}}
+         :proxy        {:foo            {:host "0.0.0.0"
+                                         :port 10000}
+                        :bar            {:host           "0.0.0.0"
+                                         :port           8085
+                                         :default-server true}}
          :proxy-config {:host "localhost"
                         :port 9000
                         :path "/hello"}
