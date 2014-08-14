@@ -27,7 +27,9 @@
                                 :default-server true}
                :foo            {:port 9000}}
    :web-router-service
-     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test/test-dummy "/foo"}})
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test/test-dummy
+       {:route  "/foo"
+        :server "foo"}}})
 
 (def webrouting-plaintext-multiroute-config
   {:webserver {:port 8080}
@@ -217,7 +219,7 @@
               ring-handler                  (fn [req] {:status 200 :body "Hi world"})
               server-id                     :foo
               svc                           (get-service app :TestDummy)]
-          (add-ring-handler svc ring-handler {:server-id server-id})
+          (add-ring-handler svc ring-handler)
           (let [endpoints (get-registered-endpoints server-id)]
             (is (= endpoints #{{:type :ring :endpoint "/foo"}})))
           (log-registered-endpoints server-id)

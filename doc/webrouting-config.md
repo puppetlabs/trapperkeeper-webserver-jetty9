@@ -41,6 +41,46 @@ more information.
 Please note that, when configuring endpoints in this way, there must be
 an endpoint with route-id `:default`.
 
+In the case where you have configured multiple servers, you can configure
+the webrouting service to add specific endpoints to specific servers. For
+example, say you have two servers, one with id `:foo` and one with id `:bar`.
+Say you want the endpoint for a service to be added to the server with id
+`:foo`. You could do this like so:
+
+```
+web-router-service: {
+    "puppetlabs.foo/foo-service": {
+        route: "/foo"
+        server: "foo"
+    }
+}
+```
+
+You can do the same thing when you have multiple routes configured for a
+service:
+
+```
+web-router-service: {
+    "puppetlabs.foo/foo-service": {
+        foo: {
+            route: "/foo"
+            server: "foo"
+        }
+        bar: {
+            route: "/bar"
+            server: "bar"
+        }
+    }
+}
+```
+
+In this case, adding a handler to endpoint `:foo` would add it to the
+server with id `:foo` at path "/foo". Adding a handler to endpoint
+`bar` would add it to the server with id `:bar` at path "/bar".
+
+Note that, if no server is specified for an endpoint and there are
+multiple servers, the endpoint will be added to the default server.
+
 Also note that, because the webrouting service is built on top of the
 webserver service, the webserver service will need to be included in your
 `bootstrap.cfg` file, and the webserver service will need to be configured in
