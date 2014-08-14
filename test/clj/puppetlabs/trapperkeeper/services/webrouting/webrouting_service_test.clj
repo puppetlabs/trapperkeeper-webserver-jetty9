@@ -34,9 +34,8 @@
           ring-handler (fn [req] {:status 200 :body body})]
       (add-ring-handler svc ring-handler)
       (add-ring-handler svc ring-handler {:route-id :bar})
-      (add-ring-handler svc ring-handler {:server-id :foo})
-      (add-ring-handler svc ring-handler {:server-id :foo
-                                          :route-id :bar}))
+      (add-ring-handler svc ring-handler {:route-id :baz})
+      (add-ring-handler svc ring-handler {:route-id :quux}))
     context)
   (hello [this]
          "This is a dummy function. Please disregard."))
@@ -53,7 +52,11 @@
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service
        {:default "/foo"
-        :bar   "/bar"}}})
+        :bar     "/bar"
+        :baz    {:route "/foo"
+                 :server "foo"}
+        :quux   {:route "/bar"
+                 :server "foo"}}}})
 
 (deftest webrouting-service-test
   (testing "Other services can successfully use webrouting service"

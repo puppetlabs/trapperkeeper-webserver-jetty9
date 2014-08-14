@@ -8,50 +8,57 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
+(def RouteWithServerConfig
+  {:route  schema/Str
+   :server schema/Str})
+
 (def WebroutingMultipleConfig
   {:default       schema/Str
-   schema/Keyword schema/Str})
+   schema/Keyword (schema/either schema/Str RouteWithServerConfig)})
 
 (def WebroutingServiceConfig
-  {schema/Keyword (schema/either schema/Str WebroutingMultipleConfig)})
+  {schema/Keyword (schema/either schema/Str RouteWithServerConfig WebroutingMultipleConfig)})
 
 (def RouteOption
   {(schema/optional-key :route-id) schema/Keyword})
 
-(def ServerAndRouteOptions
-  (merge jetty9-core/ServerIDOption RouteOption))
-
 (def ContextHandlerOptions
-  (merge jetty9-core/ContextHandlerOptions RouteOption))
+  (dissoc (merge jetty9-core/ContextHandlerOptions RouteOption) :server-id))
 
 (def ServletHandlerOptions
-  (merge jetty9-core/ServletHandlerOptions RouteOption))
+  (dissoc (merge jetty9-core/ServletHandlerOptions RouteOption) :server-id))
 
 (def ProxyRouteOptions
-  (merge jetty9-core/ProxyOptions RouteOption))
+  (dissoc (merge jetty9-core/ProxyOptions RouteOption) :server-id))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private Utility Functions
 
-(defn get-endpoint-from-config
+(defn get-endpoint-and-server-from-config
   [context svc route-id]
-  (let [config (:web-router-service context)
-        route-id (if (nil? route-id)
-                   :default
-                   route-id)
-        endpoint (get-in config [svc route-id])]
-    (if (nil? endpoint)
-      (throw
-        (IllegalArgumentException.
-          "specified service does not appear in configuration file"))
-      endpoint)))
+  (let [config        (:web-router-service context)
+        route-id      (if (nil? route-id)
+                        :default
+                        route-id)
+        endpoint      (get-in config [svc route-id])
+        no-endpoint?  (nil? endpoint)
+        no-server?    (nil? (schema/check schema/Str endpoint))
+        server?       (nil? (schema/check RouteWithServerConfig endpoint))]
+    (cond
+      no-endpoint? (throw
+                     (IllegalArgumentException.
+                       "specified service or endpoint does not appear in configuration file"))
+      no-server?   {:route endpoint :server "default"}
+      server?      endpoint)))
 
 (defn compute-common-elements
   [context svc options]
-  (let [svc-id   (keyword (tk-services/service-symbol svc))
-        route-id (:route-id options)
-        path     (get-endpoint-from-config context svc-id route-id)
-        opts     (dissoc options :route-id)]
+  (let [svc-id           (keyword (tk-services/service-symbol svc))
+        route-id         (:route-id options)
+        route-and-server (get-endpoint-and-server-from-config context svc-id route-id)
+        path             (:route route-and-server)
+        server           (keyword (:server route-and-server))
+        opts             (assoc (dissoc options :route-id) :server-id server)]
     {:path path :opts opts}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -61,8 +68,10 @@
   [context config :- WebroutingServiceConfig]
   (let [configuration (into {} (for [[svc svc-config] config]
                                  (cond
-                                   (nil? (schema/check schema/Str svc-config)) [svc {:default svc-config}]
-                                   (nil? (schema/check WebroutingMultipleConfig svc-config)) [svc svc-config])))]
+                                   (nil? (schema/check (schema/either schema/Str RouteWithServerConfig) svc-config))
+                                     [svc {:default svc-config}]
+                                   (nil? (schema/check WebroutingMultipleConfig svc-config))
+                                     [svc svc-config])))]
     (assoc context :web-router-service configuration)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -80,7 +89,7 @@
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
    svc :- tk-services/Service
-   handler options :- ServerAndRouteOptions]
+   handler options :- RouteOption]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-ring-handler    (:add-ring-handler webserver-service)]
     (add-ring-handler handler path opts)))
@@ -96,7 +105,7 @@
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service
    svc :- tk-services/Service
-   war options :- ServerAndRouteOptions]
+   war options :- RouteOption]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-war-handler     (:add-war-handler webserver-service)]
     (add-war-handler war path opts)))
