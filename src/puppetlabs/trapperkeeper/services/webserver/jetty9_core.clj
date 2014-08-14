@@ -21,7 +21,8 @@
            (org.eclipse.jetty.client HttpClient)
            (clojure.lang Atom)
            (java.lang.management ManagementFactory)
-           (org.eclipse.jetty.jmx MBeanContainer))
+           (org.eclipse.jetty.jmx MBeanContainer)
+           (org.eclipse.jetty.util URIUtil))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
             [clojure.set :as set]
@@ -116,6 +117,12 @@
 (defn- remove-leading-slash
   [s]
   (str/replace s #"^\/" ""))
+
+(defn- with-leading-slash
+  [s]
+  (if (.startsWith s "/")
+    s
+    (str "/" s)))
 
 (schema/defn ^:always-validate started? :- Boolean
   "A predicate that indicates whether or not the webserver-context contains a Jetty
@@ -299,14 +306,15 @@
                          :orig (.getScheme req)
                          :http "http"
                          :https "https"))
-              context-path (.getPathInfo req)
-              uri (StringBuilder. (str scheme "://" (:host target)
-                                       ":" (:port target)
-                                       "/" (:path target) context-path))]
-          (when query
-            (.append uri "?")
-            (.append uri query))
-          (URI/create (.toString uri))))
+              context-path (.getPathInfo req)]
+          (URI. scheme
+                nil
+                (:host target)
+                (:port target)
+                (with-leading-slash
+                  (URIUtil/addPaths (:path target) context-path))
+                query
+                nil)))
 
       (newHttpClient []
         (let [client (if custom-ssl-ctxt-factory
