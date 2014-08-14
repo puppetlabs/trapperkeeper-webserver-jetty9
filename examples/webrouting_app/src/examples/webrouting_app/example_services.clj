@@ -9,14 +9,10 @@
    :headers {"Content-Type" "text/plain"}
    :body    "Hello, World!"})
 
-(defn goodbye-app
-  [req]
-  {:status  200
-   :headers {"Content-Type" "text/plain"}
-   :body    "Hello, World!"})
-
 (defprotocol FooService)
 (defprotocol BarService)
+(defprotocol QuuxService)
+(defprotocol BertService)
 
 (defservice foo-service
   FooService
@@ -32,5 +28,22 @@
   (init [this context]
     (log/info "Initializing bar service")
     (add-ring-handler (get-service this :BarService) hello-app)
-    (add-ring-handler (get-service this :BarService) goodbye-app {:route-id :baz})
+    (add-ring-handler (get-service this :BarService) hello-app {:route-id :baz})
+    context))
+
+(defservice quux-service
+  QuuxService
+  [[:WebroutingService add-ring-handler]]
+  (init [this context]
+    (log/info "Initializing quux service")
+    (add-ring-handler (get-service this :QuuxService) hello-app)
+    context))
+
+(defservice bert-service
+  BertService
+  [[:WebroutingService add-ring-handler]]
+  (init [this context]
+    (log/info "Initializing bert service")
+    (add-ring-handler (get-service this :BertService) hello-app)
+    (add-ring-handler (get-service this :BertService) hello-app {:route-id :bert})
     context))

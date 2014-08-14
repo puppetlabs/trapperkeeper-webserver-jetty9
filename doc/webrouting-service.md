@@ -91,11 +91,16 @@ which would find the endpoint configured for the current service in the configur
 then register the ring handler `my-app` at that endpoint.
 
 The options map for each of these functions is identical to those in the corresponding
-webserver service functions, with one exception: they can take an additional, optional
+webserver service functions, with two exceptions.
+
+First, they can take an additional, optional
 key, `:route-id`. This is used when multiple endpoints are configured for a specific
 service, with its value being the id of the specific endpoint you want to add the handler to.
 If this option is not in the options map, the endpoint for that service stored at key
 `:default` will be used.
+
+Second, `:server-id` is a disallowed key in this options map. Specifying a specific server
+to which to add an endpoint is handled in the configuration of the webrouting service.
 
 As an example, say you have two endpoints configured for a specific service, which implements
 protocol FooService. One is endpoint `"/foo"` and is kept at key `:default`. The other is

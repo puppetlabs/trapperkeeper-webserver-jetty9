@@ -14,7 +14,10 @@ Open any of
 ```
 http://localhost:8080/hello
 http://localhost:8080/bar
+http://localhost:8080/baz
 http://localhost:8080/goodbye
+http://localhost:9000/quux
+http://localhost:9000/bert
 
 ```
 
