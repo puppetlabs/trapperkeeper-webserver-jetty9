@@ -21,6 +21,7 @@
            (org.eclipse.jetty.client HttpClient)
            (clojure.lang Atom)
            (java.lang.management ManagementFactory)
+           (org.apache.http.client.utils URIBuilder)
            (org.eclipse.jetty.jmx MBeanContainer))
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
@@ -300,12 +301,12 @@
                          :http "http"
                          :https "https"))
               context-path (.getPathInfo req)
-              uri (StringBuilder. (str scheme "://" (:host target)
-                                       ":" (:port target)
-                                       "/" (:path target) context-path))]
-          (when query
-            (.append uri "?")
-            (.append uri query))
+              uri (doto (new URIBuilder)
+                    (.setScheme scheme)
+                    (.setHost (:host target))
+                    (.setPort (:port target))
+                    (.setPath context-path)
+                    (.setCustomQuery query))]
           (URI/create (.toString uri))))
 
       (newHttpClient []
