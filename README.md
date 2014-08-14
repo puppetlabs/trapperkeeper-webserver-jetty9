@@ -5,7 +5,7 @@
 This project provides a webserver service for use with the
 [trapperkeeper service framework](https://github.com/puppetlabs/trapperkeeper)
 To use this service in your trapperkeeper application, simply add this
-project as a dependency in your leinengen project file, and then add the
+project as a dependency in your leiningen project file, and then add the
 webserver service to your [`bootstrap.cfg`](https://github.com/puppetlabs/trapperkeeper#bootstrapping)
 file, via:
 
@@ -485,3 +485,9 @@ consumer to setup SSL keys and perform other operations needed before the server
 In the start lifecycle phase the Jetty server object is created, the `ContextHandlerCollection` is added to it, and the server is then started. Adding handlers 
 after this phase should still work fine, but it is recommended that handlers be added 
 during the consuming service's `init` phase.
+
+## Webrouting Service
+
+This project provides a secondary Webrouting Service, which in many cases
+is preferable for use over the Webserver Service. Documentation is available for it
+[here](doc/webrouting-service.md).

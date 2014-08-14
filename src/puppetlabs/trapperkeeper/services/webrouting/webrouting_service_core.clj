@@ -9,7 +9,8 @@
 ;;; Schemas
 
 (def WebroutingMultipleConfig
-  {schema/Keyword schema/Str})
+  {:default       schema/Str
+   schema/Keyword schema/Str})
 
 (def WebroutingServiceConfig
   {schema/Keyword (schema/either schema/Str WebroutingMultipleConfig)})
