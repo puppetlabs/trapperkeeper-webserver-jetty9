@@ -22,6 +22,8 @@
 (defprotocol TestService
   (hello [this]))
 
+(defprotocol TestService2)
+
 (defprotocol NotReal
   (dummy [this]))
 
@@ -40,6 +42,10 @@
   (hello [this]
          "This is a dummy function. Please disregard."))
 
+(tk-services/defservice test-service-2
+  TestService2
+  [[:WebroutingService add-ring-handler]])
+
 (tk-services/defservice not-real
   NotReal
   []
@@ -47,9 +53,9 @@
          "This is a dummy function. Please disregard."))
 
 (def webrouting-plaintext-multiserver-multiroute-config
-  {:webserver {:default        {:port           8080
-                                :default-server true}
-               :foo            {:port 9000}}
+  {:webserver {:bar {:port           8080
+                     :default-server true}
+               :foo {:port 9000}}
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service
        {:default "/foo"
@@ -58,6 +64,13 @@
                  :server "foo"}
         :quux   {:route "/bar"
                  :server "foo"}}}})
+
+(def no-default-config
+  {:webserver {:bar {:port 8080}
+               :foo {:port 9000}}
+   :web-router-service
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
+       "/foo"}})
 
 (deftest webrouting-service-test
   (testing "Other services can successfully use webrouting service"
@@ -83,10 +96,22 @@
       app
       [jetty9-service webrouting-service not-real]
       webrouting-plaintext-config
-      (let [s (tk-app/get-service app :WebroutingService)
+      (let [s                (tk-app/get-service app :WebroutingService)
             add-ring-handler (partial add-ring-handler s)
-            body "Hello World!"
-            ring-handler (fn [req] {:status 200 :body body})
-            svc (tk-app/get-service app :NotReal)]
+            body             "Hello World!"
+            ring-handler     (fn [req] {:status 200 :body body})
+            svc              (tk-app/get-service app :NotReal)]
+        (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler))))))
+
+  (testing "Error occurs when endpoints don't have servers and no default is set"
+    (with-app-with-config
+      app
+      [jetty9-service webrouting-service test-service-2]
+      no-default-config
+      (let [s                (tk-app/get-service app :WebroutingService)
+            add-ring-handler (partial add-ring-handler s)
+            body             "Hello World!"
+            ring-handler     (fn [req] {:status 200 :body body})
+            svc              (tk-app/get-service app :TestService2)]
         (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler)))))))
 

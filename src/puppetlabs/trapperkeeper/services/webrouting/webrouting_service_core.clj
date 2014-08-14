@@ -48,7 +48,7 @@
       no-endpoint? (throw
                      (IllegalArgumentException.
                        "specified service or endpoint does not appear in configuration file"))
-      no-server?   {:route endpoint :server "default"}
+      no-server?   {:route endpoint :server nil}
       server?      endpoint)))
 
 (defn compute-common-elements
@@ -58,7 +58,10 @@
         route-and-server (get-endpoint-and-server-from-config context svc-id route-id)
         path             (:route route-and-server)
         server           (keyword (:server route-and-server))
-        opts             (assoc (dissoc options :route-id) :server-id server)]
+        options          (dissoc options :route-id)
+        opts             (if (nil? server)
+                           options
+                           (assoc options :server-id server))]
     {:path path :opts opts}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
