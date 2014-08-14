@@ -29,12 +29,6 @@
                :bar {:port 9000
                      :default-server true}}})
 
-(def default-server-faulty-config
-  {:webserver {:foo {:port 8080
-                     :default-server true}
-               :bar {:port 9000
-                     :default-server true}}})
-
 (def no-default-config
   {:webserver {:foo {:port 8080}
                :bar {:port 9000}}})

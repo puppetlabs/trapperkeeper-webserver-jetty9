@@ -641,7 +641,7 @@
   (let [server-id (if (nil? server-id)
                     (:default-server service-context)
                     server-id)]
-    (if (nil? server-id)
+    (when-not server-id
       (throw (IllegalArgumentException.
                (str "no server-id was specified for this operation and "
                     "no default server was specified in the configuration"))))
