@@ -1,3 +1,21 @@
+## 0.7.0
+
+* [TK-50](https://tickets.puppetlabs.com/browse/TK-50):
+  Changes to "default" server handling in a multi-server configuration:
+  * It is no longer required to specify a default server.  If a service function 
+    is called without specifying a `server-id` when there are multiple servers 
+    configured, an error will be thrown.
+  * It is no longer required that the default server be named `default`; 
+    instead it is configured by specifying `default-server: true` 
+    in the configuration for the given server.
+* [TK-51](https://tickets.puppetlabs.com/browse/TK-51):
+  Added the ability to the specify `server-id` in the `WebroutingService`
+  configuration, instead of forcing it to be done in code.
+* Minor bug fixes and improvements:
+    * [TK-48](https://tickets.puppetlabs.com/browse/TK-48),
+      [TK-44](https://tickets.puppetlabs.com/browse/TK-44)
+
+
 ## 0.6.1
 * Add configuration option `request-header-max-size`
 * Increase default buffer sizes for request and response
