@@ -654,11 +654,7 @@
 
 (defn get-default-server-from-config
   [config]
-  (let [default (atom nil)]
-    (doseq [[server-id server-config] config]
-      (if (:default-server server-config)
-        (compare-and-set! default nil server-id)))
-    @default))
+  (first (flatten (filter #(:default-server (second %)) config))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service Function Implementations
