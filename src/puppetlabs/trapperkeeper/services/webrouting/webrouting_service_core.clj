@@ -80,6 +80,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service function implementations
 
+(defn get-route
+  [context svc route-id]
+  (let [svc-id              (keyword (tk-services/service-symbol svc))
+        endpoint-and-server (get-endpoint-and-server-from-config context
+                                                                 svc-id
+                                                                 route-id)]
+    (:route endpoint-and-server)))
+
 (schema/defn ^:always-validate add-context-handler!
   [context webserver-service
    svc :- tk-services/Service

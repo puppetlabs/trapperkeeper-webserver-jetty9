@@ -7,6 +7,7 @@
     [schema.core :as schema]))
 
 (defprotocol WebroutingService
+  (get-route [this svc] [this svc route-id])
   (add-context-handler [this svc context-path] [this svc context-path options])
   (add-ring-handler [this svc handler] [this svc handler options])
   (add-servlet-handler [this svc servlet] [this svc servlet options])
@@ -25,6 +26,12 @@
   (init [this context]
         (let [config (get-in-config [:web-router-service])]
           (core/init context config)))
+
+  (get-route [this svc]
+             (core/get-route (service-context this) svc nil))
+
+  (get-route [this svc route-id]
+             (core/get-route (service-context this) svc route-id))
 
   (add-context-handler [this svc base-path]
                     (core/add-context-handler! (service-context this)
