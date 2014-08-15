@@ -73,6 +73,7 @@
     (schema/optional-key :ssl-config) (schema/either
                                         (schema/eq :use-server-config)
                                         config/WebserverSslPemConfig)
+    (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int))
 
@@ -307,14 +308,17 @@
                          :http "http"
                          :https "https"))
               context-path (.getPathInfo req)]
-          (URI. scheme
-                nil
-                (:host target)
-                (:port target)
-                (with-leading-slash
-                  (URIUtil/addPaths (:path target) context-path))
-                query
-                nil)))
+          (let [target-uri (URI. scheme
+                                 nil
+                                 (:host target)
+                                 (:port target)
+                                 (with-leading-slash
+                                   (URIUtil/addPaths (:path target) context-path))
+                                 query
+                                 nil)]
+            (if-let [rewrite-uri-callback-fn (:rewrite-uri-callback-fn options)]
+              (rewrite-uri-callback-fn target-uri req)
+              target-uri))))
 
       (newHttpClient []
         (let [client (if custom-ssl-ctxt-factory
@@ -499,9 +503,10 @@
 
   `options` may contain the keys :scheme (legal values are :orig, :http, and
   :https), :ssl-config (value may be :use-server-config or a map containing
-  :ssl-ca-cert, :ssl-cert, and :ssl-key), and :callback-fn (a function taking
-  two arguments, `[proxy-req req]`. For more information see
-  README.md/#callback-fn.)
+  :ssl-ca-cert, :ssl-cert, and :ssl-key), :rewrite-uri-callback-fn (a function
+  taking two arguments, `[target-uri req]`, see README.md/#rewrite-uri-callback-fn)
+  and :callback-fn (a function taking two arguments, `[proxy-req req]`, see
+  README.md/#callback-fn).
   "
   [webserver-context :- ServerContext
    target :- ProxyTarget
