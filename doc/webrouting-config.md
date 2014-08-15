@@ -35,7 +35,7 @@ In this case, two endpoints will be configured for the `foo-service`.
 `"/foo"` will have route-id `:default`, and `"/bar"` will have route-id
 `:bar`. Handlers can be added to the `"/bar"` endpoint by explicitly
 specifying `:bar` as the `route-id` when adding a handler. Please see
-[Trapperkeeper Webrouting Service](doc/webrouting-service.md) for
+[Trapperkeeper Webrouting Service](webrouting-service.md) for
 more information.
 
 Please note that, when configuring endpoints in this way, there must be

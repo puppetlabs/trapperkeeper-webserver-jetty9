@@ -44,7 +44,7 @@ file, via:
 
 The webrouting service is configured via the
 [trapperkeeper configuration service](https://github.com/puppetlabs/trapperkeeper#configuration-service).
-Please see [Configuring the Webrouting Service](doc/webrouting-config.md) for information on
+Please see [Configuring the Webrouting Service](webrouting-config.md) for information on
 how to configure the webrouting service.
 
 ### Service Protocol
@@ -53,6 +53,7 @@ This is the protocol for the current implementation of the `:WebroutingService`:
 
 ```clj
 (defprotocol WebroutingService
+  (get-route [this svc] [this svc route-id])
   (add-context-handler [this svc context-path] [this svc context-path options])
   (add-ring-handler [this svc handler] [this svc handler options])
   (add-servlet-handler [this svc servlet] [this svc servlet options])
@@ -63,6 +64,16 @@ This is the protocol for the current implementation of the `:WebroutingService`:
   (log-registered-endpoints [this] [this server-id])
   (join [this] [this server-id]))
 ```
+
+#### `get-route`
+
+This function allows you to get the web-route for a particular service
+as configured in your configuration file. The one-argument version will
+return the default web route configured for the current service. The two
+argument version will return the web route configured for the current
+service with the id you specify.
+
+#### Other functions
 
 The functions `override-webserver-settings!`, `get-registered-endpoints`,
 `log-registered-endpoints`, and `join` all work in the exact same way as
@@ -119,7 +130,7 @@ the ring handler `my-app` would be registered at endpoint `"/foo"`. However, if 
 the ring handler `my-app` would be registered at endpoint `"/bar"`.
 
 For information on how to configure multiple endpoints, please see
-[Configuring the Webrouting Service](doc/webrouting-config.md).
+[Configuring the Webrouting Service](webrouting-config.md).
 
 PLEASE NOTE that there is an issue with the `defservice` macro such that `this` cannot
 be accessed while calling the webrouting service functions. As a result, when using the
