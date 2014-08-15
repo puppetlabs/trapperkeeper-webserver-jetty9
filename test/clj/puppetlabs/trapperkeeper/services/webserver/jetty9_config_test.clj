@@ -1,11 +1,14 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config-test
-  (:import (clojure.lang ExceptionInfo))
+  (:import (clojure.lang ExceptionInfo)
+           (java.util Arrays))
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
+            [me.raynes.fs :as fs]
             [schema.core :as schema]
+            [puppetlabs.certificate-authority.core :as ssl]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [puppetlabs.kitchensink.core :refer [parse-bool]]))
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]))
 
 (def valid-ssl-pem-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
@@ -22,7 +25,7 @@
   [config expected]
   (= (-> expected
          (update-in [:max-threads] (fnil identity default-max-threads))
-         (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable))
+         (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
          (update-in [:http :request-header-max-size] (fnil identity default-request-header-size)))
      (process-config config)))
 
@@ -31,7 +34,7 @@
   (let [actual (process-config config)]
     (= (-> expected
            (update-in [:max-threads] (fnil identity default-max-threads))
-           (update-in [:jmx-enable] (fnil parse-bool default-jmx-enable))
+           (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
            (update-in [:https :client-auth] (fnil identity default-client-auth))
@@ -174,3 +177,68 @@
                              valid-ssl-pem-config
                              valid-ssl-keystore-config))
       (is (logged? #"Found settings for both keystore-based and PEM-based SSL")))))
+
+(defn- validate-cert-lists-equal
+  [pem-with-expected-certs ssl-cert ssl-cert-chain]
+  (let [expected-certs (ssl/pem->certs pem-with-expected-certs)
+        actual-certs   (construct-ssl-x509-cert-chain ssl-cert ssl-cert-chain)]
+    (is (= (count expected-certs) (count actual-certs))
+        "Number of expected certs do not match number of actual certs")
+    (dotimes [n (count expected-certs)]
+      (is (Arrays/equals (.getEncoded (nth expected-certs n))
+                         (.getEncoded (nth actual-certs n)))
+        (str "Expected cert # " n " from  does not match actual cert")))))
+
+(deftest construct-ssl-x509-cert-chain-test
+  (testing "non-existent ssl-cert throws expected exception"
+    (let [tmp-file (ks/temp-file)]
+      (fs/delete tmp-file)
+      (is (thrown-with-msg? IllegalArgumentException
+                            #"^Unable to open 'ssl-cert' file:"
+                            (construct-ssl-x509-cert-chain
+                              (.getAbsolutePath tmp-file)
+                              nil)))))
+
+  (testing "no content in ssl-cert throws expected exception"
+    (let [tmp-file (ks/temp-file)]
+      (is (thrown-with-msg? Exception
+                            #"^No certs found in 'ssl-cert' file:"
+                            (construct-ssl-x509-cert-chain
+                              (.getAbsolutePath tmp-file)
+                              nil)))))
+
+  (testing "non-existent ssl-cert-chain throws expected exception"
+    (let [tmp-file (ks/temp-file)]
+      (fs/delete tmp-file)
+      (is (thrown-with-msg? IllegalArgumentException
+                            #"^Unable to open 'ssl-cert-chain' file:"
+                            (construct-ssl-x509-cert-chain
+                              "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+                              (.getAbsolutePath tmp-file))))))
+
+  (testing "ssl-cert with single cert loaded into list"
+    (validate-cert-lists-equal
+      "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+      "./dev-resources/config/jetty/ssl/certs/localhost.pem"
+      nil))
+
+  (testing "ssl-cert with multiple certs loaded into list"
+    (validate-cert-lists-equal
+      "./dev-resources/config/jetty/ssl/certs/master-with-all-cas.pem"
+      "./dev-resources/config/jetty/ssl/certs/master-with-all-cas.pem"
+      nil))
+
+  (testing (str "ssl-cert with single cert and ssl-cert-chain with "
+                "multiple certs loaded into list")
+    (validate-cert-lists-equal
+      "./dev-resources/config/jetty/ssl/certs/master-with-all-cas.pem"
+      "./dev-resources/config/jetty/ssl/certs/master.pem"
+      "./dev-resources/config/jetty/ssl/certs/ca-master-intermediate-and-root.pem"))
+
+  (testing (str "for ssl-cert with multiple certs and ssl-cert-chain with "
+                "with one cert, only the first cert from ssl-cert is "
+                "loaded into list with cert from ssl-cert-chain")
+    (validate-cert-lists-equal
+      "./dev-resources/config/jetty/ssl/certs/master-with-root-ca.pem"
+      "./dev-resources/config/jetty/ssl/certs/master-with-intermediate-ca.pem"
+      "./dev-resources/config/jetty/ssl/certs/ca-root.pem")))

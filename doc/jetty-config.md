@@ -45,7 +45,30 @@ at all.
 ### `ssl-cert`
 
 This sets the path to the server certificate PEM file used by the web
-service for HTTPS.
+service for HTTPS.  During the SSL handshake for a connection, certificates
+extracted from this file are presented to the client for the client's use in
+validating the server.  This file may contain a single certificate or a chain
+of certificates starting with the end certificate, any intermediate CA
+certificates in reverse hierarchical order, and the root CA certificate, if
+available, last.  If a chain is present, it is not required to be complete.  If a
+path has been specified for the `ssl-cert-chain` setting, the server will
+construct the cert chain starting with the first certificate found in the
+`ssl-cert` PEM and followed by any certificates in the `ssl-cert-chain` PEM.  In
+the latter case, any certificates in the `ssl-cert` PEM beyond the first one
+would be ignored.
+
+> **Note:** This setting overrides the alternate configuration settings
+`keystore` and `key-password`.
+
+### `ssl-cert-chain`
+
+This sets the path to a PEM with CA certificates for use in presenting a
+client with the server's chain of trust.  Certs found in this PEM file are
+appended after the first certificate from the `ssl-cert` PEM in the
+construction of the certificate chain.  This is an optional setting.  The
+certificates in this PEM file should start with any intermediate CA certificates
+in reverse hierarchical order, if applicable, and a root CA certificate, if
+available, last.  The chain is not required to be complete.
 
 > **Note:** This setting overrides the alternate configuration settings
 `keystore` and `key-password`.
@@ -61,8 +84,9 @@ This sets the path to the private key PEM file that corresponds with the
 ### `ssl-ca-cert`
 
 This sets the path to the CA certificate PEM file used for client
-authentication. Authorized clients must be signed by the CA that that
-corresponds to this certificate.
+authentication.  The PEM file may contain one or more CA certificates.
+Authorized clients must have been signed - either directly or via an
+intermediate CA - using one of the CA certificates in the PEM file.
 
 > **Note:** This setting overrides the alternate configuration settings
 `truststore` and `trust-password`.

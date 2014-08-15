@@ -32,6 +32,9 @@
                    :ssl-cert
                              (str dev-resources-config-dir
                                   "ssl/certs/localhost.pem")
+                   :ssl-cert-chain
+                             (str dev-resources-config-dir
+                                  "ssl/certs/ca.pem")
                    :ssl-key
                              (str dev-resources-config-dir
                                   "ssl/private_keys/localhost.pem")
@@ -75,6 +78,9 @@
                   "Didn't find log message for override of 'ssl-host'")
               (is (logged? #"^webserver config overridden for key 'ssl-cert'")
                   "Didn't find log message for override of 'ssl-cert'")
+              (is (logged?
+                    #"^webserver config overridden for key 'ssl-cert-chain'")
+                  "Didn't find log message for override of 'ssl-cert-chain'")
               (is (logged? #"^webserver config overridden for key 'ssl-key'")
                   "Didn't find log message for override of 'ssl-key'")
               (is (logged? #"^webserver config overridden for key 'ssl-ca-cert'")

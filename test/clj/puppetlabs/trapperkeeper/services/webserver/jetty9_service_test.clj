@@ -203,7 +203,16 @@
     (validate-ring-handler
       "https://localhost:8081"
       jetty-ssl-client-none-config
-      unauthorized-pem-options-for-https)))
+      unauthorized-pem-options-for-https))
+
+  (testing "ring request over SSL succeeds with the server configured to use
+            both an ssl-cert and an ssl-cert-chain"
+    (validate-ring-handler
+      "https://localhost:8081"
+      (assoc-in jetty-ssl-client-need-config
+                [:webserver :ssl-cert-chain]
+                (:ssl-ca-cert default-options-for-https-client))
+      default-options-for-https-client)))
 
 (deftest ssl-failure-test
   (testing "ring request over SSL fails with the server's client-auth setting

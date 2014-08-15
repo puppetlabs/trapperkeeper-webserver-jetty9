@@ -406,7 +406,7 @@
     settings:
 
     :ssl-key      - a PEM file containing the host's private key
-    :ssl-cert     - a PEM file containing the host's certificate
+    :ssl-cert     - a PEM file containing the host's certificate or chain
     :ssl-ca-cert  - a PEM file containing the CA certificate
 
     or via JKS keystore files by providing all four of the following settings:
@@ -415,6 +415,11 @@
     :key-password   - the password to the keystore
     :truststore     - a truststore to use for SSL connections
     :trust-password - the password to the truststore
+
+    Note that if SSL is being configured via PEM files, an optional
+    :ssl-cert-chain setting may be included to specify a supplemental set
+    of certificates to be appended to the first certificate from the :ssl-cert
+    setting in order to construct the certificate chain.
 
     Other SSL settings:
 

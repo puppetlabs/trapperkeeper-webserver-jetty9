@@ -42,6 +42,7 @@
    (schema/optional-key :ssl-host)                   schema/Str
    (schema/optional-key :ssl-key)                    schema/Str
    (schema/optional-key :ssl-cert)                   schema/Str
+   (schema/optional-key :ssl-cert-chain)             schema/Str
    (schema/optional-key :ssl-ca-cert)                schema/Str
    (schema/optional-key :keystore)                   schema/Str
    (schema/optional-key :truststore)                 schema/Str
@@ -72,9 +73,10 @@
   (schema/either WebserverRawConfig MultiWebserverRawConfig))
 
 (def WebserverSslPemConfig
-  {:ssl-key      schema/Str
-   :ssl-cert     schema/Str
-   :ssl-ca-cert  schema/Str})
+  {:ssl-key                              schema/Str
+   :ssl-cert                             schema/Str
+   (schema/optional-key :ssl-cert-chain) schema/Str
+   :ssl-ca-cert                          schema/Str})
 
 (def WebserverSslKeystoreConfig
   {:keystore        KeyStore
@@ -124,23 +126,67 @@
   (let [pem-required-keys [:ssl-key :ssl-cert :ssl-ca-cert]
         pem-config (select-keys config pem-required-keys)]
     (condp = (count pem-config)
-      3 pem-config
+      3 (if-let [ssl-cert-chain (:ssl-cert-chain config)]
+          (assoc pem-config :ssl-cert-chain ssl-cert-chain)
+          pem-config)
       0 nil
       (throw (IllegalArgumentException.
                (format "Found SSL config options: %s; If configuring SSL from PEM files, you must provide all of the following options: %s"
                        (keys pem-config) pem-required-keys))))))
 
 (schema/defn ^:always-validate
+  get-x509s-from-ssl-cert :- (schema/pred ssl/certificate-list?)
+  [ssl-cert :- schema/Str
+   ssl-cert-chain :- (schema/maybe schema/Str)]
+  (if-not (fs/readable? ssl-cert)
+    (throw (IllegalArgumentException.
+             (format "Unable to open 'ssl-cert' file: %s"
+                     ssl-cert))))
+  (let [certs (ssl/pem->certs ssl-cert)]
+    (if (= 0 (count certs))
+      (throw (Exception.
+               (format "No certs found in 'ssl-cert' file: %s"
+                       ssl-cert))))
+    (if ssl-cert-chain
+      [(first certs)]
+      certs)))
+
+(schema/defn ^:always-validate
+  get-x509s-from-ssl-cert-chain :- (schema/pred ssl/certificate-list?)
+  [ssl-cert-chain :- (schema/maybe schema/Str)]
+  (if ssl-cert-chain
+    (do
+      (if-not (fs/readable? ssl-cert-chain)
+        (throw (IllegalArgumentException.
+                 (format "Unable to open 'ssl-cert-chain' file: %s"
+                         ssl-cert-chain))))
+      (ssl/pem->certs ssl-cert-chain))
+    []))
+
+(schema/defn ^:always-validate
+  construct-ssl-x509-cert-chain :- (schema/pred ssl/certificate-list?)
+  [ssl-cert :- schema/Str
+   ssl-cert-chain :- (schema/maybe schema/Str)]
+  (let [ssl-cert-x509s       (get-x509s-from-ssl-cert ssl-cert ssl-cert-chain)
+        ssl-cert-chain-x509s (get-x509s-from-ssl-cert-chain ssl-cert-chain)]
+    (into [] (concat ssl-cert-x509s ssl-cert-chain-x509s))))
+
+(schema/defn ^:always-validate
   pem-ssl-config->keystore-ssl-config :- WebserverSslKeystoreConfig
-  [{:keys [ssl-ca-cert ssl-key ssl-cert]} :- WebserverSslPemConfig]
-  (let [key-password (uuid)]
+  [{:keys [ssl-ca-cert ssl-key ssl-cert ssl-cert-chain]} :- WebserverSslPemConfig]
+  (let [key-password   (uuid)
+        ssl-x509-chain (construct-ssl-x509-cert-chain ssl-cert
+                                                      ssl-cert-chain)]
     {:truststore    (-> (ssl/keystore)
                         (ssl/assoc-certs-from-file!
                           "CA Certificate" ssl-ca-cert))
      :key-password  key-password
      :keystore      (-> (ssl/keystore)
-                        (ssl/assoc-private-key-file!
-                          "Private Key" ssl-key key-password ssl-cert))}))
+                        (ssl/assoc-private-key!
+                          "Private Key"
+                          (ssl/pem->private-key ssl-key)
+                          key-password
+                          ssl-x509-chain))}))
 
 (schema/defn ^:always-validate
   warn-if-keystore-ssl-configs-found!
