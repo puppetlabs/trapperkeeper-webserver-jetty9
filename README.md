@@ -354,7 +354,7 @@ An example with a rewrite URI callback function:
     context))
 ```
 
-In this example, all incoming requests with the `GET` method will be proxied
+In this example, all incoming requests with a method other than `GET` will be proxied
 to `http://localhost:11111/errors/unsupported-method`.
 
 #####`:callback-fn`

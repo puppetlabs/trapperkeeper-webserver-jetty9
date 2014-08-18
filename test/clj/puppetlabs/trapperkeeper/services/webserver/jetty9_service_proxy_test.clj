@@ -353,68 +353,6 @@
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, Earth!")))))
 
-    (testing "basic http proxy support with callback and rewrite uri callback functions"
-      (with-target-and-proxy-servers
-        {:target       {:host "0.0.0.0"
-                        :port 9000}
-         :proxy        {:host "0.0.0.0"
-                        :port 10000}
-         :proxy-config {:host "localhost"
-                        :port 9000
-                        :path "/hello"}
-         :proxy-opts   {:callback-fn callback-fn
-                        :rewrite-uri-callback-fn rewrite-uri-callback-fn}
-         :ring-handler proxy-ring-handler}
-        (let [response (http-get "http://localhost:9000/hello/world")]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!")))
-        (let [response (http-get "http://localhost:10000/hello-proxy/world")]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, Earth!!!!")))))
-
-    (testing "basic https proxy support (pass-through https config) with callback and rewrite uri callback functions"
-      (with-target-and-proxy-servers
-        {:target       (merge common-ssl-config
-                              {:ssl-host "0.0.0.0"
-                               :ssl-port 9001})
-         :proxy        (merge common-ssl-config
-                              {:ssl-host "0.0.0.0"
-                               :ssl-port 10001})
-         :proxy-config {:host "localhost"
-                        :port 9001
-                        :path "/hello"}
-         :proxy-opts   {:callback-fn callback-fn
-                        :rewrite-uri-callback-fn rewrite-uri-callback-fn}
-         :ring-handler proxy-ring-handler}
-        (let [response (http-get "https://localhost:9001/hello/world" default-options-for-https-client)]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!")))
-        (let [response (http-get "https://localhost:10001/hello-proxy/world" default-options-for-https-client)]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, Earth!!!!")))))
-
-    (testing "http->https proxy support with explicit ssl config, callback and rewrite uri callback functions for proxy"
-      (with-target-and-proxy-servers
-        {:target       (merge common-ssl-config
-                              {:ssl-host    "0.0.0.0"
-                               :ssl-port    9000})
-         :proxy        {:host "0.0.0.0"
-                        :port 10000}
-         :proxy-config {:host "localhost"
-                        :port 9000
-                        :path "/hello"}
-         :proxy-opts   {:scheme                   :https
-                        :ssl-config               common-ssl-config
-                        :callback-fn              callback-fn
-                        :rewrite-uri-callback-fn  rewrite-uri-callback-fn}
-         :ring-handler proxy-ring-handler}
-        (let [response (http-get "https://localhost:9000/hello/world" default-options-for-https-client)]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!")))
-        (let [response (http-get "http://localhost:10000/hello-proxy/world")]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, Earth!!!!")))))
-
     (testing "basic proxy support with query parameters"
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
