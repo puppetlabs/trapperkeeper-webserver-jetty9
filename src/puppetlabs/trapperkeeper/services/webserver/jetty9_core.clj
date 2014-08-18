@@ -23,6 +23,7 @@
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
            (org.eclipse.jetty.util URIUtil))
+
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
             [clojure.set :as set]
@@ -329,6 +330,11 @@
           (if request-buffer-size
             (.setRequestBufferSize client request-buffer-size)
             (.setRequestBufferSize client config/default-request-header-buffer-size))
+          client))
+
+      (createHttpClient []
+        (let [client (proxy-super createHttpClient)]
+          (.setFollowRedirects client true)
           client))
 
       (customizeProxyRequest [proxy-req req]
