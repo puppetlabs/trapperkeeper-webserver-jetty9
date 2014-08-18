@@ -76,7 +76,8 @@
                                         config/WebserverSslPemConfig)
     (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
-    (schema/optional-key :request-buffer-size) schema/Int))
+    (schema/optional-key :request-buffer-size) schema/Int
+    (schema/optional-key :follow-redirects) schema/Bool))
 
 (def ServerContext
   {:state     Atom
@@ -334,7 +335,8 @@
 
       (createHttpClient []
         (let [client (proxy-super createHttpClient)]
-          (.setFollowRedirects client true)
+          (if (:follow-redirects options)
+            (.setFollowRedirects client true))
           client))
 
       (customizeProxyRequest [proxy-req req]
