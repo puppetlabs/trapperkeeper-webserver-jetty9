@@ -336,7 +336,8 @@
       (createHttpClient []
         (let [client (proxy-super createHttpClient)]
           (if (:follow-redirects options)
-            (.setFollowRedirects client true))
+            (.setFollowRedirects client true)
+            (.setFollowRedirects client false))
           client))
 
       (customizeProxyRequest [proxy-req req]

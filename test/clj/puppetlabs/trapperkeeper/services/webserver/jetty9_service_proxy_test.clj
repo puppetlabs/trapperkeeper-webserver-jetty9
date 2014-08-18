@@ -28,13 +28,12 @@
 
 (defn redirect-test-handler
   [req]
-  (if (= "/hello/world" (:uri req))
-    {:status 200 :body "Hello, World!"}
-    (if (= "/hello/" (:uri req))
-      {:status 302
-       :headers {"Location" "/hello/world"}
-       :body    ""}
-      {:status 404 :body "D'oh"})))
+  (condp = (:uri req)
+    "/hello/world" {:status 200 :body "Hello, World!"}
+    "/hello/"       {:status 302
+                     :headers {"Location" "/hello/world"}
+                     :body    ""}
+    {:status 404 :body "D'oh"}))
 
 (defn redirect-wrong-host
   [req]
@@ -44,23 +43,21 @@
 
 (defn redirect-same-host
   [req]
-  (if (= "/hello/world" (:uri req))
-    {:status 200 :body "Hello, World!"}
-    (if (= "/hello/" (:uri req))
-      {:status 302
-       :headers {"Location" "http://localhost:9000/hello/world"}
-       :body    ""}
-      {:status 404 :body "D'oh"})))
+  (condp = (:uri req)
+    "/hello/world" {:status 200 :body "Hello, World!"}
+    "/hello/"       {:status 302
+                     :headers {"Location" "http://localhost:9000/hello/world"}
+                     :body    ""}
+    {:status 404 :body "D'oh"}))
 
 (defn redirect-different-proxy-path
   [req]
-  (if (= "/goodbye/world" (:uri req))
-    {:status 200 :body "Hello, World!"}
-    (if (= "/hello/" (:uri req))
-      {:status 302
-       :headers {"Location" "http://localhost:9000/goodbye/world"}
-       :body    ""}
-      {:status 404 :body "D'oh"})))
+  (condp = (:uri req)
+    "/goodbye/world" {:status 200 :body "Hello, World!"}
+    "/hello/"        {:status 302
+                      :headers {"Location" "http://localhost:9000/goodbye/world"}
+                      :body    ""}
+    {:status 404 :body "D'oh"}))
 
 (defmacro with-target-and-proxy-servers
   [{:keys [target proxy proxy-config proxy-opts ring-handler]} & body]
