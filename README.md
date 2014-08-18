@@ -263,6 +263,10 @@ route:
   a map, then the entries must point to the PEM files that should be used for the
   SSL context.  These keys have the same meaning as they do for the SSL configuration
   of the main web server.
+* `:rewrite-uri-callback-fn`: optional; a function to manipulate the rewritten target
+  URI (e.g. change the port, or even change the entire URI) before Jetty continues on
+  with the proxy. The function must accept two arguments, `[target-uri req]`. For more
+  information, see [below](#rewrite-uri-callback-fn).
 * `:callback-fn`: optional; a function to manipulate the request object (e.g.
   to add additional headers) before Jetty continues on with the proxy. The
   function must accept two arguments, `[proxy-req req]`. For more information,
@@ -321,6 +325,37 @@ to `https://localhost:10000/bar`.  We'll proxy using HTTPS even if the original
 request was HTTP, and we'll use the three pem files in `/tmp` to configure the
 HTTPS client, regardless of the SSL configuration of the main web server.
 
+#####`:rewrite-uri-callback-fn`
+
+This option lets you provide a function to manipulate the rewritten target URI. The
+function is called in the overridden implementation of
+[`rewriteURI`](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/proxy/ProxyServlet.html#rewriteURI(javax.servlet.http.HttpServletRequest))
+method after the target URI is computed. It must take two arguments, `[target-uri req]`, where `target-uri` is a
+[`URI`](http://docs.oracle.com/javase/7/docs/api/java/net/URI.html)
+and `req` is an
+[`HttpServletRequest`](http://docs.oracle.com/javaee/6/api/javax/servlet/http/HttpServletRequest.html).
+`target-uri` will be modified and returned by the function.
+
+An example with a rewrite URI callback function:
+
+```clj
+(defservice foo-service
+  [[:WebserverService add-proxy-route]]
+  (init [this context]
+    (add-proxy-route
+        {:host "localhost"
+         :port 10000
+         :path "/bar"}
+        "/foo"
+        {:rewrite-uri-callback-fn (fn [target-uri req]
+          (if-not (= "GET" (.getMethod req))
+            (URI. "http://localhost:11111/errors/unsupported-method")
+            target-uri))})
+    context))
+```
+
+In this example, all incoming requests with a method other than `GET` will be proxied
+to `http://localhost:11111/errors/unsupported-method`.
 
 #####`:callback-fn`
 
