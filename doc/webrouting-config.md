@@ -38,8 +38,11 @@ specifying `:bar` as the `route-id` when adding a handler. Please see
 [Trapperkeeper Webrouting Service](webrouting-service.md) for
 more information.
 
-Please note that, when configuring endpoints in this way, there must be
-an endpoint with route-id `:default`.
+Please note that, while an endpoint with id `:default` is not required,
+a route-id MUST be specified in every service function call using a
+service that has multiple routes if a `:default` route is not present,
+as these functions will automatically perform the requested operation on
+the `:default` route if no route is explicitly specified.
 
 In the case where you have configured multiple servers, you can configure
 the webrouting service to add specific endpoints to specific servers. For

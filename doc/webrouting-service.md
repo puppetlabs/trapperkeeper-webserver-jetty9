@@ -69,7 +69,10 @@ This is the protocol for the current implementation of the `:WebroutingService`:
 
 This function allows you to get the web-route for a particular service
 as configured in your configuration file. The one-argument version will
-return the default web route configured for the current service. The two
+return the web route configured for the current service in a single-route
+configuration, or the route with id `:default` in a multiroute configuration.
+Note that if no route with id `:default` exists in a multiroute configuration,
+this operation will fail. The two
 argument version will return the web route configured for the current
 service with the id you specify.
 
@@ -108,7 +111,9 @@ First, they can take an additional, optional
 key, `:route-id`. This is used when multiple endpoints are configured for a specific
 service, with its value being the id of the specific endpoint you want to add the handler to.
 If this option is not in the options map, the endpoint for that service stored at key
-`:default` will be used.
+`:default` will be used. In a multiroute configuration, an endpoint with id of `:default`
+is NOT required, but if it is not present, a `:route-id` MUST be specified, or the operation
+will fail and an exception will be thrown.
 
 Second, `:server-id` is a disallowed key in this options map. Specifying a specific server
 to which to add an endpoint is handled in the configuration of the webrouting service.

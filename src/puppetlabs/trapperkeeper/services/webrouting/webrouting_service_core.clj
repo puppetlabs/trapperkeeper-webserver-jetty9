@@ -13,8 +13,7 @@
    :server schema/Str})
 
 (def WebroutingMultipleConfig
-  {:default       schema/Str
-   schema/Keyword (schema/either schema/Str RouteWithServerConfig)})
+  {schema/Keyword (schema/either schema/Str RouteWithServerConfig)})
 
 (def WebroutingServiceConfig
   {schema/Keyword (schema/either schema/Str RouteWithServerConfig WebroutingMultipleConfig)})
