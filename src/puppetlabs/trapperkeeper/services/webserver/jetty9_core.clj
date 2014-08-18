@@ -69,7 +69,8 @@
 
 (def ProxyOptions
   (assoc ServerIDOption
-    (schema/optional-key :scheme) (schema/enum :orig :http :https)
+    (schema/optional-key :scheme) (schema/enum :orig :http :https
+                                               "orig" "http" "https")
     (schema/optional-key :ssl-config) (schema/either
                                         (schema/eq :use-server-config)
                                         config/WebserverSslPemConfig)
@@ -305,8 +306,11 @@
                        (condp = target-scheme
                          nil (.getScheme req)
                          :orig (.getScheme req)
+                         "orig" (.getScheme req)
                          :http "http"
-                         :https "https"))
+                         :https "https"
+                         "http" target-scheme
+                         "https" target-scheme))
               context-path (.getPathInfo req)]
           (let [target-uri (URI. scheme
                                  nil
