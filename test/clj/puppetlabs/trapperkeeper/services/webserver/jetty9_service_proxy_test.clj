@@ -78,29 +78,6 @@
            (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy")))
        ~@body)))
 
-(defmacro with-target-and-proxy-servers-redirect
-  [{:keys [target proxy proxy-config proxy-opts ring-handler-target ring-handler-redirect]} & body]
-  `(with-app-with-config proxy-target-app#
-     [jetty9-service]
-     {:webserver ~target}
-     (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
-       (add-ring-handler
-         target-webserver#
-         ~ring-handler-target
-         "/hello")
-       (add-ring-handler
-         target-webserver#
-         ~ring-handler-redirect
-         "/redirect"))
-     (with-app-with-config proxy-app#
-       [jetty9-service]
-       {:webserver ~proxy}
-       (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
-         (if ~proxy-opts
-           (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy" ~proxy-opts)
-           (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy")))
-       ~@body)))
-
 (deftest test-proxy-servlet
   (let [common-ssl-config       {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
                                  :ssl-key     "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
