@@ -5,8 +5,11 @@
 This project provides a webserver service for use with the
 [trapperkeeper service framework](https://github.com/puppetlabs/trapperkeeper)
 To use this service in your trapperkeeper application, simply add this
-project as a dependency in your leiningen project file, and then add the
-webserver service to your [`bootstrap.cfg`](https://github.com/puppetlabs/trapperkeeper#bootstrapping)
+project as a dependency in your leiningen project file:
+
+[![Clojars Project](http://clojars.org/puppetlabs/trapperkeeper-webserver-jetty9/latest-version.svg)](http://clojars.org/puppetlabs/trapperkeeper-webserver-jetty9)
+
+Then add the webserver service to your [`bootstrap.cfg`](https://github.com/puppetlabs/trapperkeeper#bootstrapping)
 file, via:
 
     puppetlabs.trapperkeeper.services.webserver.jetty9-service/jetty9-service
