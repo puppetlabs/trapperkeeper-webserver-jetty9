@@ -68,7 +68,11 @@
        (add-ring-handler
          target-webserver#
          ~ring-handler
-         "/hello"))
+         "/hello")
+       (add-ring-handler
+         target-webserver#
+         ~ring-handler
+         "/goodbye"))
      (with-app-with-config proxy-app#
        [jetty9-service]
        {:webserver ~proxy}
@@ -499,7 +503,7 @@
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
 
-    (testing "proxy-redirect to non-proxied path on correct host fails"
+    (testing "proxy-redirect to non-proxied path on correct host succeeds"
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000}
@@ -510,5 +514,9 @@
                         :path "/hello"}
          :proxy-opts   {:follow-redirects true}
          :ring-handler redirect-different-proxy-path}
+        (let [response (http-get (str "http://localhost:9000/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
         (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
-          (is (= (:status response) 404)))))))
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))))))
