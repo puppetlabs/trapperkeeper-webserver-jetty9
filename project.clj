@@ -1,7 +1,7 @@
 (def tk-version "0.4.3")
 (def ks-version "0.7.2")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.7.1"
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.7.2-SNAPSHOT"
   :description "We are trapperkeeper.  We are one."
   ;; Abort when version ranges or version conflicts are detected in
   ;; dependencies. Also supports :warn to simply emit warnings.
