@@ -1,3 +1,16 @@
+## 0.7.1
+
+* [TK-53](https://tickets.puppetlabs.com/browse/TK-53):
+  Add a `get-route` function to web routing service.
+* [TK-33](https://tickets.puppetlabs.com/browse/TK-33):
+  Add support for configuring proxy routes to automatically
+  follow redirects from the remote server.
+* In proxy configuration, add support for a callback function that
+  can rewrite the URI before the request is proxied.
+* [TK-45](https://tickets.puppetlabs.com/browse/TK-45):
+  Add support for strings in addition to keywords when specifying the
+  URI scheme for proxy requests.
+
 ## 0.7.0
 
 * [TK-50](https://tickets.puppetlabs.com/browse/TK-50):
