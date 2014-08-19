@@ -218,7 +218,7 @@
     (with-test-logging
       (with-app-with-config app
         [jetty9-service]
-        jetty-plaintext-config
+        jetty-multiserver-plaintext-config
         (let [s                        (get-service app :WebserverService)
               log-registered-endpoints (partial log-registered-endpoints s)
               add-ring-handler         (partial add-ring-handler s)
