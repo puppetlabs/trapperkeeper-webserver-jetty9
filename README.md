@@ -278,6 +278,8 @@ route:
   of the request buffer used by the HTTP Client. This allows HTTP requests with
   very large cookies to go through, as a large cookie can cause the request
   buffer to overflow unless the size is increased. The default is 4096 bytes.
+* `:follow-redirects`: optional; a boolean that indicates whether or not the HttpClient
+  created by a ProxyServlet should follow redirects. Defaults to `false`.
 * `:server-id`: optional; the id of the server to which to add the proxy handler. If absent,
   the handler will be added to the default server. If the two argument version of this function
   is called, the handler will also be added to the default server. Leaving out `:server-id` or calling

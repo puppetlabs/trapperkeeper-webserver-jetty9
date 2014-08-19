@@ -23,6 +23,7 @@
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
            (org.eclipse.jetty.util URIUtil))
+
   (:require [ring.util.servlet :as servlet]
             [clojure.string :as str]
             [clojure.set :as set]
@@ -76,7 +77,8 @@
                                         config/WebserverSslPemConfig)
     (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
-    (schema/optional-key :request-buffer-size) schema/Int))
+    (schema/optional-key :request-buffer-size) schema/Int
+    (schema/optional-key :follow-redirects) schema/Bool))
 
 (def ServerContext
   {:state     Atom
@@ -333,6 +335,13 @@
           (if request-buffer-size
             (.setRequestBufferSize client request-buffer-size)
             (.setRequestBufferSize client config/default-request-header-buffer-size))
+          client))
+
+      (createHttpClient []
+        (let [client (proxy-super createHttpClient)]
+          (if (:follow-redirects options)
+            (.setFollowRedirects client true)
+            (.setFollowRedirects client false))
           client))
 
       (customizeProxyRequest [proxy-req req]
