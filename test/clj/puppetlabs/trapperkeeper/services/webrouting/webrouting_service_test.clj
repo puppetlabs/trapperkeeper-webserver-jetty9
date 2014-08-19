@@ -74,6 +74,13 @@
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
        "/foo"}})
 
+(def default-route-config
+  {:webserver {:port 8080}
+   :web-router-service
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
+       {:default "/foo"
+        :bar     "/bar"}}})
+
 (deftest webrouting-service-test
   (testing "Other services can successfully use webrouting service"
     (with-app-with-config
@@ -115,6 +122,17 @@
             body             "Hello World!"
             ring-handler     (fn [req] {:status 200 :body body})
             svc              (tk-app/get-service app :TestService2)]
+        (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler))))))
+
+  (testing "Error occurs when not specifying a route-id for a multi-route config"
+    (with-app-with-config
+      app
+      [jetty9-service webrouting-service test-service-2]
+      default-route-config
+      (let [s                (tk-app/get-service app :WebroutingService)
+            svc              (tk-app/get-service app :TestService2)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler     (fn [req] {:status 200 :body ""})]
         (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler))))))
 
   (testing "Can access route-ids for a service"
