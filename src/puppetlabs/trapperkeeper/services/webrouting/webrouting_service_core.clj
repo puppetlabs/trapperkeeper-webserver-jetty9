@@ -36,9 +36,9 @@
 (defn get-endpoint-and-server-from-config
   [context svc route-id]
   (let [config          (:web-router-service context)
+        no-route-id?    (nil? route-id)
         multi-route?    (> (count (keys (get-in config [svc]))) 1)
-        no-route-multi? (and (nil? route-id) multi-route?)
-        route-id        (if (nil? route-id)
+        route-id        (if no-route-id?
                           :default
                           route-id)
         endpoint        (get-in config [svc route-id])
@@ -49,7 +49,8 @@
       no-endpoint?    (throw
                         (IllegalArgumentException.
                           "specified service or endpoint does not appear in configuration file"))
-      no-route-multi? (throw
+      (and no-route-id? multi-route?)
+                      (throw
                         (IllegalArgumentException.
                           "no route-id specified for a service with multiple routes"))
       no-server?      {:route endpoint :server nil}
