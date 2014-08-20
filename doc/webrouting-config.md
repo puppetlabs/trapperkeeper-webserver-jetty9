@@ -25,21 +25,18 @@ for that endpoint. This can be done like so:
 ```
 web-router-service: {
     "puppetlabs.foo/foo-service": {
-        default: "/foo"
-        bar:     "/bar"
+        foo: "/foo"
+        bar: "/bar"
     }
 }
 ```
 
 In this case, two endpoints will be configured for the `foo-service`.
-`"/foo"` will have route-id `:default`, and `"/bar"` will have route-id
+`"/foo"` will have route-id `:foo`, and `"/bar"` will have route-id
 `:bar`. Handlers can be added to the `"/bar"` endpoint by explicitly
 specifying `:bar` as the `route-id` when adding a handler. Please see
 [Trapperkeeper Webrouting Service](webrouting-service.md) for
 more information.
-
-Please note that, when configuring endpoints in this way, there must be
-an endpoint with route-id `:default`.
 
 In the case where you have configured multiple servers, you can configure
 the webrouting service to add specific endpoints to specific servers. For

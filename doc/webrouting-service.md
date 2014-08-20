@@ -69,9 +69,13 @@ This is the protocol for the current implementation of the `:WebroutingService`:
 
 This function allows you to get the web-route for a particular service
 as configured in your configuration file. The one-argument version will
-return the default web route configured for the current service. The two
+return the web route configured for the current service in a single-route
+configuration. The two
 argument version will return the web route configured for the current
 service with the id you specify.
+
+Note that the one argument version cannot be used with a service that
+has multiple webroutes configured.
 
 #### Other functions
 
@@ -107,18 +111,17 @@ webserver service functions, with two exceptions.
 First, they can take an additional, optional
 key, `:route-id`. This is used when multiple endpoints are configured for a specific
 service, with its value being the id of the specific endpoint you want to add the handler to.
-If this option is not in the options map, the endpoint for that service stored at key
-`:default` will be used.
+In a multiroute configuration, a route-id MUST be specified or the operation will fail.
 
 Second, `:server-id` is a disallowed key in this options map. Specifying a specific server
 to which to add an endpoint is handled in the configuration of the webrouting service.
 
 As an example, say you have two endpoints configured for a specific service, which implements
-protocol FooService. One is endpoint `"/foo"` and is kept at key `:default`. The other is
+protocol FooService. One is endpoint `"/foo"` and is kept at key `:foo`. The other is
 endpoint `"/bar"` and is kept at key `:bar`. If you were to call
 
 ```clj
-(add-ring-handler (get-service this :FooService) my-app)
+(add-ring-handler (get-service this :FooService) my-app {:route-id :foo)
 ```
 
 the ring handler `my-app` would be registered at endpoint `"/foo"`. However, if you were to call

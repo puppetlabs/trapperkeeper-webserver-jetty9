@@ -35,8 +35,8 @@
   {:webserver {:port 8080}
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test/test-dummy
-        {:default "/foo"
-         :foo   "/bar"}}})
+        {:quux "/foo"
+         :foo  "/bar"}}})
 
 (deftest add-context-handler-test
   (testing "static content context with web routing"
@@ -64,7 +64,7 @@
             add-context-handler (partial add-context-handler s)
             resource            "logback.xml"
             svc                 (get-service app :TestDummy)]
-        (add-context-handler svc dev-resources-dir)
+        (add-context-handler svc dev-resources-dir {:route-id :quux})
         (add-context-handler svc dev-resources-dir {:route-id :foo})
         (let [response (http-get (str "http://localhost:8080/foo/" resource))]
           (is (= (:status response) 200))
@@ -101,7 +101,7 @@
             body             "Hi World"
             ring-handler     (fn [req] {:status 200 :body body})
             svc              (get-service app :TestDummy)]
-        (add-ring-handler svc ring-handler)
+        (add-ring-handler svc ring-handler {:route-id :quux})
         (add-ring-handler svc ring-handler {:route-id :foo})
         (let [response (http-get "http://localhost:8080/foo")]
           (is (= (:status response) 200))
@@ -138,7 +138,7 @@
             body                "Hey there"
             servlet             (SimpleServlet. body)
             svc                 (get-service app :TestDummy)]
-        (add-servlet-handler svc servlet)
+        (add-servlet-handler svc servlet {:route-id :quux})
         (add-servlet-handler svc servlet {:route-id :foo})
         (let [response (http-get "http://localhost:8080/foo")]
           (is (= (:status response) 200))
@@ -174,7 +174,7 @@
             add-war-handler (partial add-war-handler s)
             war             "helloWorld.war"
             svc             (get-service app :TestDummy)]
-        (add-war-handler svc (str dev-resources-dir war))
+        (add-war-handler svc (str dev-resources-dir war) {:route-id :quux})
         (add-war-handler svc (str dev-resources-dir war) {:route-id :foo})
         (let [response (http-get "http://localhost:8080/foo/hello")]
           (is (= (:status response) 200))

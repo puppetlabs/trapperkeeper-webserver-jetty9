@@ -49,13 +49,13 @@
         dummy2]
        {:webserver ~proxy
         :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy2
-                                                         {:default "/hello-proxy"
+                                                         {:bar   "/hello-proxy"
                                                           :foo   "/goodbye-proxy"}}}
        (let [proxy-webserver# (get-service proxy-app# :WebroutingService)
              svc#             (get-service proxy-app# :DummyService2)]
          (if ~proxy-opts
            (add-proxy-route proxy-webserver# svc#  ~proxy-config ~proxy-opts)
-           (add-proxy-route proxy-webserver# svc#  ~proxy-config)))
+           (add-proxy-route proxy-webserver# svc#  ~proxy-config {:route-id :bar})))
        ~@body)))
 
 (deftest proxy-test-web-routing

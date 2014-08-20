@@ -34,7 +34,7 @@
     (let [svc (get-service this :TestService)
           body "Hello World!"
           ring-handler (fn [req] {:status 200 :body body})]
-      (add-ring-handler svc ring-handler)
+      (add-ring-handler svc ring-handler {:route-id :bert})
       (add-ring-handler svc ring-handler {:route-id :bar})
       (add-ring-handler svc ring-handler {:route-id :baz})
       (add-ring-handler svc ring-handler {:route-id :quux}))
@@ -58,12 +58,12 @@
                :foo {:port 9000}}
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service
-       {:default "/foo"
-        :bar     "/bar"
-        :baz    {:route "/foo"
-                 :server "foo"}
-        :quux   {:route "/bar"
-                 :server "foo"}}
+       {:bert "/foo"
+        :bar  "/bar"
+        :baz  {:route "/foo"
+               :server "foo"}
+        :quux {:route "/bar"
+               :server "foo"}}
       :puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
        "/foo"}})
 
@@ -73,6 +73,13 @@
    :web-router-service
      {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
        "/foo"}})
+
+(def default-route-config
+  {:webserver {:port 8080}
+   :web-router-service
+     {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
+       {:default "/foo"
+        :bar     "/bar"}}})
 
 (deftest webrouting-service-test
   (testing "Other services can successfully use webrouting service"
@@ -117,6 +124,17 @@
             svc              (tk-app/get-service app :TestService2)]
         (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler))))))
 
+  (testing "Error occurs when not specifying a route-id for a multi-route config"
+    (with-app-with-config
+      app
+      [jetty9-service webrouting-service test-service-2]
+      default-route-config
+      (let [s                (tk-app/get-service app :WebroutingService)
+            svc              (tk-app/get-service app :TestService2)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler     (fn [req] {:status 200 :body ""})]
+        (is (thrown? IllegalArgumentException (add-ring-handler svc ring-handler))))))
+
   (testing "Can access route-ids for a service"
     (with-app-with-config
       app
@@ -126,7 +144,7 @@
             svc       (tk-app/get-service app :TestService)
             svc2      (tk-app/get-service app :TestService2)
             get-route (partial get-route s)]
-        (is (= "/foo" (get-route svc)))
+        (is (= "/foo" (get-route svc :bert)))
         (is (= "/bar" (get-route svc :bar)))
         (is (= "/foo" (get-route svc :baz)))
         (is (= "/bar" (get-route svc :quux)))

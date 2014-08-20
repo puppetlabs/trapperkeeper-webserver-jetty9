@@ -13,8 +13,7 @@
    :server schema/Str})
 
 (def WebroutingMultipleConfig
-  {:default       schema/Str
-   schema/Keyword (schema/either schema/Str RouteWithServerConfig)})
+  {schema/Keyword (schema/either schema/Str RouteWithServerConfig)})
 
 (def WebroutingServiceConfig
   {schema/Keyword (schema/either schema/Str RouteWithServerConfig WebroutingMultipleConfig)})
@@ -36,20 +35,26 @@
 
 (defn get-endpoint-and-server-from-config
   [context svc route-id]
-  (let [config        (:web-router-service context)
-        route-id      (if (nil? route-id)
-                        :default
-                        route-id)
-        endpoint      (get-in config [svc route-id])
-        no-endpoint?  (nil? endpoint)
-        no-server?    (nil? (schema/check schema/Str endpoint))
-        server?       (nil? (schema/check RouteWithServerConfig endpoint))]
+  (let [config          (:web-router-service context)
+        no-route-id?    (nil? route-id)
+        multi-route?    (> (count (keys (get-in config [svc]))) 1)
+        route-id        (if no-route-id?
+                          :default
+                          route-id)
+        endpoint        (get-in config [svc route-id])
+        no-endpoint?    (nil? endpoint)
+        no-server?      (nil? (schema/check schema/Str endpoint))
+        server?         (nil? (schema/check RouteWithServerConfig endpoint))]
     (cond
-      no-endpoint? (throw
-                     (IllegalArgumentException.
-                       "specified service or endpoint does not appear in configuration file"))
-      no-server?   {:route endpoint :server nil}
-      server?      endpoint)))
+      no-endpoint?    (throw
+                        (IllegalArgumentException.
+                          "specified service or endpoint does not appear in configuration file"))
+      (and no-route-id? multi-route?)
+                      (throw
+                        (IllegalArgumentException.
+                          "no route-id specified for a service with multiple routes"))
+      no-server?      {:route endpoint :server nil}
+      server?         endpoint)))
 
 (defn compute-common-elements
   [context svc options]
