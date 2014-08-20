@@ -78,7 +78,7 @@
                    (core/add-proxy-route! (service-context this) target path options))
 
   (override-webserver-settings! [this overrides]
-                                (let [s (core/get-server-context (service-context this) :default)]
+                                (let [s (core/get-server-context (service-context this) nil)]
                                   (core/override-webserver-settings! s overrides)))
 
   (override-webserver-settings! [this server-id overrides]
@@ -86,7 +86,7 @@
                                   (core/override-webserver-settings! s overrides)))
 
   (get-registered-endpoints [this]
-                            (let [s (core/get-server-context (service-context this) :default)]
+                            (let [s (core/get-server-context (service-context this) nil)]
                               (core/get-registered-endpoints s)))
 
   (get-registered-endpoints [this server-id]
@@ -99,7 +99,7 @@
                             (log/info (str (get-registered-endpoints this server-id))))
 
   (join [this]
-        (let [s (core/get-server-context (service-context this) :default)]
+        (let [s (core/get-server-context (service-context this) nil)]
           (core/join s)))
 
   (join [this server-id]

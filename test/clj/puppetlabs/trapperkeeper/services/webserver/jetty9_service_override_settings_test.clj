@@ -19,6 +19,12 @@
   {:webserver {:ssl-host "0.0.0.0"
                :ssl-port 9001}})
 
+(def jetty-plaintext-multiserver-override-config
+  {:webserver {:bar {:port           8080
+                     :default-server true}
+               :foo {:port 9000}}})
+
+
 (deftest test-override-webserver-settings!
   (let [ssl-port  9001
         overrides {:ssl-port ssl-port
@@ -49,7 +55,7 @@
           (with-app-with-config
             app
             [jetty9-service service1]
-            jetty-plaintext-config
+            jetty-plaintext-multiserver-override-config
             (let [s                (get-service app :WebserverService)
                   add-ring-handler (partial add-ring-handler s)
                   body             "Hi World"
