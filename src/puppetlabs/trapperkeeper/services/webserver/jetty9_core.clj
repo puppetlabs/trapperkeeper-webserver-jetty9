@@ -80,7 +80,8 @@
     (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int
-    (schema/optional-key :follow-redirects) schema/Bool))
+    (schema/optional-key :follow-redirects) schema/Bool
+    (schema/optional-key :munge-location-headers) schema/Bool))
 
 (def ServerContext
   {:state     Atom
@@ -307,6 +308,7 @@
   a given context to another host."
   [webserver-context :- ServerContext
    target :- ProxyTarget
+   path :- schema/Str
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
                                   (get-proxy-client-context-factory (:ssl-config options)))
@@ -353,6 +355,36 @@
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
           client))
+
+      (filterResponseHeader [req header-name header-value]
+        (if (and (= "Location" header-name) (:munge-location-headers options))
+          (let [redirect-uri  (URI. header-value)
+                redirect-host (.getHost redirect-uri)
+                redirect-port (.getPort redirect-uri)
+                redirect-path (.getPath redirect-uri)
+                target-path   (str "/" (:path target))
+                wrong-host?   (not (or (nil? redirect-host) (= redirect-host (:host target))))
+                wrong-port?   (not (or (= -1 redirect-port) (= redirect-port (:port target))))
+                wrong-path?   (not (= (.indexOf redirect-path target-path) 0))
+                query-params (.getQuery redirect-uri)
+                final-path   (.replaceFirst redirect-path target-path path)]
+            (cond
+              (or wrong-host? wrong-port? wrong-path?) nil
+              (nil? query-params) final-path
+              :else (str final-path "?" query-params)))
+          header-value))
+
+      (onResponseSuccess [request response proxyResponse]
+        (let [location  (.getHeader response "location")
+              status    (.getStatus response)
+              redirect? (and (>= status 300) (< status 400))]
+          (if (and redirect? (nil? location))
+            (.sendError response 500 (str "Error: Cannot proxy to specified redirect "
+                                          "location. Either the host, the port, or "
+                                          "the path is incorrect.")))
+
+          (proxy-super onResponseSuccess request response proxyResponse)))
+
 
       (customizeProxyRequest [proxy-req req]
         (if-let [callback-fn (:callback-fn options)]
@@ -550,7 +582,7 @@
    options :- ProxyOptions]
   (let [target (update-in target [:path] remove-leading-slash)]
     (add-servlet-handler webserver-context
-                         (proxy-servlet webserver-context target options)
+                         (proxy-servlet webserver-context target path options)
                          path)))
 
 (schema/defn ^:always-validate

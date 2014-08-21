@@ -282,6 +282,11 @@ route:
   buffer to overflow unless the size is increased. The default is 4096 bytes.
 * `:follow-redirects`: optional; a boolean that indicates whether or not the HttpClient
   created by a ProxyServlet should follow redirects. Defaults to `false`.
+* `:munge-location-headers`: optional; a boolean that indicates whether or not location
+  headers on proxied redirect responses should be munged to a location on the server doing
+  the proxying. If enabled at the same time as the `:follow-redirects` setting, this setting
+  will be superceded by the `:follow-redirects` setting, and location headers will not be
+  munged.
 * `:server-id`: optional; the id of the server to which to add the proxy handler. If absent,
   the handler will be added to the default server. If the two argument version of this function
   is called, the handler will also be added to the default server. Leaving out `:server-id` or calling

@@ -35,6 +35,18 @@
                      :body    ""}
     {:status 404 :body "D'oh"}))
 
+(defn redirect-test-handler-query-params
+  [req]
+  (condp = (:uri req)
+    "/hello/world" {:status 200 :body (str "Hello, World! " (get (:query-params req) "hello"))}
+    "/hello/"       {:status 302
+                     :headers {"Location" "/hello/world?hello=Goodbye,World!"}
+                     :body    ""}
+    {:status 404 :body "D'oh"}))
+
+(def wrapped-query-redirect
+  (ring-params/wrap-params redirect-test-handler-query-params))
+
 (defn redirect-wrong-host
   [req]
   {:status 302
@@ -509,7 +521,8 @@
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))))
 
-    (testing "proxy redirect fails if :follow-redirects not configured properly"
+    (testing (str "proxy redirect fails if :follow-redirects or header munging not "
+                  "configured properly")
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000}
@@ -570,6 +583,128 @@
                         :port 9000
                         :path "/hello"}
          :proxy-opts   {:follow-redirects true}
+         :ring-handler redirect-different-proxy-path}
+        (let [response (http-get (str "http://localhost:9000/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))))
+
+    (testing "redirect test with proxy and munging"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:munge-location-headers true}
+         :ring-handler redirect-test-handler}
+        (let [response (http-get (str "http://localhost:9000/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:9000/hello/world"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy/world"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))))
+
+    (testing "query parameters preserved in header munging"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:munge-location-headers true}
+         :ring-handler wrapped-query-redirect}
+        (let [response (http-get (str "http://localhost:9000/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World! Goodbye,World!")))
+        (let [response (http-get (str "http://localhost:9000/hello/world"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World! ")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World! Goodbye,World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy/world"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World! ")))))
+
+    (testing "proxy-redirect to non-target host fails with munging"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:munge-location-headers true}
+         :ring-handler redirect-wrong-host}
+        (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+          (is (= (:status response) 500)))))
+
+    (testing "proxy redirect to correct host in fully qualified url works with munging"
+      (with-target-and-proxy-servers
+        {:target {:host "0.0.0.0"
+                  :port 9000}
+         :proxy  {:host "0.0.0.0"
+                  :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:munge-location-headers true}
+         :ring-handler redirect-same-host}
+        (let [response (http-get (str "http://localhost:9000/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:9000/hello/world"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy/world"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))))
+
+    (testing "proxy-redirect to non-proxied path on correct host fails with munging"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:munge-location-headers true}
+         :ring-handler redirect-different-proxy-path}
+        (let [response (http-get (str "http://localhost:9000/hello"))]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hello, World!")))
+        (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+          (is (= (:status response) 500)))))
+
+    (testing ":follow-redirects setting overrides :munge-location-headers setting"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:follow-redirects true
+                        :munge-location-headers true}
          :ring-handler redirect-different-proxy-path}
         (let [response (http-get (str "http://localhost:9000/hello"))]
           (is (= (:status response) 200))
