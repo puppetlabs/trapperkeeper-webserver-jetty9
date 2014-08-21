@@ -112,8 +112,16 @@
    :endpoint    schema/Str
    :target-path schema/Str})
 
+(def Endpoint
+  (schema/conditional
+    #(-> % :type (= :context)) ContextEndpoint
+    #(-> % :type (= :ring)) RingEndpoint
+    #(-> % :type (= :servlet)) ServletEndpoint
+    #(-> % :type (= :war)) WarEndpoint
+    #(-> % :type (= :proxy)) ProxyEndpoint))
+
 (def RegisteredEndpoints
-  #{(schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)})
+  #{Endpoint})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -351,8 +359,7 @@
 (schema/defn ^:always-validate
   register-endpoint!
   [state :- Atom
-   endpoint :-
-      (schema/either ContextEndpoint RingEndpoint ServletEndpoint WarEndpoint ProxyEndpoint)]
+   endpoint :- Endpoint]
   (swap! state update-in [:endpoints] conj endpoint))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
