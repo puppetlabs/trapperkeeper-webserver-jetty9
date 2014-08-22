@@ -135,7 +135,7 @@
                        (keys pem-config) pem-required-keys))))))
 
 (schema/defn ^:always-validate
-  get-x509s-from-ssl-cert :- (schema/pred ssl/certificate-list?)
+  get-x509s-from-ssl-cert-pem :- (schema/pred ssl/certificate-list?)
   [ssl-cert :- schema/Str
    ssl-cert-chain :- (schema/maybe schema/Str)]
   (if-not (fs/readable? ssl-cert)
@@ -152,7 +152,7 @@
       certs)))
 
 (schema/defn ^:always-validate
-  get-x509s-from-ssl-cert-chain :- (schema/pred ssl/certificate-list?)
+  get-x509s-from-ssl-cert-chain-pem :- (schema/pred ssl/certificate-list?)
   [ssl-cert-chain :- (schema/maybe schema/Str)]
   (if ssl-cert-chain
     (do
@@ -167,8 +167,8 @@
   construct-ssl-x509-cert-chain :- (schema/pred ssl/certificate-list?)
   [ssl-cert :- schema/Str
    ssl-cert-chain :- (schema/maybe schema/Str)]
-  (let [ssl-cert-x509s       (get-x509s-from-ssl-cert ssl-cert ssl-cert-chain)
-        ssl-cert-chain-x509s (get-x509s-from-ssl-cert-chain ssl-cert-chain)]
+  (let [ssl-cert-x509s       (get-x509s-from-ssl-cert-pem ssl-cert ssl-cert-chain)
+        ssl-cert-chain-x509s (get-x509s-from-ssl-cert-chain-pem ssl-cert-chain)]
     (into [] (concat ssl-cert-x509s ssl-cert-chain-x509s))))
 
 (schema/defn ^:always-validate
