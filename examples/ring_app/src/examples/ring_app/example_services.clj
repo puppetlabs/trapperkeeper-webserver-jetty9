@@ -2,7 +2,8 @@
   (:import (clojure.lang Atom))
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :refer [pprint-to-string]]
-            [puppetlabs.trapperkeeper.core :refer [defservice]]))
+            [puppetlabs.trapperkeeper.core :refer [defservice]]
+            [puppetlabs.trapperkeeper.services :refer [service-context]]))
 
 (defn- inc-and-get*
   "Increments the hit count for the provided endpoint and returns the new hit count."
