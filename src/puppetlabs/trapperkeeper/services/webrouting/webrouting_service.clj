@@ -2,6 +2,7 @@
   (:require
     [clojure.tools.logging :as log]
 
+    [puppetlabs.trapperkeeper.services :refer [service-context]]
     [puppetlabs.trapperkeeper.services.webrouting.webrouting-service-core :as core]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
     [schema.core :as schema]))

@@ -31,13 +31,12 @@
   TestService
   [[:WebroutingService add-ring-handler]]
   (init [this context]
-    (let [svc (get-service this :TestService)
-          body "Hello World!"
+    (let [body "Hello World!"
           ring-handler (fn [req] {:status 200 :body body})]
-      (add-ring-handler svc ring-handler {:route-id :bert})
-      (add-ring-handler svc ring-handler {:route-id :bar})
-      (add-ring-handler svc ring-handler {:route-id :baz})
-      (add-ring-handler svc ring-handler {:route-id :quux}))
+      (add-ring-handler this ring-handler {:route-id :bert})
+      (add-ring-handler this ring-handler {:route-id :bar})
+      (add-ring-handler this ring-handler {:route-id :baz})
+      (add-ring-handler this ring-handler {:route-id :quux}))
     context)
   (hello [this]
          "This is a dummy function. Please disregard."))
