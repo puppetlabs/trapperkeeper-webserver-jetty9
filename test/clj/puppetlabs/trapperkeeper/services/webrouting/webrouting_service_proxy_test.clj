@@ -13,13 +13,13 @@
 (defprotocol DummyService2
   (dummy2 [this]))
 
-(tk-services/defservice dummy1
+(tk-services/defservice dummy-service1
   DummyService1
   []
   (dummy1 [this]
          "This is a dummy function. Please ignore."))
 
-(tk-services/defservice dummy2
+(tk-services/defservice dummy-service2
   DummyService2
   []
   (dummy2 [this]
@@ -30,9 +30,9 @@
   `(with-app-with-config proxy-target-app#
      [jetty9-service
       webrouting-service
-      dummy1]
+      dummy-service1]
      {:webserver ~target
-      :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy1 "/hello"}}
+      :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy-service1 "/hello"}}
      (let [target-webserver# (get-service proxy-target-app# :WebroutingService)
            svc#              (get-service proxy-target-app# :DummyService1)]
        (add-ring-handler
@@ -46,9 +46,9 @@
      (with-app-with-config proxy-app#
        [jetty9-service
         webrouting-service
-        dummy2]
+        dummy-service2]
        {:webserver ~proxy
-        :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy2
+        :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy-service2
                                                          {:bar   "/hello-proxy"
                                                           :foo   "/goodbye-proxy"}}}
        (let [proxy-webserver# (get-service proxy-app# :WebroutingService)
