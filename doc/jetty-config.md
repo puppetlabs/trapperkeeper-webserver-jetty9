@@ -45,7 +45,49 @@ at all.
 ### `ssl-cert`
 
 This sets the path to the server certificate PEM file used by the web
-service for HTTPS.
+service for HTTPS.  During the SSL handshake for a connection, certificates
+extracted from this file are presented to the client for the client's use in
+validating the server.  This file may contain a single certificate or a chain
+of certificates ordered from the end certificate first to the most-root
+certificate last.  For example, a certificate chain could contain:
+
+* An end certificate
+* An intermediate CA certificate with which the end certificate was issued
+* A root CA certificate with which the intermediate CA certificate was issued
+
+In the PEM file, the end certificate should appear first, the intermediate CA
+certificate should appear second, and the root CA certificate should appear
+last.
+
+If a chain is present, it is not required to be complete.  If a
+path has been specified for the `ssl-cert-chain` setting, the server will
+construct the cert chain starting with the first certificate found in the
+`ssl-cert` PEM and followed by any certificates in the `ssl-cert-chain` PEM.  In
+the latter case, any certificates in the `ssl-cert` PEM beyond the first one
+would be ignored.
+
+> **Note:** This setting overrides the alternate configuration settings
+`keystore` and `key-password`.
+
+### `ssl-cert-chain`
+
+This sets the path to a PEM with CA certificates for use in presenting a
+client with the server's chain of trust.  Certs found in this PEM file are
+appended after the first certificate from the `ssl-cert` PEM in the
+construction of the certificate chain.  This is an optional setting.  The
+certificates in the `ssl-cert-chain` PEM file should be ordered from the
+least-root CA certificate first to the most-root CA certificate last.  For
+example, a certificate chain could contain:
+
+* An end certificate
+* An intermediate CA certificate with which the end certificate was issued
+* A root CA certificate with which the intermediate CA certificate was issued
+
+The end certificate should appear in the `ssl-cert` PEM file.  In the
+`ssl-cert-chain` PEM file, the intermediate CA certificate should appear
+first and the root CA certificate should appear last.
+
+The chain is not required to be complete.
 
 > **Note:** This setting overrides the alternate configuration settings
 `keystore` and `key-password`.
@@ -61,8 +103,9 @@ This sets the path to the private key PEM file that corresponds with the
 ### `ssl-ca-cert`
 
 This sets the path to the CA certificate PEM file used for client
-authentication. Authorized clients must be signed by the CA that that
-corresponds to this certificate.
+authentication.  The PEM file may contain one or more CA certificates.
+Authorized clients must have been signed - either directly or via an
+intermediate CA - using one of the CA certificates in the PEM file.
 
 > **Note:** This setting overrides the alternate configuration settings
 `truststore` and `trust-password`.

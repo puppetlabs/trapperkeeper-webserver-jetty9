@@ -12,7 +12,7 @@
                  [prismatic/schema "0.2.1"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/certificate-authority "0.1.5"]
+                 [puppetlabs/certificate-authority "0.5.0"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
