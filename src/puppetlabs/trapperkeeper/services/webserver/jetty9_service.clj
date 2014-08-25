@@ -4,6 +4,7 @@
 
     [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
+    [puppetlabs.trapperkeeper.services :refer [service-context]]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
     [schema.core :as schema]))
 
