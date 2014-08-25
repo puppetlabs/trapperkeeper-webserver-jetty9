@@ -1,3 +1,13 @@
+## 0.7.2
+
+This is a minor, backward-compatible feature and bugfix release.
+
+* [TK-58](https://tickets.puppetlabs.com/browse/TK-58):
+  `default-server` support did not work for some functions, such as
+  `get-registered-endpoints`.
+* Add support for SSL certificate chains, and new setting `ssl-cert-chain`
+* Upgrade to Trapperkeeper 0.5.1
+
 ## 0.7.1
 
 * [TK-53](https://tickets.puppetlabs.com/browse/TK-53):
