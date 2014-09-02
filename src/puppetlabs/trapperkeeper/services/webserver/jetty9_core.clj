@@ -677,14 +677,15 @@
                     "no default server was specified in the configuration"))))
     (server-id (:jetty9-servers service-context))))
 
-(defn build-server-contexts
-  [context config]
-  (assoc context :jetty9-servers (into {} (for [[server-id] config]
-                                            [server-id (initialize-context)]))))
-
 (defn get-default-server-from-config
   [config]
   (first (flatten (filter #(:default-server (second %)) config))))
+
+(defn build-server-contexts
+  [context config]
+  (assoc context :jetty9-servers (into {} (for [[server-id] config]
+                                            [server-id (initialize-context)]))
+                 :default-server (get-default-server-from-config config)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service Function Implementations
@@ -718,7 +719,11 @@
           context)
       (nil? new-config)
         (let [context (build-server-contexts context config)]
-          (assoc context :default-server (get-default-server-from-config config))))))
+          (doseq [[server-id server-config] config
+                  content (:static-content server-config)]
+            (add-context-handler! context (:resource content)
+                                  (:path content) {:server-id server-id}))
+          context))))
 
 (schema/defn ^:always-validate start!
   [context config :- config/WebserverServiceRawConfig]
