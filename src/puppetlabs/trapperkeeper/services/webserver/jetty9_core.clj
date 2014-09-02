@@ -356,34 +356,31 @@
             (.setFollowRedirects client false))
           client))
 
-      (filterResponseHeader [req header-name header-value]
-        (if (and (= "Location" header-name) (:munge-location-headers options))
-          (let [redirect-uri  (URI. header-value)
-                redirect-host (.getHost redirect-uri)
-                redirect-port (.getPort redirect-uri)
-                redirect-path (.getPath redirect-uri)
-                target-path   (str "/" (:path target))
-                wrong-host?   (not (or (nil? redirect-host) (= redirect-host (:host target))))
-                wrong-port?   (not (or (= -1 redirect-port) (= redirect-port (:port target))))
-                wrong-path?   (not (= (.indexOf redirect-path target-path) 0))
-                query-params (.getQuery redirect-uri)
-                final-path   (.replaceFirst redirect-path target-path path)]
-            (cond
-              (or wrong-host? wrong-port? wrong-path?) nil
-              (nil? query-params) final-path
-              :else (str final-path "?" query-params)))
-          header-value))
-
       (onResponseSuccess [request response proxyResponse]
         (let [location  (.getHeader response "location")
               status    (.getStatus response)
               redirect? (and (>= status 300) (< status 400))]
-          (if (and redirect? (nil? location))
-            (.sendError response 500 (str "Error: Cannot proxy to specified redirect "
-                                          "location. Either the host, the port, or "
-                                          "the path is incorrect.")))
-
-          (proxy-super onResponseSuccess request response proxyResponse)))
+          (if (and (:munge-location-headers options) redirect?)
+            (let [redirect-uri (URI. location)
+                  redirect-host (.getHost redirect-uri)
+                  redirect-port (.getPort redirect-uri)
+                  redirect-path (.getPath redirect-uri)
+                  target-path (str "/" (:path target))
+                  wrong-host? (not (or (nil? redirect-host) (= redirect-host (:host target))))
+                  wrong-port? (not (or (= -1 redirect-port) (= redirect-port (:port target))))
+                  wrong-path? (not (= (.indexOf redirect-path target-path) 0))
+                  query-params (.getQuery redirect-uri)
+                  final-path (.replaceFirst redirect-path target-path path)]
+              (cond
+                (or wrong-host? wrong-port? wrong-path?)
+                  (.sendError response 500 (str "Error: Cannot proxy to specified redirect "
+                                                "location. Either the host, the port, or "
+                                                "the path is incorrect."))
+                (nil? query-params)
+                  (.setHeader response "location" final-path)
+                :else
+                  (.setHeader response "location" (str final-path "?" query-params))))))
+        (proxy-super onResponseSuccess request response proxyResponse))
 
 
       (customizeProxyRequest [proxy-req req]
