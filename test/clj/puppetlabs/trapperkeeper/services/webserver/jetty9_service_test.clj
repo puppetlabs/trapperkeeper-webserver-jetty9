@@ -33,6 +33,13 @@
   {:webserver {:foo {:port 8080}
                :bar {:port 9000}}})
 
+(def static-content-single-config
+  {:webserver {:port 8080
+               :static-content [{:resource "./dev-resources"
+                                 :path "/resources"},
+                                {:resource "./dev-resources"
+                                 :path "/resources2"}]}})
+
 (defmacro ssl-exception-thrown?
   [& body]
   `(try
@@ -540,3 +547,16 @@
             ring-handler     (fn [req] {:status 200 :body body})]
         (is (thrown? IllegalArgumentException
                      (add-ring-handler ring-handler path)))))))
+
+(deftest static-content-config-test
+  (testing "static content can be specified in a single-server configuration"
+    (with-app-with-config app
+      [jetty9-service]
+      static-content-single-config
+      (let [logback   (slurp "./dev-resources/logback.xml")
+            response  (http-get  (str "http://localhost:8080/resources/logback.xml"))
+            response2 (http-get (str "http://localhost:8080/resources2/logback.xml"))]
+        (is (= (:status response) 200))
+        (is (= (:body response) logback))
+        (is (= (:status response2) 200))
+        (is (= (:body response2) logback))))))

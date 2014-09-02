@@ -689,26 +689,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service Function Implementations
 
-(schema/defn ^:always-validate init!
-  [context config :- config/WebserverServiceRawConfig]
-  (let [old-config (schema/check config/WebserverRawConfig config)
-        new-config (schema/check config/MultiWebserverRawConfig config)]
-    (cond
-      (nil? old-config)
-        (let [context (assoc context :jetty9-servers {:default (initialize-context)})]
-          (assoc context :default-server :default))
-      (nil? new-config)
-        (let [context (build-server-contexts context config)]
-          (assoc context :default-server (get-default-server-from-config config))))))
-
-(schema/defn ^:always-validate start!
-  [context config :- config/WebserverServiceRawConfig]
-  (let [old-config (schema/check config/WebserverRawConfig config)
-        new-config (schema/check config/MultiWebserverRawConfig config)]
-    (cond
-      (nil? old-config) (start-server-single-default context config)
-      (nil? new-config) (start-server-multiple context config))))
-
 (schema/defn ^:always-validate add-context-handler!
   [context base-path context-path options :- ContextHandlerOptions]
   (let [defaults          {:context-listeners []}
@@ -723,6 +703,30 @@
                            :endpoint          context-path}]
     (register-endpoint! state endpoint)
     (add-context-handler s base-path context-path context-listeners)))
+
+(schema/defn ^:always-validate init!
+  [context config :- config/WebserverServiceRawConfig]
+  (let [old-config (schema/check config/WebserverRawConfig config)
+        new-config (schema/check config/MultiWebserverRawConfig config)]
+    (cond
+      (nil? old-config)
+        (let [context (assoc context :jetty9-servers {:default (initialize-context)}
+                                     :default-server :default)]
+          (doseq [content (:static-content config)]
+            (add-context-handler! context (:resource content)
+                                  (:path content) {}))
+          context)
+      (nil? new-config)
+        (let [context (build-server-contexts context config)]
+          (assoc context :default-server (get-default-server-from-config config))))))
+
+(schema/defn ^:always-validate start!
+  [context config :- config/WebserverServiceRawConfig]
+  (let [old-config (schema/check config/WebserverRawConfig config)
+        new-config (schema/check config/MultiWebserverRawConfig config)]
+    (cond
+      (nil? old-config) (start-server-single-default context config)
+      (nil? new-config) (start-server-multiple context config))))
 
 (schema/defn ^:always-validate add-ring-handler!
   [context handler path options :- ServerIDOption]
