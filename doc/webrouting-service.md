@@ -96,10 +96,10 @@ with the Webserver service, you would call
 ```
 
 which would add the ring handler `my-app` to the endpoint `"/my-app"`. With the webrouting
-service, however, when in a service implementing the FooService protocol, you would call
+service, however, you would call
 
 ```clj
-(add-ring-handler (get-service this :FooService) my-app)
+(add-ring-handler this my-app)
 ```
 
 which would find the endpoint configured for the current service in the configuration file,
@@ -116,30 +116,24 @@ In a multiroute configuration, a route-id MUST be specified or the operation wil
 Second, `:server-id` is a disallowed key in this options map. Specifying a specific server
 to which to add an endpoint is handled in the configuration of the webrouting service.
 
-As an example, say you have two endpoints configured for a specific service, which implements
-protocol FooService. One is endpoint `"/foo"` and is kept at key `:foo`. The other is
+As an example, say you decide to add two endpoints using a specific service, and you have
+two endpoints configured for that service.
+One is endpoint `"/foo"` and is kept at key `:foo`. The other is
 endpoint `"/bar"` and is kept at key `:bar`. If you were to call
 
 ```clj
-(add-ring-handler (get-service this :FooService) my-app {:route-id :foo)
+(add-ring-handler this my-app {:route-id :foo)
 ```
 
 the ring handler `my-app` would be registered at endpoint `"/foo"`. However, if you were to call
 
 ```clj
-(add-ring-handler (get-service this :FooService) my-app {:route-id :bar})
+(add-ring-handler this my-app {:route-id :bar})
 ```
 
 the ring handler `my-app` would be registered at endpoint `"/bar"`.
 
 For information on how to configure multiple endpoints, please see
 [Configuring the Webrouting Service](webrouting-config.md).
-
-PLEASE NOTE that there is an issue with the `defservice` macro such that `this` cannot
-be accessed while calling the webrouting service functions. As a result, when using the
-webrouting service functions, you must use the `get-service` function to get the
-current service. Furthermore, because of the way `get-service` works, any service
-you want to get with it must implement a protocol, meaning any service using the webrouting
-service must implement a protocol.
 
 

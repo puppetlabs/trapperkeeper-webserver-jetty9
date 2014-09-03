@@ -57,7 +57,9 @@
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/java.jmx "0.2.0"]
-                                  [spyscope "0.1.4"]]
+                                  [spyscope "0.1.4"]
+                                  [compojure "1.1.8" :exclusions [ring/ring-core
+                                                                  commons-io]]]
                     :injections [(require 'spyscope.core)]}
 
              :testutils {:source-paths ^:replace ["test/clj"]
