@@ -188,20 +188,20 @@ the `base-path` argument of the `add-context-handler` service function). The sec
 is the URL endpoint at which you want to mount the context handler (the equivalent of the
 `context-path` argument of the `add-context-handler` service function).
 
-For example, say you have a `dev-resources` directory containing a file called `logback.xml`.
+For example, say you have a `web-assets` directory containing a file called `image.jpg`.
 If your configuration were like so:
 
 ```
 webserver: {
   port: 8080
-  static-content: [{resource: "./dev-resources"
-                    path:     "/resources"}]
+  static-content: [{resource: "./web-assets"
+                    path:     "/assets"}]
 }
 ```
 
-Then the static content in the `dev-resources` directory would be mounted at the URL endpoint
-`"/resources"` on your server during initialization, and you could access the contents of
-`logback.xml` by visiting `"http://localhost:8080/resources/logback.xml"`.
+Then the static content in the `web-assets` directory would be mounted at the URL endpoint
+`"/assets"` on your server during initialization, and you could access the contents of
+`image.jpg` by visiting `"http://localhost:8080/assets/image.jpg"`.
 
 ## Configuring multiple webservers on isolated ports
 
