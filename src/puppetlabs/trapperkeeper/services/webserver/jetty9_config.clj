@@ -33,6 +33,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
+(def StaticContent
+  {:resource schema/Str
+   :path     schema/Str})
+
 (def WebserverRawConfig
   {(schema/optional-key :port)                       schema/Int
    (schema/optional-key :host)                       schema/Str
@@ -53,7 +57,8 @@
    (schema/optional-key :client-auth)                schema/Str
    (schema/optional-key :ssl-crl-path)               schema/Str
    (schema/optional-key :jmx-enable)                 schema/Str
-   (schema/optional-key :default-server)             schema/Bool})
+   (schema/optional-key :default-server)             schema/Bool
+   (schema/optional-key :static-content)             [StaticContent]})
 
 (def MultiWebserverRawConfigUnvalidated
   {schema/Keyword  WebserverRawConfig})

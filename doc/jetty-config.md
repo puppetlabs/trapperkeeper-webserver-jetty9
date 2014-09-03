@@ -179,6 +179,30 @@ Optional. This describes a path to a Certificate Revocation List file. Incoming
 SSL connections will be rejected if the client certificate matches a
 revocation entry in the file.
 
+### `static-content`
+
+Optional. This is a list of static content to be added to the server as context handlers
+during initialization. Each item in this list should be a map containing two keys. The first,
+`resource`, is the path to the resource you want added as a context handler (the equivalent of
+the `base-path` argument of the `add-context-handler` service function). The second, `path`,
+is the URL endpoint at which you want to mount the context handler (the equivalent of the
+`context-path` argument of the `add-context-handler` service function).
+
+For example, say you have a `dev-resources` directory containing a file called `logback.xml`.
+If your configuration were like so:
+
+```
+webserver: {
+  port: 8080
+  static-content: [{resource: "./dev-resources"
+                    path:     "/resources"}]
+}
+```
+
+Then the static content in the `dev-resources` directory would be mounted at the URL endpoint
+`"/resources"` on your server during initialization, and you could access the contents of
+`logback.xml` by visiting `"http://localhost:8080/resources/logback.xml"`.
+
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9
