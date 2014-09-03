@@ -1,3 +1,12 @@
+## 0.7.3
+
+This is a minor feature release.
+
+* Adds a new, optional `static-content` configuration setting to the
+  webserver config.  This setting allows you to serve files on disk
+  or resources in a jar as static assets at a given URL prefix,
+  all via configuration.
+
 ## 0.7.2
 
 This is a minor, backward-compatible feature and bugfix release.
