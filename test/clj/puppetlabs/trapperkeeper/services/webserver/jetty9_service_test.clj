@@ -567,8 +567,8 @@
         app
         [jetty9-service]
         static-content-single-config
-        (let [response (http-get (str "http://localhost:8080/resources/logback.xml"))
-              response2 (http-get (str "http://localhost:8080/resources2/logback.xml"))]
+        (let [response (http-get "http://localhost:8080/resources/logback.xml")
+              response2 (http-get "http://localhost:8080/resources2/logback.xml")]
           (is (= (:status response) 200))
           (is (= (:body response) logback))
           (is (= (:status response2) 200))
@@ -579,14 +579,14 @@
         app
         [jetty9-service]
         static-content-multi-config
-        (let [response (http-get (str "http://localhost:8080/resources/logback.xml"))
-              response2 (http-get (str "http://localhost:8080/resources2/logback.xml"))]
+        (let [response (http-get "http://localhost:8080/resources/logback.xml")
+              response2 (http-get "http://localhost:8080/resources2/logback.xml")]
           (is (= (:status response) 200))
           (is (= (:body response) logback))
           (is (= (:status response2) 200))
           (is (= (:body response2) logback)))
-        (let [response (http-get (str "http://localhost:9000/resources/logback.xml"))
-              response2 (http-get (str "http://localhost:9000/resources2/logback.xml"))]
+        (let [response (http-get "http://localhost:9000/resources/logback.xml")
+              response2 (http-get "http://localhost:9000/resources2/logback.xml")]
           (is (= (:status response) 200))
           (is (= (:body response) logback))
           (is (= (:status response2) 200))
