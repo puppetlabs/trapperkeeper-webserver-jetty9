@@ -11,8 +11,6 @@
             [puppetlabs.trapperkeeper.testutils.logging
               :refer [with-test-logging]]))
 
-(def dev-resources-dir        "./dev-resources/")
-
 (def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
 (def jetty-ssl-no-certs-config

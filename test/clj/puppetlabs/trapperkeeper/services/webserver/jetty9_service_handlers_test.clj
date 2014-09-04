@@ -1,6 +1,8 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-handlers-test
   (:import (servlet SimpleServlet)
-           (javax.servlet ServletContextListener))
+           (javax.servlet ServletContextListener)
+           (java.nio.file Paths Files)
+           (java.nio.file.attribute FileAttribute))
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
@@ -8,8 +10,6 @@
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
              :refer [with-test-logging]]))
-
-(def dev-resources-dir        "./dev-resources/")
 
 (deftest static-content-test
   (testing "static content context"
@@ -58,6 +58,46 @@
           (is (= (:status response) 200))
           (is (= (:body response) body)))))))
 
+(deftest add-context-handler-symlinks-test
+  (let [resource  "logback.xml"
+        resource-link "logback-link.xml"
+        logback (slurp (str dev-resources-dir resource))
+        link (Paths/get (str dev-resources-dir resource-link) (into-array java.lang.String []))
+        file (Paths/get resource (into-array java.lang.String []))]
+    (try
+      (Files/createSymbolicLink link file (into-array FileAttribute []))
+
+      (testing "symlinks served when :serve-links is true"
+        (with-app-with-config app
+          [jetty9-service]
+          jetty-plaintext-config
+          (let [s (get-service app :WebserverService)
+                add-context-handler (partial add-context-handler s)
+                path "/resources"]
+            (add-context-handler dev-resources-dir path {:serve-links true})
+            (let [response (http-get (str "http://localhost:8080" path "/" resource))]
+              (is (= (:status response) 200))
+              (is (= (:body response) logback)))
+            (let [response (http-get (str "http://localhost:8080" path "/" resource-link))]
+              (is (= (:status response) 200))
+              (is (= (:body response) logback))))))
+
+      (testing "symlinks not served when :serve-links is false"
+        (with-app-with-config app
+          [jetty9-service]
+          jetty-plaintext-config
+          (let [s (get-service app :WebserverService)
+                add-context-handler (partial add-context-handler s)
+                path "/resources"]
+            (add-context-handler dev-resources-dir path {:serve-links false})
+            (let [response (http-get (str "http://localhost:8080" path "/" resource))]
+              (is (= (:status response) 200))
+              (is (= (:body response) logback)))
+            (let [response (http-get (str "http://localhost:8080" path "/" resource-link))]
+              (is (= (:status response) 404))))))
+
+      (finally
+        (Files/delete link)))))
 
 (deftest servlet-test
   (testing "request to servlet over http succeeds"

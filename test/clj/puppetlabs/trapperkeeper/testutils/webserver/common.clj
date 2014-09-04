@@ -53,3 +53,5 @@
 
 (def absurdly-large-cookie
   (apply str (repeat 8192 "a")))
+
+(def dev-resources-dir        "./dev-resources/")
