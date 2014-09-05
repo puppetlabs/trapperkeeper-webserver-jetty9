@@ -1,3 +1,12 @@
+## 0.7.4
+
+This is a minor feature release.
+
+* Adds a new option to both the `static-content` configuration
+  setting in the webserver config and to the add-context-handler
+  service function that allows symlinks to be followed when serving
+  static content.
+
 ## 0.7.3
 
 This is a minor feature release.
