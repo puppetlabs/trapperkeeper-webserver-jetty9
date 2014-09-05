@@ -223,6 +223,20 @@ webserver: {
 Since `follow-links` is set to true, `image-link` will now be served, and can
 be accessed by visiting `"http://localhost:8080/assets/image-link"`.
 
+### `gzip-enable`
+
+Optional. This controls whether or not the webserver could compress the
+response body for any request using Gzip encoding. A value of `false` would
+prevent the server from using Gzip encoding the response body for all requests.
+If this option is not specified or is specified with a value of `true`, the
+webserver "could" Gzip encode the response body.
+
+Note that in order for Gzip encoding to be used, a client would also need to
+include in the request an "Accept-Encoding" HTTP header containing the value
+"gzip". The webserver also may use other heuristics to avoid Gzip encoding the
+response body independent of the configuration of this setting.  For example,
+the webserver may skip compression for a sufficiently small response body.
+
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9

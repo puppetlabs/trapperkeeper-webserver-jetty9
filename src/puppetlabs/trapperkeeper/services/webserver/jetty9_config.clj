@@ -59,7 +59,8 @@
    (schema/optional-key :ssl-crl-path)               schema/Str
    (schema/optional-key :jmx-enable)                 schema/Str
    (schema/optional-key :default-server)             schema/Bool
-   (schema/optional-key :static-content)             [StaticContent]})
+   (schema/optional-key :static-content)             [StaticContent]
+   (schema/optional-key :gzip-enable)                schema/Bool})
 
 (def MultiWebserverRawConfigUnvalidated
   {schema/Keyword  WebserverRawConfig})
