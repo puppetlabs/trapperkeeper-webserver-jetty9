@@ -67,14 +67,14 @@
     (try
       (Files/createSymbolicLink link file (into-array FileAttribute []))
 
-      (testing "symlinks served when :serve-links is true"
+      (testing "symlinks served when :follow-links is true"
         (with-app-with-config app
           [jetty9-service]
           jetty-plaintext-config
           (let [s (get-service app :WebserverService)
                 add-context-handler (partial add-context-handler s)
                 path "/resources"]
-            (add-context-handler dev-resources-dir path {:serve-links true})
+            (add-context-handler dev-resources-dir path {:follow-links true})
             (let [response (http-get (str "http://localhost:8080" path "/" resource))]
               (is (= (:status response) 200))
               (is (= (:body response) logback)))
@@ -82,14 +82,14 @@
               (is (= (:status response) 200))
               (is (= (:body response) logback))))))
 
-      (testing "symlinks not served when :serve-links is false"
+      (testing "symlinks not served when :follow-links is false"
         (with-app-with-config app
           [jetty9-service]
           jetty-plaintext-config
           (let [s (get-service app :WebserverService)
                 add-context-handler (partial add-context-handler s)
                 path "/resources"]
-            (add-context-handler dev-resources-dir path {:serve-links false})
+            (add-context-handler dev-resources-dir path {:follow-links false})
             (let [response (http-get (str "http://localhost:8080" path "/" resource))]
               (is (= (:status response) 200))
               (is (= (:body response) logback)))

@@ -36,7 +36,7 @@
 (def StaticContent
   {:resource                          schema/Str
    :path                              schema/Str
-   (schema/optional-key :serve-links) schema/Bool})
+   (schema/optional-key :follow-links) schema/Bool})
 
 (def WebserverRawConfig
   {(schema/optional-key :port)                       schema/Int

@@ -39,7 +39,7 @@
   {:webserver {:port 8080
                :static-content [{:resource "./dev-resources"
                                  :path "/resources"
-                                 :serve-links true},
+                                 :follow-links true},
                                 {:resource "./dev-resources"
                                  :path "/resources2"}]}})
 

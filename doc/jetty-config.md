@@ -205,7 +205,7 @@ Then the static content in the `web-assets` directory would be mounted at the UR
 
 By default, symbolic links will not be served by the Jetty9 Webservice. However, if you have
 a symbolic link that you want to serve as static content, you can add an extra option,
-`serve-links`, to the specification for a piece of static content. The value of this should
+`follow-links`, to the specification for a piece of static content. The value of this should
 be a boolean, and if set to true, symbolic links will be served.
 
 For example, say that you have a symbolic link in your `web-assets` directory, `image-link`,
@@ -217,10 +217,10 @@ webserver: {
   port: 8080
   static-content: [{resource: "./web-assets"
                     path:     "/assets"
-                    serve-links: true}]
+                    follow-links: true}]
 }
 ```
-Since `serve-links` is set to true, `image-link` will now be served, and can
+Since `follow-links` is set to true, `image-link` will now be served, and can
 be accessed by visiting `"http://localhost:8080/assets/image-link"`.
 
 ## Configuring multiple webservers on isolated ports
