@@ -203,6 +203,26 @@ Then the static content in the `web-assets` directory would be mounted at the UR
 `"/assets"` on your server during initialization, and you could access the contents of
 `image.jpg` by visiting `"http://localhost:8080/assets/image.jpg"`.
 
+By default, symbolic links will not be served by the Jetty9 Webservice. However, if you have
+a symbolic link that you want to serve as static content, you can add an extra option,
+`follow-links`, to the specification for a piece of static content. The value of this should
+be a boolean, and if set to true, symbolic links will be served.
+
+For example, say that you have a symbolic link in your `web-assets` directory, `image-link`,
+that links to the `image.jpg` file. If you want this to be served, you would configure
+your static content like so:
+
+```
+webserver: {
+  port: 8080
+  static-content: [{resource: "./web-assets"
+                    path:     "/assets"
+                    follow-links: true}]
+}
+```
+Since `follow-links` is set to true, `image-link` will now be served, and can
+be accessed by visiting `"http://localhost:8080/assets/image-link"`.
+
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9

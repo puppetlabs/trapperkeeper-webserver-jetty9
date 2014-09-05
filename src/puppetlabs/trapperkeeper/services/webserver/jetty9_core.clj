@@ -2,7 +2,8 @@
   (:import (org.eclipse.jetty.server Handler Server Request ServerConnector
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory)
-           (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection ContextHandlerCollection)
+           (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection
+                                             ContextHandlerCollection AllowSymLinkAliasChecker)
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
@@ -63,7 +64,8 @@
   {(schema/optional-key :server-id) schema/Keyword})
 
 (def ContextHandlerOptions
-  (assoc ServerIDOption (schema/optional-key :context-listeners) [ServletContextListener]))
+  (assoc ServerIDOption (schema/optional-key :context-listeners) [ServletContextListener]
+                        (schema/optional-key :follow-links) schema/Bool))
 
 (def ServletHandlerOptions
   (assoc ServerIDOption (schema/optional-key :servlet-init-params) {schema/Str schema/Str}))
@@ -469,13 +471,16 @@
   add-context-handler :- ContextHandler
   "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
   ([webserver-context base-path context-path]
-   (add-context-handler webserver-context base-path context-path nil))
+   (add-context-handler webserver-context base-path context-path nil false))
   ([webserver-context :- ServerContext
     base-path :- schema/Str
     context-path :- schema/Str
-    context-listeners :- (schema/maybe [ServletContextListener])]
+    context-listeners :- (schema/maybe [ServletContextListener])
+    follow-links?]
    (let [handler (ServletContextHandler. nil context-path ServletContextHandler/NO_SESSIONS)]
      (.setBaseResource handler (Resource/newResource base-path))
+     (when follow-links?
+       (.addAliasCheck handler (AllowSymLinkAliasChecker.)))
      ;; register servlet context listeners (if any)
      (when-not (nil? context-listeners)
        (dorun (map #(.addEventListener handler %) context-listeners)))
@@ -703,7 +708,7 @@
                            :context-listeners context-listeners
                            :endpoint          context-path}]
     (register-endpoint! state endpoint)
-    (add-context-handler s base-path context-path context-listeners)))
+    (add-context-handler s base-path context-path context-listeners (:follow-links options))))
 
 (schema/defn ^:always-validate init!
   [context config :- config/WebserverServiceRawConfig]
@@ -715,14 +720,15 @@
                                      :default-server :default)]
           (doseq [content (:static-content config)]
             (add-context-handler! context (:resource content)
-                                  (:path content) {}))
+                                  (:path content) {:follow-links (true? (:follow-links content))}))
           context)
       (nil? new-config)
         (let [context (build-server-contexts context config)]
           (doseq [[server-id server-config] config
                   content (:static-content server-config)]
             (add-context-handler! context (:resource content)
-                                  (:path content) {:server-id server-id}))
+                                  (:path content) {:server-id server-id
+                                                   :follow-links (true? (:follow-links content))}))
           context))))
 
 (schema/defn ^:always-validate start!

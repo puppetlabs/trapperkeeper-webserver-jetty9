@@ -3,7 +3,9 @@
             (org.apache.http ConnectionClosedException)
             (java.io IOException)
             (java.security.cert CRLException)
-            (java.net BindException))
+            (java.net BindException)
+            (java.nio.file Paths Files)
+            (java.nio.file.attribute FileAttribute))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [clojure.tools.logging :as log]
@@ -36,7 +38,8 @@
 (def static-content-single-config
   {:webserver {:port 8080
                :static-content [{:resource "./dev-resources"
-                                 :path "/resources"},
+                                 :path "/resources"
+                                 :follow-links true},
                                 {:resource "./dev-resources"
                                  :path "/resources2"}]}})
 
@@ -591,3 +594,36 @@
           (is (= (:body response) logback))
           (is (= (:status response2) 200))
           (is (= (:body response2) logback)))))))
+
+(deftest static-content-symlink-test
+  (let [logback (slurp (str dev-resources-dir "logback.xml"))
+        link (Paths/get (str dev-resources-dir "logback-link.xml") (into-array java.lang.String []))
+        file (Paths/get "logback.xml" (into-array java.lang.String []))]
+    (try
+      (Files/createSymbolicLink link file (into-array FileAttribute []))
+
+      (testing "static content can be served with symlinks when option specified in config"
+        (with-app-with-config
+          app
+          [jetty9-service]
+          static-content-single-config
+          (let [response (http-get "http://localhost:8080/resources/logback.xml")
+                response2 (http-get "http://localhost:8080/resources/logback-link.xml")]
+            (is (= (:status response) 200))
+            (is (= (:body response) logback))
+            (is (= (:status response2) 200))
+            (is (= (:body response2) logback)))))
+
+      (testing "static content cannot be served with symlinks if option not set"
+        (with-app-with-config
+          app
+          [jetty9-service]
+          static-content-single-config
+          (let [response (http-get "http://localhost:8080/resources2/logback.xml")
+                response2 (http-get "http://localhost:8080/resources2/logback-link.xml")]
+            (is (= (:status response) 200))
+            (is (= (:body response) logback))
+            (is (= (:status response2) 404)))))
+
+      (finally
+        (Files/delete link)))))

@@ -159,12 +159,14 @@ at `/css`:
 
 There is also a three argument version of the function which takes these arguments:
 `[base-path context-path options]`, where the first two arguments are the
-same as in the two argument version and `options` is a map containing two optional keys,
-`:server-id` and `:context-listeners`. The value stored in `:server-id` specifies which server
+same as in the two argument version and `options` is a map containing three optional keys,
+`:server-id`, `:follow-links`, and `:context-listeners`. The value stored in `:server-id` specifies which server
 to add the context handler to, similar to how it is done in `add-ring-handler`. Again, like
 `add-ring-handler`, if this key is absent or the two argument version is called, the context handler
 will be added to the default server. Calling the two-argument version or leaving out `:server-id`
 will not work in a multiserver set-up if no default server is specified.
+The value stored in `:follow-links` is a boolean indicating whether or not symbolic links
+should be served. The service does NOT serve symbolic links by default.
 The value stored in `:context-listeners` is a list of objects implementing the
 [ServletContextListener] (http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
 interface. These listeners are registered with the context created for serving the
