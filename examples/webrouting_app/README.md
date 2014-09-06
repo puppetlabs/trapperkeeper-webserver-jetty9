@@ -12,7 +12,7 @@ lein trampoline run --config examples/webrouting_app/webrouting-example.conf \
 Open any of
 
 ```
-http://localhost:8080/hello
+http://localhost:8080/foo
 http://localhost:8080/bar
 http://localhost:8080/baz
 http://localhost:8080/goodbye
@@ -23,3 +23,11 @@ http://localhost:9000/bert
 
 in your browser to see the famous Hello World message.
 
+Open
+
+```
+http://localhost:8080/hello/[string]
+
+```
+where [string] is any string of your choosing to see a Hello message specific for
+that string.
