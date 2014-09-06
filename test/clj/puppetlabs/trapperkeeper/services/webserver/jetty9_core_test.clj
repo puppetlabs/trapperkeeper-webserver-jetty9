@@ -6,7 +6,8 @@
             [ring.util.response :as rr]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
-            [puppetlabs.trapperkeeper.testutils.webserver :refer [with-test-webserver]]))
+            [puppetlabs.trapperkeeper.testutils.webserver
+              :refer [with-test-webserver with-test-webserver-and-config]]))
 
 (deftest handlers
   (testing "create-handlers should allow for handlers to be added"
@@ -18,8 +19,43 @@
                               "/")
       (is (= (count (.getHandlers handlers)) 1)))))
 
+(defn validate-gzip-encoding-when-gzip-requested
+  [body port]
+  ;; The client/get function asks for compression by default
+  (let [resp (http-client/get (format "http://localhost:%d/" port))]
+    (is (= (slurp (resp :body)) body))
+    (is (= (get-in resp [:orig-content-encoding]) "gzip")
+        (format "Expected gzipped response, got this response: %s"
+                resp))))
+
+(defn validate-no-gzip-encoding-when-gzip-not-requested
+  [body port]
+  ;; The client/get function asks for compression by default
+  (let [resp (http-client/get (format "http://localhost:%d/" port)
+                              {:decompress-body false})]
+    (is (= (slurp (resp :body)) body))
+    ;; We should not receive a content-encoding header in the
+    ;; uncompressed case
+    (is (nil? (get-in resp [:headers "content-encoding"]))
+        (format "Expected uncompressed response, got this response: %s"
+                resp))))
+
+(defn validate-no-gzip-encoding-even-though-gzip-requested
+  [body port]
+  ;; The client/get function asks for compression by default
+  (let [resp (http-client/get (format "http://localhost:%d/" port))]
+    (is (= (slurp (resp :body)) body))
+    ;; We should not receive a content-encoding header in the
+    ;; uncompressed case
+    (is (nil? (get-in resp [:headers "content-encoding"]))
+        (format "Expected uncompressed response, got this response: %s"
+                resp))))
+
 (deftest compression
   (testing "should return"
+    ;; Jetty may not Gzip encode a response body if the size of the response
+    ;; is less than 256 bytes, so returning a larger body to ensure that Gzip
+    ;; encoding is used where desired for these tests
     (let [body (apply str (repeat 1000 "f"))
           app  (fn [req]
                  (-> body
@@ -28,23 +64,37 @@
                      (rr/content-type "text/plain")
                      (rr/charset "UTF-8")))]
       (with-test-webserver app port
-        (testing "a gzipped response when requests"
-          ;; The client/get function asks for compression by default
-          (let [resp (http-client/get (format "http://localhost:%d/" port))]
-            (is (= (slurp (resp :body)) body))
-            (is (= (get-in resp [:orig-content-encoding]) "gzip")
-                (format "Expected gzipped response, got this response: %s" resp))))
+        (testing "a gzipped response when request wants a compressed one and
+                  server not configured with a default for gzip-enable"
+          (validate-gzip-encoding-when-gzip-requested body port))
 
-        (testing "an uncompressed response by default"
-          ;; The client/get function asks for compression by default
-          (let [resp (http-client/get (format "http://localhost:%d/" port) {:decompress-body false})]
-            (is (= (slurp (resp :body)) body))
-            ;; We should not receive a content-encoding header in the uncompressed case
-            (is (nil? (get-in resp [:headers "content-encoding"]))
-                (format "Expected uncompressed response, got this response: %s" resp))))))))
+        (testing "an uncompressed response when request doesn't ask for a
+                  compressed one and server not configured with a default for
+                  gzip-enable"
+          (validate-no-gzip-encoding-when-gzip-not-requested body port)))
+
+      (with-test-webserver-and-config app port {:gzip-enable true}
+         (testing "a gzipped response when request wants a compressed one and
+                   server configured with a true value for gzip-enable"
+           (validate-gzip-encoding-when-gzip-requested body port))
+
+         (testing "an uncompressed response when request doesn't ask for a
+                   compressed one and server configured with a true value for
+                   gzip-enable"
+           (validate-no-gzip-encoding-when-gzip-not-requested body port)))
+
+      (with-test-webserver-and-config app port {:gzip-enable false}
+         (testing "an uncompressed response when request wants a compressed one
+                   but server configured with a false value for gzip-enable"
+           (validate-no-gzip-encoding-even-though-gzip-requested body port))
+
+         (testing "an uncompressed response when request doesn't ask for a
+                   compressed one and server configured with a false value for
+                   gzip-enable"
+           (validate-no-gzip-encoding-when-gzip-not-requested body port))))))
 
 (deftest jmx
-  (testing "by deefault Jetty JMX support is enabled"
+  (testing "by default Jetty JMX support is enabled"
     (with-test-webserver #() _
       (testing "and should return a valid Jetty MBeans object"
         (let [mbeans (jmx/mbean-names "org.eclipse.jetty.jmx:*")]

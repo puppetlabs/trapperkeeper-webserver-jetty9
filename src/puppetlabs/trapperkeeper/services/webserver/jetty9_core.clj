@@ -410,6 +410,8 @@
     :ssl-port                 - the SSL port to listen on (defaults to 8081)
     :max-threads              - the maximum number of threads to use (default 100)
     :request-header-max-size  - the maximum size of an HTTP request header (default 8192)
+    :gzip-enable              - whether or not gzip compression can be applied
+                                to the body of a response (default true)
 
     SSL may be configured via PEM files by providing all three of the following
     settings:
@@ -447,8 +449,12 @@
           ^Server s             (create-server webserver-context config)
           ^HandlerCollection hc (HandlerCollection.)]
     (.setHandlers hc (into-array Handler [(:handlers webserver-context)]))
-    (.setHandler s (gzip-handler hc))
-    (assoc webserver-context :server s)))
+    (let [handler-for-server (if (or (not (contains? options :gzip-enable))
+                                     (:gzip-enable options))
+                               (gzip-handler hc)
+                               hc)]
+      (.setHandler s handler-for-server)
+      (assoc webserver-context :server s))))
 
 (schema/defn ^:always-validate start-webserver! :- ServerContext
   "Creates and starts a webserver.  Returns an updated context map containing
