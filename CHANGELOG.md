@@ -1,3 +1,13 @@
+## 0.7.5
+
+This is a minor feature release.
+
+* [TK-75](https://tickets.puppetlabs.com/browse/TK-75)
+  Adds a new option `gzip-enable` that can be used to
+  enable/disable support for gzipping responses to
+  requests that include an appropriate `Accept-Encoding`
+  header.
+
 ## 0.7.4
 
 This is a minor feature release.
