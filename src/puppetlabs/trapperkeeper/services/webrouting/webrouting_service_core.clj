@@ -42,13 +42,18 @@
                           :default
                           route-id)
         endpoint        (get-in config [svc route-id])
+        no-service?     (nil? (get config svc))
         no-endpoint?    (nil? endpoint)
         no-server?      (nil? (schema/check schema/Str endpoint))
         server?         (nil? (schema/check RouteWithServerConfig endpoint))]
     (cond
+      no-service?     (throw
+                        (IllegalArgumentException.
+                          (str "service " svc " does not appear in configuration")))
       no-endpoint?    (throw
                         (IllegalArgumentException.
-                          "specified service or endpoint does not appear in configuration file"))
+                          (str "endpoint with id " route-id " does not appear in configuration "
+                               "for service " svc)))
       (and no-route-id? multi-route?)
                       (throw
                         (IllegalArgumentException.
