@@ -547,7 +547,7 @@
             ring-handler     (fn [req] {:status 200 :body body})]
         (add-ring-handler ring-handler path)
         (let [response (http-get "http://localhost:9000/hi_world")]
-          (is (= (:status response 200)))
+          (is (= 200 (:status response)))
           (is (= (:body response) body))))))
 
   (testing (str "exception thrown if user does not specify a "

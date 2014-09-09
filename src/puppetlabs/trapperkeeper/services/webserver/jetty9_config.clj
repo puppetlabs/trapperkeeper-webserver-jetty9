@@ -1,7 +1,9 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config
   (:import [java.security KeyStore]
            (java.io FileInputStream)
-           (clojure.lang ExceptionInfo))
+           (clojure.lang ExceptionInfo)
+           (org.eclipse.jetty.server.handler RequestLogHandler)
+           (ch.qos.logback.access.jetty RequestLogImpl))
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -60,7 +62,8 @@
    (schema/optional-key :jmx-enable)                 schema/Str
    (schema/optional-key :default-server)             schema/Bool
    (schema/optional-key :static-content)             [StaticContent]
-   (schema/optional-key :gzip-enable)                schema/Bool})
+   (schema/optional-key :gzip-enable)                schema/Bool
+   (schema/optional-key :access-log-config)          schema/Str})
 
 (def MultiWebserverRawConfigUnvalidated
   {schema/Keyword  WebserverRawConfig})
@@ -316,3 +319,17 @@
       (throw (IllegalArgumentException.
                "Either host, port, ssl-host, or ssl-port must be specified on the config in order for the server to be started")))
     result))
+
+(schema/defn ^:always-validate
+  init-log-handler :- RequestLogHandler
+  [config :- WebserverRawConfig]
+  (let [handler (RequestLogHandler.)
+        logger (RequestLogImpl.)]
+    (.setFileName logger (:access-log-config config))
+    (.setRequestLog handler logger)
+    handler))
+
+(defn maybe-init-log-handler
+  [config]
+  (if (:access-log-config config)
+    (init-log-handler config)))
