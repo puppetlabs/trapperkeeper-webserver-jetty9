@@ -80,8 +80,8 @@
     (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int
-    (schema/optional-key :follow-redirects) schema/Bool
-    (schema/optional-key :munge-location-headers) schema/Bool))
+    (schema/optional-key :redirects) (schema/pred #(contains? #{:none :munge-location-headers
+                                                                :follow-redirects-on-server} %))))
 
 (def ServerContext
   {:state     Atom
@@ -351,7 +351,7 @@
 
       (createHttpClient []
         (let [client (proxy-super createHttpClient)]
-          (if (:follow-redirects options)
+          (if (= (:redirects options) :follow-redirects-on-server)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
           client))
@@ -360,7 +360,7 @@
         (let [location  (.getHeader response "location")
               status    (.getStatus response)
               redirect? (and (>= status 300) (< status 400))]
-          (if (and (:munge-location-headers options) redirect?)
+          (if (and (= :munge-location-headers (:redirects options)) redirect?)
             (let [redirect-uri (URI. location)
                   redirect-host (.getHost redirect-uri)
                   redirect-port (.getPort redirect-uri)
