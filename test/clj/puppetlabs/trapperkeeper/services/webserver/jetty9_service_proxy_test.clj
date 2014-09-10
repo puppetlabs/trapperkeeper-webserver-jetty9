@@ -53,12 +53,26 @@
    :headers {"Location" "http://fakehost:5/hello"}
    :body ""})
 
+(defn redirect-wrong-port
+  [req]
+  {:status 302
+   :headers {"Location" "http://localhost:5/hello/world"}})
+
 (defn redirect-same-host
   [req]
   (condp = (:uri req)
     "/hello/world" {:status 200 :body "Hello, World!"}
     "/hello/"       {:status 302
                      :headers {"Location" "http://localhost:9000/hello/world"}
+                     :body    ""}
+    {:status 404 :body "D'oh"}))
+
+(defn redirect-same-host-https
+  [req]
+  (condp = (:uri req)
+    "/hello/world" {:status 200 :body "Hello, World!"}
+    "/hello/"       {:status 302
+                     :headers {"Location" "http://localhost:9001/hello/world"}
                      :body    ""}
     {:status 404 :body "D'oh"}))
 
@@ -647,8 +661,30 @@
          :proxy-opts   {:redirects :munge-location-headers}
          :ring-handler redirect-wrong-host}
         (let [response (http-get "http://localhost:10000/hello-proxy/"
-                                 {:follow-redirects false})]
-          (is (= (:status response) 500)))))
+                                 {:follow-redirects false
+                                  :as :text})]
+          (is (= (:status response) 500))
+          (is (.contains (:body response) (str "Error: Cannot proxy to specified redirect location. "
+                                       "Host fakehost is unsupported. "
+                                       "Port 5 is unsupported."))))))
+
+    (testing "proxy redirect to non-targer port fails with munging"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:redirects :munge-location-headers}
+         :ring-handler redirect-wrong-port}
+        (let [response (http-get "http://localhost:10000/hello-proxy/"
+                                 {:follow-redirects false
+                                  :as :text})]
+          (is (= (:status response) 500))
+          (is (.contains (:body response) (str "Error: Cannot proxy to specified redirect location. "
+                                               "Port 5 is unsupported."))))))
 
     (testing "proxy redirect to correct host in fully qualified url works with munging"
       (with-target-and-proxy-servers
@@ -684,4 +720,6 @@
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
         (let [response (http-get "http://localhost:10000/hello-proxy")]
-          (is (= (:status response) 500)))))))
+          (is (= (:status response) 500))
+          (is (.contains (:body response) (str "Error: Cannot proxy to specified redirect location. "
+                                       "Path /goodbye/world is unsupported."))))))))

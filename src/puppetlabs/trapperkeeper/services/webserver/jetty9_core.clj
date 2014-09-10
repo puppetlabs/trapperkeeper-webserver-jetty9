@@ -373,9 +373,13 @@
                   final-path (.replaceFirst redirect-path target-path path)]
               (cond
                 (or wrong-host? wrong-port? wrong-path?)
-                  (.sendError response 500 (str "Error: Cannot proxy to specified redirect "
-                                                "location. Either the host, the port, or "
-                                                "the path is incorrect."))
+                  (.sendError response 500 (str "Error: Cannot proxy to specified redirect location. "
+                                                (when wrong-host?
+                                                  (str "Host " redirect-host " is unsupported. "))
+                                                (when wrong-port?
+                                                  (str "Port " redirect-port " is unsupported. "))
+                                                (when wrong-path?
+                                                  (str "Path " redirect-path " is unsupported. "))))
                 (nil? query-params)
                   (.setHeader response "location" final-path)
                 :else

@@ -59,7 +59,8 @@
                                   [org.clojure/java.jmx "0.2.0"]
                                   [spyscope "0.1.4"]
                                   [compojure "1.1.8" :exclusions [ring/ring-core
-                                                                  commons-io]]]
+                                                                  commons-io
+                                                                  org.clojure/tools.macro]]]
                     :injections [(require 'spyscope.core)]}
 
              :testutils {:source-paths ^:replace ["test/clj"]
