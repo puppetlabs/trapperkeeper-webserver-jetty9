@@ -27,7 +27,7 @@
   (init [this context]
         (let [config (get-in-config [:web-router-service])]
           (when (nil? config)
-            (throw (IllegalStateException.
+            (throw (IllegalArgumentException.
                      ":web-router-service section of configuration not present")))
           (core/init context config)))
 
