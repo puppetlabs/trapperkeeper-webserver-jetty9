@@ -361,25 +361,33 @@
               status    (.getStatus response)
               redirect? (and (>= status 300) (< status 400))]
           (if (and (= :munge-location-headers (:redirects options)) redirect?)
-            (let [redirect-uri (URI. location)
-                  redirect-host (.getHost redirect-uri)
-                  redirect-port (.getPort redirect-uri)
-                  redirect-path (.getPath redirect-uri)
-                  target-path (str "/" (:path target))
-                  wrong-host? (not (or (nil? redirect-host) (= redirect-host (:host target))))
-                  wrong-port? (not (or (= -1 redirect-port) (= redirect-port (:port target))))
-                  wrong-path? (not (= (.indexOf redirect-path target-path) 0))
-                  query-params (.getQuery redirect-uri)
-                  final-path (.replaceFirst redirect-path target-path path)]
+            (let [request-scheme  (.getScheme request)
+                  redirect-uri    (URI. location)
+                  redirect-host   (.getHost redirect-uri)
+                  redirect-port   (.getPort redirect-uri)
+                  redirect-path   (.getPath redirect-uri)
+                  redirect-scheme (.getScheme redirect-uri)
+                  target-path     (str "/" (:path target))
+                  wrong-scheme?   (not (or (nil? redirect-scheme)
+                                           (and (= redirect-scheme request-scheme) (nil? (:scheme options)))
+                                           (or (= redirect-scheme (:scheme options))
+                                               (= (keyword redirect-scheme) (:scheme options)))))
+                  wrong-host?     (not (or (nil? redirect-host) (= redirect-host (:host target))))
+                  wrong-port?     (not (or (= -1 redirect-port) (= redirect-port (:port target))))
+                  wrong-path?     (not (= (.indexOf redirect-path target-path) 0))
+                  query-params    (.getQuery redirect-uri)
+                  final-path      (.replaceFirst redirect-path target-path path)]
               (cond
-                (or wrong-host? wrong-port? wrong-path?)
+                (or wrong-host? wrong-port? wrong-path? wrong-scheme?)
                   (.sendError response 500 (str "Error: Cannot proxy to specified redirect location. "
+                                                (when wrong-scheme?
+                                                  (str "Scheme " redirect-scheme " is unsupported. "))
                                                 (when wrong-host?
                                                   (str "Host " redirect-host " is unsupported. "))
                                                 (when wrong-port?
                                                   (str "Port " redirect-port " is unsupported. "))
                                                 (when wrong-path?
-                                                  (str "Path " redirect-path " is unsupported. "))))
+                                                  (str "Path " redirect-path " is unsupported."))))
                 (nil? query-params)
                   (.setHeader response "location" final-path)
                 :else

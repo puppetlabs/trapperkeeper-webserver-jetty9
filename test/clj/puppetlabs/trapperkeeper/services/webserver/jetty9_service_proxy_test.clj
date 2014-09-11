@@ -58,6 +58,11 @@
   {:status 302
    :headers {"Location" "http://localhost:5/hello/world"}})
 
+(defn redirect-wrong-scheme
+  [req]
+  {:status 302
+   :headers {"Location" "https://localhost:9000/hello/world"}})
+
 (defn redirect-same-host
   [req]
   (condp = (:uri req)
@@ -668,7 +673,7 @@
                                        "Host fakehost is unsupported. "
                                        "Port 5 is unsupported."))))))
 
-    (testing "proxy redirect to non-targer port fails with munging"
+    (testing "proxy redirect to non-target port fails with munging"
       (with-target-and-proxy-servers
         {:target       {:host "0.0.0.0"
                         :port 9000}
@@ -685,6 +690,41 @@
           (is (= (:status response) 500))
           (is (.contains (:body response) (str "Error: Cannot proxy to specified redirect location. "
                                                "Port 5 is unsupported."))))))
+
+    (testing "proxy redirect to non-target scheme fails with munging"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:redirects :munge-location-headers}
+         :ring-handler redirect-wrong-scheme}
+        (let [response (http-get "http://localhost:10000/hello-proxy/")]
+          (is (= (:status response) 500))
+          (is (.contains (:body response) (str "Error: Cannot proxy to specified redirect location. "
+                                               "Scheme https is unsupported."))))))
+
+    (testing (str "proxy redirect to non-target scheme fails with munging when target and proxy "
+                  "have different schemes")
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        (merge common-ssl-config
+                              {:ssl-host    "0.0.0.0"
+                               :ssl-port    10000})
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :proxy-opts   {:scheme :http
+                        :redirects :munge-location-headers}
+         :ring-handler redirect-wrong-scheme}
+        (let [response (http-get "https://localhost:10000/hello-proxy/world" default-options-for-https-client)]
+          (is (= (:status response) 500))
+          (is (.contains (:body response) (str "Error: Cannot proxy to specified redirect location. "
+                                               "Scheme https is unsupported."))))))
 
     (testing "proxy redirect to correct host in fully qualified url works with munging"
       (with-target-and-proxy-servers
