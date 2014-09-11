@@ -240,19 +240,19 @@
         (add-proxy-route target path-proxy)
         (add-proxy-route target2 path-proxy {})
         (let [endpoints (get-registered-endpoints)]
-          (is (= endpoints #{{:type :context :base-path dev-resources-dir
-                              :endpoint path-context :context-listeners []}
-                             {:type :context :base-path dev-resources-dir
-                              :context-listeners [] :endpoint path-context2}
-                             {:type :context :base-path dev-resources-dir
-                              :context-listeners context-listeners :endpoint path-context3}
-                             {:type :ring :endpoint path-ring}
-                             {:type :servlet :servlet (type servlet) :endpoint path-servlet}
-                             {:type :war :war-path (str dev-resources-dir war) :endpoint path-war}
-                             {:type :proxy :target-host "0.0.0.0" :target-port 9000
-                              :endpoint path-proxy :target-path "/ernie"}
-                             {:type :proxy :target-host "localhost" :target-port 10000
-                              :endpoint path-proxy :target-path "/kermit"}}))))))
+          (is (= endpoints {"/ernie" [{:type :context :base-path dev-resources-dir
+                                       :context-listeners []}]
+                            "/gonzo" [{:type :context :base-path dev-resources-dir
+                                       :context-listeners []}]
+                            "/goblinking" [{:type :context :base-path dev-resources-dir
+                                            :context-listeners context-listeners}]
+                            "/bert" [{:type :ring}]
+                            "/foo" [{:type :servlet :servlet (type servlet)}]
+                            "/bar" [{:type :war :war-path (str dev-resources-dir war)}]
+                            "/baz" [{:type :proxy :target-host "0.0.0.0" :target-port 9000
+                                     :target-path "/ernie"}
+                                    {:type :proxy :target-host "localhost" :target-port 10000
+                                     :target-path "/kermit"}]}))))))
 
   (testing "Log endpoints"
     (with-test-logging
@@ -266,5 +266,5 @@
               path-ring                "/bert"]
           (add-ring-handler ring-handler path-ring)
           (log-registered-endpoints)
-          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$"))
-          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/bert\"\}\}$" :info)))))))
+          (is (logged? #"^\{\"\/bert\" \[\{:type :ring\}\]\}$"))
+          (is (logged? #"^\{\"\/bert\" \[\{:type :ring\}\]\}$" :info)))))))

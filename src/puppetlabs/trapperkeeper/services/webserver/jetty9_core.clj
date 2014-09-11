@@ -90,28 +90,23 @@
 (def ContextEndpoint
   {:type                                    (schema/eq :context)
    :base-path                               schema/Str
-   (schema/optional-key :context-listeners) (schema/maybe [ServletContextListener])
-   :endpoint                                schema/Str})
+   (schema/optional-key :context-listeners) (schema/maybe [ServletContextListener])})
 
 (def RingEndpoint
-  {:type     (schema/eq :ring)
-   :endpoint schema/Str})
+  {:type     (schema/eq :ring)})
 
 (def ServletEndpoint
   {:type     (schema/eq :servlet)
-   :servlet  java.lang.Class
-   :endpoint schema/Str})
+   :servlet  java.lang.Class})
 
 (def WarEndpoint
   {:type     (schema/eq :war)
-   :war-path schema/Str
-   :endpoint schema/Str})
+   :war-path schema/Str})
 
 (def ProxyEndpoint
   {:type        (schema/eq :proxy)
    :target-host schema/Str
    :target-port schema/Int
-   :endpoint    schema/Str
    :target-path schema/Str})
 
 (def Endpoint
@@ -123,7 +118,7 @@
     #(-> % :type (= :proxy)) ProxyEndpoint))
 
 (def RegisteredEndpoints
-  #{Endpoint})
+  {schema/Str [Endpoint]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -361,8 +356,11 @@
 (schema/defn ^:always-validate
   register-endpoint!
   [state :- Atom
-   endpoint :- Endpoint]
-  (swap! state update-in [:endpoints] conj endpoint))
+   endpoint-map :- Endpoint
+   endpoint :- schema/Str]
+  (swap! state update-in [:endpoints endpoint] #(if (nil? %)
+                                                   [endpoint-map]
+                                                   (conj % endpoint-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -375,7 +373,7 @@
   []
   (let [^ContextHandlerCollection chc (ContextHandlerCollection.)]
     {:handlers chc
-     :state (atom {:endpoints #{}})
+     :state (atom {:endpoints {}})
      :server nil}))
 
 ; TODO move out of public
@@ -709,11 +707,10 @@
         context-listeners (:context-listeners opts)
         s                 (get-server-context context server-id)
         state             (:state s)
-        endpoint          {:type              :context
+        endpoint-map      {:type              :context
                            :base-path         base-path
-                           :context-listeners context-listeners
-                           :endpoint          context-path}]
-    (register-endpoint! state endpoint)
+                           :context-listeners context-listeners}]
+    (register-endpoint! state endpoint-map context-path)
     (add-context-handler s base-path context-path context-listeners (:follow-links options))))
 
 (schema/defn ^:always-validate init!
@@ -747,12 +744,11 @@
 
 (schema/defn ^:always-validate add-ring-handler!
   [context handler path options :- ServerIDOption]
-  (let [server-id (:server-id options)
-        s         (get-server-context context server-id)
-        state     (:state s)
-        endpoint  {:type     :ring
-                   :endpoint path}]
-    (register-endpoint! state endpoint)
+  (let [server-id     (:server-id options)
+        s             (get-server-context context server-id)
+        state         (:state s)
+        endpoint-map  {:type     :ring}]
+    (register-endpoint! state endpoint-map path)
     (add-ring-handler s handler path)))
 
 (schema/defn ^:always-validate add-servlet-handler!
@@ -763,32 +759,29 @@
         servlet-init-params (:servlet-init-params opts)
         s                   (get-server-context context server-id)
         state               (:state s)
-        endpoint            {:type     :servlet
-                             :servlet  (type servlet)
-                             :endpoint path}]
-    (register-endpoint! state endpoint)
+        endpoint-map        {:type     :servlet
+                             :servlet  (type servlet)}]
+    (register-endpoint! state endpoint-map path)
     (add-servlet-handler s servlet path servlet-init-params)))
 
 (schema/defn ^:always-validate add-war-handler!
   [context war path options :- ServerIDOption]
-  (let [server-id (:server-id options)
-        s         (get-server-context context server-id)
-        state     (:state s)
-        endpoint  {:type     :war
-                   :war-path war
-                   :endpoint path}]
-    (register-endpoint! state endpoint)
+  (let [server-id     (:server-id options)
+        s             (get-server-context context server-id)
+        state         (:state s)
+        endpoint-map  {:type     :war
+                       :war-path war}]
+    (register-endpoint! state endpoint-map path)
     (add-war-handler s war path)))
 
 (schema/defn ^:always-validate add-proxy-route!
   [context target path options]
-  (let [server-id (:server-id options)
-        s         (get-server-context context server-id)
-        state     (:state s)
-        endpoint  {:type        :proxy
-                   :target-host (:host target)
-                   :target-port (:port target)
-                   :target-path (:path target)
-                   :endpoint    path}]
-    (register-endpoint! state endpoint)
+  (let [server-id     (:server-id options)
+        s             (get-server-context context server-id)
+        state         (:state s)
+        endpoint-map  {:type        :proxy
+                       :target-host (:host target)
+                       :target-port (:port target)
+                       :target-path (:path target)}]
+    (register-endpoint! state endpoint-map path)
     (add-proxy-route s target path options)))
