@@ -545,3 +545,8 @@ during the consuming service's `init` phase.
 This project provides a secondary Webrouting Service, which in many cases
 is preferable for use over the Webserver Service. Documentation is available for it
 [here](doc/webrouting-service.md).
+
+## TrapperKeeper Webserver Service Test Utils
+
+This project provides some utility code for testing. Documentation on these test utils
+is available [here](doc/test-utils.md).
