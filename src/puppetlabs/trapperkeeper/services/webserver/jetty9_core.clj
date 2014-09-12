@@ -80,7 +80,8 @@
     (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int
-    (schema/optional-key :follow-redirects) schema/Bool))
+    (schema/optional-key :redirects) (schema/pred #(contains? #{:none :munge-location-headers
+                                                                :follow-redirects-on-server} %))))
 
 (def ServerContext
   {:state     Atom
@@ -307,6 +308,7 @@
   a given context to another host."
   [webserver-context :- ServerContext
    target :- ProxyTarget
+   path :- schema/Str
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
                                   (get-proxy-client-context-factory (:ssl-config options)))
@@ -349,10 +351,49 @@
 
       (createHttpClient []
         (let [client (proxy-super createHttpClient)]
-          (if (:follow-redirects options)
+          (if (= (:redirects options) :follow-redirects-on-server)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
           client))
+
+      (onResponseSuccess [request response proxyResponse]
+        (let [location  (.getHeader response "location")
+              status    (.getStatus response)
+              redirect? (and (>= status 300) (< status 400))]
+          (if (and (= :munge-location-headers (:redirects options)) redirect?)
+            (let [request-scheme  (.getScheme request)
+                  redirect-uri    (URI. location)
+                  redirect-host   (.getHost redirect-uri)
+                  redirect-port   (.getPort redirect-uri)
+                  redirect-path   (.getPath redirect-uri)
+                  redirect-scheme (.getScheme redirect-uri)
+                  target-path     (str "/" (:path target))
+                  wrong-scheme?   (not (or (nil? redirect-scheme)
+                                           (and (= redirect-scheme request-scheme) (nil? (:scheme options)))
+                                           (or (= redirect-scheme (:scheme options))
+                                               (= (keyword redirect-scheme) (:scheme options)))))
+                  wrong-host?     (not (or (nil? redirect-host) (= redirect-host (:host target))))
+                  wrong-port?     (not (or (= -1 redirect-port) (= redirect-port (:port target))))
+                  wrong-path?     (not (= (.indexOf redirect-path target-path) 0))
+                  query-params    (.getQuery redirect-uri)
+                  final-path      (.replaceFirst redirect-path target-path path)]
+              (cond
+                (or wrong-host? wrong-port? wrong-path? wrong-scheme?)
+                  (.sendError response 500 (str "Error: Cannot proxy to specified redirect location. "
+                                                (when wrong-scheme?
+                                                  (str "Scheme " redirect-scheme " is unsupported. "))
+                                                (when wrong-host?
+                                                  (str "Host " redirect-host " is unsupported. "))
+                                                (when wrong-port?
+                                                  (str "Port " redirect-port " is unsupported. "))
+                                                (when wrong-path?
+                                                  (str "Path " redirect-path " is unsupported."))))
+                (nil? query-params)
+                  (.setHeader response "location" final-path)
+                :else
+                  (.setHeader response "location" (str final-path "?" query-params))))))
+        (proxy-super onResponseSuccess request response proxyResponse))
+
 
       (customizeProxyRequest [proxy-req req]
         (if-let [callback-fn (:callback-fn options)]
@@ -550,7 +591,7 @@
    options :- ProxyOptions]
   (let [target (update-in target [:path] remove-leading-slash)]
     (add-servlet-handler webserver-context
-                         (proxy-servlet webserver-context target options)
+                         (proxy-servlet webserver-context target path options)
                          path)))
 
 (schema/defn ^:always-validate

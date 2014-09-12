@@ -52,14 +52,15 @@
                                   "examples/webrouting_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[puppetlabs/http-client "0.2.1"]
+                   :dependencies [[puppetlabs/http-client "0.2.6"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/java.jmx "0.2.0"]
                                   [spyscope "0.1.4"]
                                   [compojure "1.1.8" :exclusions [ring/ring-core
-                                                                  commons-io]]]
+                                                                  commons-io
+                                                                  org.clojure/tools.macro]]]
                     :injections [(require 'spyscope.core)]}
 
              :testutils {:source-paths ^:replace ["test/clj"]

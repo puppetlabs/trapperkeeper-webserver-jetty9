@@ -280,8 +280,11 @@ route:
   of the request buffer used by the HTTP Client. This allows HTTP requests with
   very large cookies to go through, as a large cookie can cause the request
   buffer to overflow unless the size is increased. The default is 4096 bytes.
-* `:follow-redirects`: optional; a boolean that indicates whether or not the HttpClient
-  created by a ProxyServlet should follow redirects. Defaults to `false`.
+* `:redirects`: optional; tells the ProxyServlet how to handle redirects. There are three possible
+  values for this option. `:none` tells the ProxyServlet to do nothing with redirects and just proxy
+  them as-is. `:munge-location-headers` tells the ProxyServlet to munge location headers on proxied
+  redirects to a location on the server doing the proxying. `:follow-redirects-on-server` tells
+  the ProxyServlet to follow redirects when proxying requests.
 * `:server-id`: optional; the id of the server to which to add the proxy handler. If absent,
   the handler will be added to the default server. If the two argument version of this function
   is called, the handler will also be added to the default server. Leaving out `:server-id` or calling
