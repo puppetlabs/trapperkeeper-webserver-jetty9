@@ -31,6 +31,7 @@
                          ;; Here for backward compatibility with existing projects
                          (get-in-config [:jetty])
                          {})]
+          (config/validate-config config)
           (core/init! context config)))
 
   (start [this context]

@@ -293,6 +293,15 @@
     acc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Private helper functions
+
+(defn validate-config
+  [config]
+  (when-not (one-default? config)
+    (throw (IllegalArgumentException.
+             "Error: More than one default server specified in configuration"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (schema/defn ^:always-validate
