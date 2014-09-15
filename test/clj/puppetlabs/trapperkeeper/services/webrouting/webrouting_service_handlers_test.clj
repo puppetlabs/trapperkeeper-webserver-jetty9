@@ -186,7 +186,8 @@
                  "<html>\n<head><title>Hello World Servlet</title></head>\n<body>Hello World!!</body>\n</html>\n")))))))
 
 (deftest endpoints-test-web-routing
-  (testing "get-registered-endpoints is successful with the web-routing service"
+  (testing (str "get-registered-endpoints and log-registered-endpoints are "
+                "successful with the web-routing service")
     (with-test-logging
       (with-app-with-config app
         [jetty9-service
@@ -201,29 +202,9 @@
               svc                      (get-service app :TestDummy)]
           (add-ring-handler svc ring-handler)
           (let [endpoints (get-registered-endpoints)]
-            (is (= endpoints #{{:type :ring :endpoint "/foo"}})))
+            (is (= endpoints {"/foo" [{:type :ring}]})))
           (log-registered-endpoints)
-          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$"))
-          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$" :info))))))
-  (testing "log-registered-endpoints is successful with the web-routing service"
-    (with-test-logging
-      (with-app-with-config app
-        [jetty9-service
-         webrouting-service
-         test-dummy]
-        webrouting-plaintext-multiserver-config
-        (let [s                             (get-service app :WebroutingService)
-              get-registered-endpoints      (partial get-registered-endpoints s)
-              log-registered-endpoints      (partial log-registered-endpoints s)
-              add-ring-handler              (partial add-ring-handler s)
-              ring-handler                  (fn [req] {:status 200 :body "Hi world"})
-              server-id                     :foo
-              svc                           (get-service app :TestDummy)]
-          (add-ring-handler svc ring-handler)
-          (let [endpoints (get-registered-endpoints server-id)]
-            (is (= endpoints #{{:type :ring :endpoint "/foo"}})))
-          (log-registered-endpoints server-id)
-          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$"))
-          (is (logged? #"^\#\{\{:type :ring, :endpoint \"\/foo\"\}\}$" :info)))))))
+          (is (logged? #"^\{\"\/foo\" \[\{:type :ring}\]\}$"))
+          (is (logged? #"^\{\"\/foo\" \[\{:type :ring}\]\}$" :info)))))))
 
 
