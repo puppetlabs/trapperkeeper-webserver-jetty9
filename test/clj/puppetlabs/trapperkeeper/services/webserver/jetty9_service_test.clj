@@ -1,11 +1,12 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
   (:import  (org.eclipse.jetty.server Server)
             (org.apache.http ConnectionClosedException)
-            (java.io IOException)
+            (java.io IOException ByteArrayOutputStream PrintStream)
             (java.security.cert CRLException)
             (java.net BindException)
             (java.nio.file Paths Files)
-            (java.nio.file.attribute FileAttribute))
+            (java.nio.file.attribute FileAttribute)
+            (puppetlabs.trapperkeeper.services.webserver TestListAppender))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [clojure.tools.logging :as log]
@@ -20,7 +21,7 @@
               :refer [with-app-with-empty-config
                       with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-              :refer [with-test-logging]]
+              :refer [with-test-logging with-log-output logs-matching]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
             [schema.core :as schema]))
 
@@ -627,3 +628,20 @@
 
       (finally
         (Files/delete link)))))
+
+(deftest request-logging-test
+  (testing "request logging occurs when :access-log-config is configured"
+    (with-app-with-config
+      app
+      [jetty9-service]
+      {:webserver {:port 8080
+                   :access-log-config
+                         "./dev-resources/puppetlabs/trapperkeeper/services/webserver/request-logging.xml"}}
+      (let [s (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler (fn [req] {:status 200 :body "Hello, World!"})]
+        (add-ring-handler ring-handler "/hello")
+        (http-get "http://localhost:8080/hello/")
+        (Thread/sleep 10)
+        (let [list (TestListAppender/list)]
+          (is (re-find #"\"GET /hello/ HTTP/1.1\" 200 13\n" (first list))))))))

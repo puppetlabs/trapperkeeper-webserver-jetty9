@@ -237,6 +237,14 @@ include in the request an "Accept-Encoding" HTTP header containing the value
 response body independent of the configuration of this setting.  For example,
 the webserver may skip compression for a sufficiently small response body.
 
+### `access-log-config`
+
+Optional. This is a path to an XML file containing configuration information
+for the `Logback-access` module. If present, a logger will be set up to log
+information about any HTTP requests Jetty receives according to the logging configuration,
+as long as the XML file pointed to exists and is valid. Information on configuring the
+`Logback-access` module is available [here](http://logback.qos.ch/access.html#configuration).
+
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9
