@@ -1,6 +1,6 @@
 <configuration debug="false">
 
-    <appender name="FILE" class="puppetlabs.trapperkeeper.services.webserver.TestListAppender">
+    <appender name="FILE" class="appender.TestListAppender">
         <encoder>
             <pattern>%h %l %u %user %date "%r" %s %b</pattern>
         </encoder>

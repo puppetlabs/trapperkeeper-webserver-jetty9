@@ -1,4 +1,4 @@
-package puppetlabs.trapperkeeper.services.webserver;
+package appender;
 
 import ch.qos.logback.access.PatternLayout;
 import ch.qos.logback.access.PatternLayoutEncoder;

@@ -6,7 +6,7 @@
             (java.net BindException)
             (java.nio.file Paths Files)
             (java.nio.file.attribute FileAttribute)
-            (puppetlabs.trapperkeeper.services.webserver TestListAppender))
+            (appender TestListAppender))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [clojure.tools.logging :as log]
