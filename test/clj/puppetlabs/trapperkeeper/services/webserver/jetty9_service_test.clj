@@ -1,7 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
   (:import  (org.eclipse.jetty.server Server)
             (org.apache.http ConnectionClosedException)
-            (java.io IOException ByteArrayOutputStream PrintStream)
+            (java.io IOException)
             (java.security.cert CRLException)
             (java.net BindException)
             (java.nio.file Paths Files)
@@ -21,7 +21,7 @@
               :refer [with-app-with-empty-config
                       with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-              :refer [with-test-logging with-log-output logs-matching]]
+              :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
             [schema.core :as schema]))
 
@@ -642,6 +642,8 @@
             ring-handler (fn [req] {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
         (http-get "http://localhost:8080/hello/")
+        ; Logging is done in a separate thread from Jetty and this test. As a result,
+        ; we have to sleep the thread to avoid a race condition.
         (Thread/sleep 10)
         (let [list (TestListAppender/list)]
           (is (re-find #"\"GET /hello/ HTTP/1.1\" 200 13\n" (first list))))))))

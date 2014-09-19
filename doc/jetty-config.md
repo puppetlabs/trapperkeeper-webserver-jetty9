@@ -245,6 +245,13 @@ information about any HTTP requests Jetty receives according to the logging conf
 as long as the XML file pointed to exists and is valid. Information on configuring the
 `Logback-access` module is available [here](http://logback.qos.ch/access.html#configuration).
 
+
+An example configuration file can be found [here](request-logging-example-config.xml). This
+example configures a `FileAppender` that outputs to a file, `access.log`, in the `dev-resources`
+directory. It will log the remote host making the request, the log name, the remote user making
+the request, the date/time of the request, the URL and method of the request, the status of
+the response, and the size in bytes of the response.
+
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9

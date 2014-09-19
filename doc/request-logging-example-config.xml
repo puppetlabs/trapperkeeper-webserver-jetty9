@@ -1,10 +1,11 @@
 <configuration debug="false">
 
-    <appender name="LIST" class="appender.TestListAppender">
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>./dev-resources/access.log</file>
         <encoder>
             <pattern>%h %l %u %user %date "%r" %s %b</pattern>
         </encoder>
     </appender>
 
-    <appender-ref ref="LIST" />
+    <appender-ref ref="FILE" />
 </configuration>
