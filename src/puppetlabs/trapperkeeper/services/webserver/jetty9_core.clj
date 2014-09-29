@@ -440,18 +440,22 @@
    options :- config/WebserverRawConfig]
   {:pre  [(map? options)]
    :post [(started? %)]}
-    (let [config                (config/process-config
-                                  (merge-webserver-overrides-with-options
-                                    webserver-context
-                                    options))
-          ^Server s             (create-server webserver-context config)
-          ^HandlerCollection hc (HandlerCollection.)]
+  (let [config                (config/process-config
+                                (merge-webserver-overrides-with-options
+                                  webserver-context
+                                  options))
+        ^Server s             (create-server webserver-context config)
+        ^HandlerCollection hc (HandlerCollection.)
+        log-handler (config/maybe-init-log-handler options)]
     (.setHandlers hc (into-array Handler [(:handlers webserver-context)]))
-    (let [handler-for-server (if (or (not (contains? options :gzip-enable))
-                                     (:gzip-enable options))
-                               (gzip-handler hc)
-                               hc)]
-      (.setHandler s handler-for-server)
+    (let [maybe-zipped (if (or (not (contains? options :gzip-enable))
+                               (:gzip-enable options))
+                         (gzip-handler hc)
+                         hc)
+          maybe-logged (if log-handler
+                         (doto log-handler (.setHandler hc))
+                         maybe-zipped)]
+      (.setHandler s maybe-logged)
       (assoc webserver-context :server s))))
 
 (schema/defn ^:always-validate start-webserver! :- ServerContext

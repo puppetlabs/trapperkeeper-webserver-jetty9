@@ -1,0 +1,10 @@
+<configuration debug="false">
+
+    <appender name="LIST" class="appender.TestListAppender">
+        <encoder>
+            <pattern>%h %l %u %user %date "%r" %s %b</pattern>
+        </encoder>
+    </appender>
+
+    <appender-ref ref="LIST" />
+</configuration>

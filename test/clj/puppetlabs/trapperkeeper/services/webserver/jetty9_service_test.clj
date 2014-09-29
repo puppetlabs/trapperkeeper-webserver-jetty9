@@ -5,7 +5,8 @@
             (java.security.cert CRLException)
             (java.net BindException)
             (java.nio.file Paths Files)
-            (java.nio.file.attribute FileAttribute))
+            (java.nio.file.attribute FileAttribute)
+            (appender TestListAppender))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
             [clojure.tools.logging :as log]
@@ -547,7 +548,7 @@
             ring-handler     (fn [req] {:status 200 :body body})]
         (add-ring-handler ring-handler path)
         (let [response (http-get "http://localhost:9000/hi_world")]
-          (is (= (:status response 200)))
+          (is (= 200 (:status response)))
           (is (= (:body response) body))))))
 
   (testing (str "exception thrown if user does not specify a "
@@ -627,3 +628,22 @@
 
       (finally
         (Files/delete link)))))
+
+(deftest request-logging-test
+  (testing "request logging occurs when :access-log-config is configured"
+    (with-app-with-config
+      app
+      [jetty9-service]
+      {:webserver {:port 8080
+                   :access-log-config
+                         "./dev-resources/puppetlabs/trapperkeeper/services/webserver/request-logging.xml"}}
+      (let [s (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler (fn [req] {:status 200 :body "Hello, World!"})]
+        (add-ring-handler ring-handler "/hello")
+        (http-get "http://localhost:8080/hello/")
+        ; Logging is done in a separate thread from Jetty and this test. As a result,
+        ; we have to sleep the thread to avoid a race condition.
+        (Thread/sleep 10)
+        (let [list (TestListAppender/list)]
+          (is (re-find #"\"GET /hello/ HTTP/1.1\" 200 13\n" (first list))))))))

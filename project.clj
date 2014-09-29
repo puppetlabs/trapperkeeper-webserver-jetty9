@@ -14,6 +14,8 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/certificate-authority "0.5.0"]
 
+                 [ch.qos.logback/logback-access "1.1.1"]
+
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
                  ;; Jetty Webserver
