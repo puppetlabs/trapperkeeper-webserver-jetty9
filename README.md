@@ -276,6 +276,9 @@ route:
   to add additional headers) before Jetty continues on with the proxy. The
   function must accept two arguments, `[proxy-req req]`. For more information,
   see [below](#callback-fn).
+* `:failure-callback-fn`: optional; a function to manipulate the response object in case of failure.
+  The function must accept four arguments, `[req resp proxy-resp failure]`. For more information,
+  see [below](#failure-callback-fn).
 * `:request-buffer-size`: optional; an integer value to which to set the size
   of the request buffer used by the HTTP Client. This allows HTTP requests with
   very large cookies to go through, as a large cookie can cause the request
@@ -398,6 +401,36 @@ addition, a header `"x-example"` with the value `"baz"` will be added to the
 request before it is proxied, using the
 [`header`](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/client/api/Request.html#header%28java.lang.String,%20java.lang.String%29)
 method.
+
+#####`:failure-callback-fn`
+
+This option lets you provide a function to manipulate the response object in case of failure. It must take
+four arguments, `[req resp proxy-resp failure]`, where `req` is the original
+[`HttpServletRequest`](http://docs.oracle.com/javaee/6/api/javax/servlet/http/HttpServletRequest.html),
+`resp` is an [`HttpServletResponse`](http://docs.oracle.com/javaee/6/api/javax/servlet/http/HttpServletResponse.html),
+`proxy-req` a [`Response`](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/client/api/Response.html)
+and `failure` is a [`Throwable`](http://docs.oracle.com/javase/7/docs/api/java/lang/Throwable.html) explaining the
+cause of the problem.
+`resp` may be modified, the function does not return any value.
+
+An example with an on-failure function:
+
+```clj
+(defservice foo-service
+  [[:WebserverService add-proxy-route]]
+  (init [this context]
+    (add-proxy-route
+        {:host "localhost"
+         :port 10000
+         :path "/bar"}
+        "/foo"
+        {:failure-callback-fn (fn [req resp proxy-resp failure]
+          (.println (.getWriter resp) (str "Proxying failed: " (.getMessage failure))))})
+    context))
+```
+
+In this example, in case of proxying failure the response body will be augmented by an error message explaining
+what the cause of the problem was.
 
 #### `override-webserver-settings!`
 
