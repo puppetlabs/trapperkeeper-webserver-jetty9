@@ -464,6 +464,23 @@
           (is (= (:status response) 200))
           (is (= (:body response) (str {"foo" "bar"}))))))
 
+    (testing "basic proxy support with url encodable query parameters"
+      (with-target-and-proxy-servers
+        {:target       {:host "0.0.0.0"
+                        :port 9000}
+         :proxy        {:host "0.0.0.0"
+                        :port 10000}
+         :proxy-config {:host "localhost"
+                        :port 9000
+                        :path "/hello"}
+         :ring-handler app-wrapped}
+        (let [response (http-get "http://localhost:9000/hello?hello%5B%5D=hello%20world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) (str {"hello[]" "hello world"}))))
+        (let [response (http-get "http://localhost:10000/hello-proxy?hello%5B%5D=hello%20world")]
+          (is (= (:status response) 200))
+          (is (= (:body response) (str {"hello[]" "hello world"}))))))
+
     (testing "basic proxy support with multiple query parameters"
       (let [params {"foo"   "bar"
                     "baz"   "lux"

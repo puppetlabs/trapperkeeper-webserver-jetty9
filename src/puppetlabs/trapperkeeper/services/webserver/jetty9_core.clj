@@ -26,6 +26,7 @@
            (org.eclipse.jetty.util URIUtil))
 
   (:require [ring.util.servlet :as servlet]
+            [ring.util.codec :as codec]
             [clojure.string :as str]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
@@ -325,7 +326,7 @@
                                  (:port target)
                                  (with-leading-slash
                                    (URIUtil/addPaths (:path target) context-path))
-                                 query
+                                 (codec/url-decode (str query))
                                  nil)]
             (if-let [rewrite-uri-callback-fn (:rewrite-uri-callback-fn options)]
               (rewrite-uri-callback-fn target-uri req)
