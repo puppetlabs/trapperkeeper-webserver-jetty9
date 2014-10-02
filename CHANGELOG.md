@@ -1,3 +1,25 @@
+## 0.7.6
+
+This is a minor feature and bugfix release.
+
+* Improves various error messages thrown by the
+  Webrouting and Webserver services.
+* Changes the data structure output by the
+  `get-registered-endpoints` and `log-registered-endpoints`
+  functions. Now, a map will be output where each key is
+  an endpoint, with its value being an array containing
+  information on every handler registered at that endpoint.
+* Adds a new option to the webserver configuration,
+  `access-log-config`, that allows configuration of request
+  logging.
+* [TK-84](https://tickets.puppetlabs.com/browse/TK-84)
+  Query parameters were not being decoded when the URI was
+  being rewritten in the reified ProxyServlet class, meaning
+  they would get double encoded.
+* Adds a new option to `add-proxy-route`,
+  `failure-callback-fn`, which allows customization of
+  HTTP Error Responses.
+
 ## 0.7.5
 
 This is a minor feature release.
