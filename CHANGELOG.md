@@ -1,4 +1,4 @@
-## 0.7.6
+## 0.7.7
 
 This is a minor feature and bugfix release.
 
@@ -19,6 +19,10 @@ This is a minor feature and bugfix release.
 * Adds a new option to `add-proxy-route`,
   `failure-callback-fn`, which allows customization of
   HTTP Error Responses.
+
+## 0.7.6
+
+This is a dead release.
 
 ## 0.7.5
 
