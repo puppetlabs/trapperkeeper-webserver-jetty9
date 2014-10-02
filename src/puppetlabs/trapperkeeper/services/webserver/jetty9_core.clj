@@ -8,7 +8,7 @@
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
            (javax.servlet.http HttpServletRequest HttpServletResponse)
-           (java.util.concurrent Executors)
+           (java.util.concurrent Executors TimeoutException)
            (org.eclipse.jetty.servlets.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
            (org.eclipse.jetty.webapp WebAppContext)
@@ -80,6 +80,7 @@
                                         config/WebserverSslPemConfig)
     (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
+    (schema/optional-key :failure-callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int
     (schema/optional-key :follow-redirects) schema/Bool))
 
@@ -352,7 +353,19 @@
 
       (customizeProxyRequest [proxy-req req]
         (if-let [callback-fn (:callback-fn options)]
-         (callback-fn proxy-req req))))))
+         (callback-fn proxy-req req)))
+
+      (onResponseFailure [req resp proxy-resp failure]
+        (do
+          (log/debug (str (.getRequestId this req) " proxying failed: " failure))
+          (when-not (.isCommitted resp)
+            (if (instance? TimeoutException failure)
+              (.setStatus resp HttpServletResponse/SC_GATEWAY_TIMEOUT)
+              (.setStatus resp HttpServletResponse/SC_BAD_GATEWAY))
+            (when-let [failure-callback-fn (:failure-callback-fn options)]
+              (failure-callback-fn req resp proxy-resp failure))
+            (.complete (.getAttribute req "org.eclipse.jetty.proxy.ProxyServlet.asyncContext")))))
+        )))
 
 (schema/defn ^:always-validate
   register-endpoint!
@@ -543,9 +556,10 @@
   `options` may contain the keys :scheme (legal values are :orig, :http, and
   :https), :ssl-config (value may be :use-server-config or a map containing
   :ssl-ca-cert, :ssl-cert, and :ssl-key), :rewrite-uri-callback-fn (a function
-  taking two arguments, `[target-uri req]`, see README.md/#rewrite-uri-callback-fn)
-  and :callback-fn (a function taking two arguments, `[proxy-req req]`, see
-  README.md/#callback-fn).
+  taking two arguments, `[target-uri req]`, see README.md/#rewrite-uri-callback-fn),
+  :callback-fn (a function taking two arguments, `[proxy-req req]`, see
+  README.md/#callback-fn) and :failure-callback-fn (a function taking four arguments,
+  `[req resp proxy-resp failure]`, see README.md/#failure-callback-fn).
   "
   [webserver-context :- ServerContext
    target :- ProxyTarget
