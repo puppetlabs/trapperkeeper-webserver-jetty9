@@ -572,13 +572,13 @@
 
 (schema/defn ^:always-validate
    get-registered-endpoints :- RegisteredEndpoints
-   "Returns the registered endpoints. Each endpoint is registered upon
-    creation as a map of endpoint information. The type of the
-    endpoint determines what is contained in that endpoint's map of
-    endpoint information. Each map contains the type of the endpoint
-    under the :type key, and the endpoint itself under the :endpoint
-    key.
-
+   "Returns a map of registered endpoints for the given ServerContext.
+    Each endpoint is registered as a key in the map, with its value
+    being an array of maps, each representing a handler registered
+    at that endpoint. Each of these maps contains the type of the
+    handler under the :type key, and may contain additional information
+    as well.
+    
     When the value of :type is :context, the endpoint information will
     be an instance of ContextEndpoint.
 

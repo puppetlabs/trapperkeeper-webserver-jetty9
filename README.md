@@ -497,17 +497,13 @@ version of this function will not work in a multiserver set-up if no default ser
 
 #### `get-registered-endpoints`
 
-This function returns a set of maps containing information on each URL endpoint
-registered by the Jetty9 service on the default server. The possible keys appearing
-in each map are detailed below.
+This function returns a map containing information on each URL endpoint
+registered by the Jetty9 service on the default server. Each key in the map is a URL
+endpoint, with each value being an array of maps containing information on each handler
+registered at that URL endpoint. The possible keys appearing in these maps are:
 
 * `:type`: The type of the registered endpoint. The possible types are `:context`,
   `:ring`, `:servlet`, `:war`, and `:proxy`. Returned for every endpoint.
-* `:endpoint`: The registered endpoint. Returned for every endpoint. This is set to
-  the `path` variable passed in to the handler service functions (or the `context-path`
-  variable if using `add-context-handler`). So for example, if you passed in
-  `"/hello"` as the path to a ring handler, the value attached to the `:endpoint` key
-  in the map would be `"/hello"`
 * `:base-path`: The base-path of a context handler. Returned only for endpoints of
   type `:context`.
 * `:context-listeners`: The context listeners for a context handler. Returned only
@@ -523,7 +519,7 @@ in each map are detailed below.
 * `:target-path`: The targeted prefix of a proxy request. Only returned for endpoints
   of type `:proxy`.
 
-The schema for the various types of endpoints can be viewed [here](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj#L71-L96).
+The schema for the various types of handler maps can be viewed [here](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj#L71-L96).
 
 There is also a version that takes one argument, `[server-id]`, which specifies which server
 for which you want to pull the endpoints. If this parameter is absent, the endpoints will be
