@@ -16,7 +16,8 @@
       (jetty/add-ring-handler webserver-context
                               (fn [req] {:status 200
                                          :body "I am a handler"})
-                              "/")
+                              "/"
+                              true)
       (is (= (count (.getHandlers handlers)) 1)))))
 
 (defn validate-gzip-encoding-when-gzip-requested

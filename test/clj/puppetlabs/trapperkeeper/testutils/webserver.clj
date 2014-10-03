@@ -23,7 +23,7 @@
   `(let [srv#      (jetty9/start-webserver!
                      (jetty9/initialize-context)
                      (assoc ~config :port 0))
-         _#        (jetty9/add-ring-handler srv# ~app "/")
+         _#        (jetty9/add-ring-handler srv# ~app "/" true)
          ~port-var (-> (:server srv#)
                        (.getConnectors)
                        (first)

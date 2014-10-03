@@ -268,3 +268,34 @@
           (log-registered-endpoints)
           (is (logged? #"^\{\"\/bert\" \[\{:type :ring\}\]\}$"))
           (is (logged? #"^\{\"\/bert\" \[\{:type :ring\}\]\}$" :info)))))))
+
+(deftest trailing-slash-redirect-test
+  (testing "redirects when no trailing slash is present are disabled by default"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s                (get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler     (fn [req] {:status 200 :body "Hi world"})
+            path             "/hello"]
+        (add-ring-handler ring-handler path)
+        (let [response (http-get "http://localhost:8080/hello" {:as :text
+                                                                :follow-redirects false})]
+          (is (= (:status response) 200))
+          (is (= (:body response) "Hi world"))
+          (is (= (get-in response [:opts :url]) "http://localhost:8080/hello"))))))
+
+  (testing "redirects when no trailing slash is present and option is enabled"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s                (get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler     (fn [req] {:status 200 :body "Hi world"})
+            path             "/hello"]
+        (add-ring-handler ring-handler path {:enable-trailing-slash-redirect true})
+        (let [response (http-get "http://localhost:8080/hello" {:as :text
+                                                                :follow-redirects false})]
+          (is (= (:status response) 302))
+          (is (= (get-in response [:headers "location"] "http://localhost:8080/hello/")))
+          (is (= (get-in response [:opts :url]) "http://localhost:8080/hello")))))))

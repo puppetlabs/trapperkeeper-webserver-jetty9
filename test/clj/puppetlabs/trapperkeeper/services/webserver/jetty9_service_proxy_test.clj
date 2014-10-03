@@ -516,7 +516,7 @@
                         :path "/hello"}
          :proxy-opts   {:follow-redirects true}
          :ring-handler redirect-test-handler}
-        (let [response (http-get (str "http://localhost:9000/hello"))]
+        (let [response (http-get (str "http://localhost:9000/hello/"))]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
         (let [response (http-get (str "http://localhost:9000/hello/world"))]
@@ -567,7 +567,7 @@
                         :path "/hello"}
          :proxy-opts   {:follow-redirects true}
          :ring-handler redirect-same-host}
-        (let [response (http-get (str "http://localhost:9000/hello"))]
+        (let [response (http-get (str "http://localhost:9000/hello/"))]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
         (let [response (http-get (str "http://localhost:9000/hello/world"))]
@@ -591,7 +591,7 @@
                         :path "/hello"}
          :proxy-opts   {:follow-redirects true}
          :ring-handler redirect-different-proxy-path}
-        (let [response (http-get (str "http://localhost:9000/hello"))]
+        (let [response (http-get (str "http://localhost:9000/hello/"))]
           (is (= (:status response) 200))
           (is (= (:body response) "Hello, World!")))
         (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
