@@ -293,7 +293,7 @@
             add-ring-handler (partial add-ring-handler s)
             ring-handler     (fn [req] {:status 200 :body "Hi world"})
             path             "/hello"]
-        (add-ring-handler ring-handler path {:enable-trailing-slash-redirect true})
+        (add-ring-handler ring-handler path {:redirect-and-add-trailing-slash true})
         (let [response (http-get "http://localhost:8080/hello" {:as :text
                                                                 :follow-redirects false})]
           (is (= (:status response) 302))

@@ -63,7 +63,7 @@
 
 (def CommonOptions
   {(schema/optional-key :server-id) schema/Keyword
-   (schema/optional-key :enable-trailing-slash-redirect) schema/Bool})
+   (schema/optional-key :redirect-and-add-trailing-slash) schema/Bool})
 
 (def ContextHandlerOptions
   (assoc CommonOptions (schema/optional-key :context-listeners) [ServletContextListener]
@@ -739,7 +739,7 @@
         endpoint-map      {:type              :context
                            :base-path         base-path
                            :context-listeners context-listeners}
-        enable-redirect  (:enable-trailing-slash-redirect options)
+        enable-redirect  (:redirect-and-add-trailing-slash options)
         disable-redirect (not enable-redirect)]
     (register-endpoint! state endpoint-map context-path)
     (add-context-handler s base-path context-path
@@ -782,7 +782,7 @@
         state         (:state s)
         endpoint-map  {:type     :ring}
 
-        enable-redirect  (:enable-trailing-slash-redirect options)
+        enable-redirect  (:redirect-and-add-trailing-slash options)
         disable-redirect (not enable-redirect)]
     (register-endpoint! state endpoint-map path)
     (add-ring-handler s handler path disable-redirect)))
@@ -798,7 +798,7 @@
         endpoint-map        {:type     :servlet
                              :servlet  (type servlet)}
 
-        enable-redirect  (:enable-trailing-slash-redirect options)
+        enable-redirect  (:redirect-and-add-trailing-slash options)
         disable-redirect (not enable-redirect)]
     (register-endpoint! state endpoint-map path)
     (add-servlet-handler s servlet path servlet-init-params disable-redirect)))
@@ -811,7 +811,7 @@
         endpoint-map  {:type     :war
                        :war-path war}
 
-        enable-redirect  (:enable-trailing-slash-redirect options)
+        enable-redirect  (:redirect-and-add-trailing-slash options)
         disable-redirect (not enable-redirect)]
     (register-endpoint! state endpoint-map path)
     (add-war-handler s war path disable-redirect)))
@@ -826,7 +826,7 @@
                        :target-port (:port target)
                        :target-path (:path target)}
 
-        enable-redirect  (:enable-trailing-slash-redirect options)
+        enable-redirect  (:redirect-and-add-trailing-slash options)
         disable-redirect (not enable-redirect)]
     (register-endpoint! state endpoint-map path)
     (add-proxy-route s target path options disable-redirect)))
