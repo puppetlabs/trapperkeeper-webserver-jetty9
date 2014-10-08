@@ -63,7 +63,7 @@
 
 (def CommonOptions
   {(schema/optional-key :server-id) schema/Keyword
-   (schema/optional-key :redirect-and-add-trailing-slash) schema/Bool})
+   (schema/optional-key :redirect-if-no-trailing-slash) schema/Bool})
 
 (def ContextHandlerOptions
   (assoc CommonOptions (schema/optional-key :context-listeners) [ServletContextListener]
@@ -285,8 +285,8 @@
   add-handler :- ContextHandler
   [webserver-context :- ServerContext
    handler :- ContextHandler
-   disable-trailing-slash-redirect?]
-  (.setAllowNullPathInfo handler disable-trailing-slash-redirect?)
+   enable-trailing-slash-redirect?]
+  (.setAllowNullPathInfo handler (not enable-trailing-slash-redirect?))
   (.addHandler (:handlers webserver-context) handler)
   handler)
 
@@ -496,14 +496,16 @@
   add-context-handler :- ContextHandler
   "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
   ([webserver-context base-path context-path]
-   (add-context-handler webserver-context base-path context-path nil false true))
+   (add-context-handler webserver-context base-path context-path nil {:follow-links? false
+                                                                      :enable-trailing-slash-redirect? false}))
   ([webserver-context :- ServerContext
     base-path :- schema/Str
     context-path :- schema/Str
     context-listeners :- (schema/maybe [ServletContextListener])
-    follow-links?
-    disable-trailing-slash-redirect?]
-   (let [handler (ServletContextHandler. nil context-path ServletContextHandler/NO_SESSIONS)]
+    options]
+   (let [handler (ServletContextHandler. nil context-path ServletContextHandler/NO_SESSIONS)
+         follow-links? (:follow-links? options)
+         enable-trailing-slash-redirect? (:enable-trailing-slash-redirect? options)]
      (.setBaseResource handler (Resource/newResource base-path))
      (when follow-links?
        (.addAliasCheck handler (AllowSymLinkAliasChecker.)))
@@ -511,17 +513,17 @@
      (when-not (nil? context-listeners)
        (dorun (map #(.addEventListener handler %) context-listeners)))
      (.addServlet handler (ServletHolder. (DefaultServlet.)) "/")
-     (add-handler webserver-context handler disable-trailing-slash-redirect?))))
+     (add-handler webserver-context handler enable-trailing-slash-redirect?))))
 
 (schema/defn ^:always-validate
   add-ring-handler :- ContextHandler
   [webserver-context :- ServerContext
    handler :- (schema/pred ifn? 'ifn?)
    path :- schema/Str
-   disable-trailing-slash-redirect?]
+   enable-trailing-slash-redirect?]
   (let [ctxt-handler (doto (ContextHandler. path)
                        (.setHandler (ring-handler handler)))]
-    (add-handler webserver-context ctxt-handler disable-trailing-slash-redirect?)))
+    (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
 
 (schema/defn ^:always-validate
   add-servlet-handler :- ContextHandler
@@ -531,13 +533,13 @@
     servlet :- Servlet
     path :- schema/Str
     servlet-init-params :- {schema/Any schema/Any}
-    disable-trailing-slash-redirect?]
+    enable-trailing-slash-redirect?]
    (let [holder   (doto (ServletHolder. servlet)
                     (.setInitParameters servlet-init-params))
          handler  (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
                     (.setContextPath path)
                     (.addServlet holder "/*"))]
-     (add-handler webserver-context handler disable-trailing-slash-redirect?))))
+     (add-handler webserver-context handler enable-trailing-slash-redirect?))))
 
 (schema/defn ^:always-validate
   add-war-handler :- ContextHandler
@@ -739,12 +741,12 @@
         endpoint-map      {:type              :context
                            :base-path         base-path
                            :context-listeners context-listeners}
-        enable-redirect  (:redirect-and-add-trailing-slash options)
-        disable-redirect (not enable-redirect)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map context-path)
     (add-context-handler s base-path context-path
-                         context-listeners (:follow-links options)
-                         disable-redirect)))
+                         context-listeners
+                         {:follow-links?                   (:follow-links options)
+                          :enable-trailing-slash-redirect? enable-redirect})))
 
 (schema/defn ^:always-validate init!
   [context config :- config/WebserverServiceRawConfig]
@@ -782,10 +784,9 @@
         state         (:state s)
         endpoint-map  {:type     :ring}
 
-        enable-redirect  (:redirect-and-add-trailing-slash options)
-        disable-redirect (not enable-redirect)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map path)
-    (add-ring-handler s handler path disable-redirect)))
+    (add-ring-handler s handler path enable-redirect)))
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context servlet path options :- ServletHandlerOptions]
@@ -798,10 +799,9 @@
         endpoint-map        {:type     :servlet
                              :servlet  (type servlet)}
 
-        enable-redirect  (:redirect-and-add-trailing-slash options)
-        disable-redirect (not enable-redirect)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map path)
-    (add-servlet-handler s servlet path servlet-init-params disable-redirect)))
+    (add-servlet-handler s servlet path servlet-init-params enable-redirect)))
 
 (schema/defn ^:always-validate add-war-handler!
   [context war path options :- CommonOptions]
@@ -811,10 +811,9 @@
         endpoint-map  {:type     :war
                        :war-path war}
 
-        enable-redirect  (:redirect-and-add-trailing-slash options)
-        disable-redirect (not enable-redirect)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map path)
-    (add-war-handler s war path disable-redirect)))
+    (add-war-handler s war path enable-redirect)))
 
 (schema/defn ^:always-validate add-proxy-route!
   [context target path options]
@@ -826,7 +825,6 @@
                        :target-port (:port target)
                        :target-path (:path target)}
 
-        enable-redirect  (:redirect-and-add-trailing-slash options)
-        disable-redirect (not enable-redirect)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map path)
-    (add-proxy-route s target path options disable-redirect)))
+    (add-proxy-route s target path options enable-redirect)))

@@ -93,7 +93,7 @@ There is also a three argument version of this function which takes these argume
 the ring handler will be added to the default server. Calling the two-argument version or
 leaving out `:server-id` will not work in a multiserver set-up if no default server is specified.
 
-The second optional argument is `:redirect-and-add-trailing-slash`. When set to `true`,
+The second optional argument is `:redirect-if-no-trailing-slash`. When set to `true`,
 all requests made to the endpoint at which the ring-handler was registered will, if
 no trailing slash is present, return a 302 redirect response to the same URL but with a trailing slash
 added. If the option is set to `false`, no redirect will occur, and the request will be
@@ -166,13 +166,13 @@ at `/css`:
 There is also a three argument version of the function which takes these arguments:
 `[base-path context-path options]`, where the first two arguments are the
 same as in the two argument version and `options` is a map containing four optional keys,
-`:server-id`, `:redirect-and-add-trailing-slash`, `:follow-links`, and `:context-listeners`.
+`:server-id`, `:redirect-if-no-trailing-slash`, `:follow-links`, and `:context-listeners`.
 The value stored in `:server-id` specifies which server
 to add the context handler to, similar to how it is done in `add-ring-handler`. Again, like
 `add-ring-handler`, if this key is absent or the two argument version is called, the context handler
 will be added to the default server. Calling the two-argument version or leaving out `:server-id`
 will not work in a multiserver set-up if no default server is specified.
-The value stored in `:redirect-and-add-trailing-slash` is a boolean indicating whether or not
+The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whether or not
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
 The value stored in `:follow-links` is a boolean indicating whether or not symbolic links
@@ -201,12 +201,12 @@ The `path` is the URL prefix at which the servlet will be registered.
 There is also a three argument version of the function which takes these arguments:
 `[servlet path options]`, where the first two arguments are the same as
 in the two argument version and options is a map containing three optional keys, `:server-id`,
-`:redirect-and-add-trailing-slash`, and
+`:redirect-if-no-trailing-slash`, and
 `:servlet-init-params`. As in `add-ring-handler`, `:server-id` specifies which server to add
 the handler to. If `:server-id` is absent or the two-argument function is called, the servlet
 handler will be added to the default server. Calling the two-argument version or leaving out
 `:server-id` will not work in a multiserver set-up if no default server is specified.
-The value stored in `:redirect-and-add-trailing-slash` is a boolean indicating whether or not
+The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whether or not
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
 The value stored at the `:servlet-init-params` key is a map of servlet init parameters.
@@ -246,12 +246,12 @@ For example, to host `resources/cas.war` WAR at `/cas`:
 
 There is also a three-argument version that takes these parameters:
 `[war path options]`. `options` is a map containing two optional
-keys, `:server-id` and `enable-trailing-slash-redirect`. As with `add-ring-handler`,
+keys, `:server-id` and `:redirect-if-no-trailing-slash`. As with `add-ring-handler`,
 this determines which server the handler is added to. If this key is absent or the two argument
 version is called, the handler will be added to the default server. Calling
 the two-argument version or leaving out `:server-id` will not work in a
 multiserver set-up if no default server is specified.
-The value stored in `:redirect-and-add-trailing-slash` is a boolean indicating whether or not
+The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whether or not
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
 
@@ -307,7 +307,7 @@ route:
   is called, the handler will also be added to the default server. Leaving out `:server-id` or calling
   the two argument version of this function will not work in a multiserver set-up if no default server
   is specified.
-* `:redirect-and-add-trailing-slash`: optional; a boolean indicating whether or not to redirect
+* `:redirect-if-no-trailing-slash`: optional; a boolean indicating whether or not to redirect
   when a request is made to this proxy route without a trailing slash, as with `add-ring-handler`.
   Defaults to false.
 
