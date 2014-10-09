@@ -126,7 +126,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def default-graceful-stop-timeout 30000)
+(def default-graceful-stop-timeout 60000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -470,20 +470,22 @@
         ^HandlerCollection hc (HandlerCollection.)
         log-handler (config/maybe-init-log-handler options)]
     (.setHandlers hc (into-array Handler [(:handlers webserver-context)]))
-    (let [maybe-zipped (if (or (not (contains? options :gzip-enable))
+    (let [shutdown-timeout (when (not (nil? (:shutdown-timeout-seconds options)))
+                             (* 1000 (:shutdown-timeout-seconds options)))
+          maybe-zipped (if (or (not (contains? options :gzip-enable))
                                (:gzip-enable options))
                          (gzip-handler hc)
                          hc)
           maybe-logged (if log-handler
                          (doto log-handler (.setHandler hc))
                          maybe-zipped)
-          statistics-handler (doto (StatisticsHandler.)
-                               (.setHandler maybe-logged))
-          shutdown-timeout (:graceful-shutdown-timeout options)]
+          statistics-handler (if (or (nil? shutdown-timeout) (pos? shutdown-timeout))
+                               (doto (StatisticsHandler.)
+                                 (.setHandler maybe-logged))
+                               maybe-logged)]
       (.setHandler s statistics-handler)
       (if (not (nil? shutdown-timeout))
-        (.setStopTimeout s shutdown-timeout)
-        (.setStopTimeout s default-graceful-stop-timeout))
+        (.setStopTimeout s (or shutdown-timeout default-graceful-stop-timeout)))
       (assoc webserver-context :server s))))
 
 (schema/defn ^:always-validate start-webserver! :- ServerContext
