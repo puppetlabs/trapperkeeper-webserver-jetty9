@@ -252,6 +252,11 @@ directory. It will log the remote host making the request, the log name, the rem
 the request, the date/time of the request, the URL and method of the request, the status of
 the response, and the size in bytes of the response.
 
+### `graceful-shutdown-timeout`
+
+Optional. This is an integer representing the desired graceful stop timeout in milliseconds.
+Defaults to 30000 ms.
+
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9

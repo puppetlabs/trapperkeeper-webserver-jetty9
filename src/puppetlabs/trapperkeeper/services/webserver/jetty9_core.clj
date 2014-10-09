@@ -3,7 +3,7 @@
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection
-                                             ContextHandlerCollection AllowSymLinkAliasChecker)
+                                             ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler)
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
@@ -122,6 +122,11 @@
 
 (def RegisteredEndpoints
   {schema/Str [Endpoint]})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Constants
+
+(def default-graceful-stop-timeout 30000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -471,8 +476,14 @@
                          hc)
           maybe-logged (if log-handler
                          (doto log-handler (.setHandler hc))
-                         maybe-zipped)]
-      (.setHandler s maybe-logged)
+                         maybe-zipped)
+          statistics-handler (doto (StatisticsHandler.)
+                               (.setHandler maybe-logged))
+          shutdown-timeout (:graceful-shutdown-timeout options)]
+      (.setHandler s statistics-handler)
+      (if (not (nil? shutdown-timeout))
+        (.setStopTimeout s shutdown-timeout)
+        (.setStopTimeout s default-graceful-stop-timeout))
       (assoc webserver-context :server s))))
 
 (schema/defn ^:always-validate start-webserver! :- ServerContext
@@ -824,7 +835,6 @@
                        :target-host (:host target)
                        :target-port (:port target)
                        :target-path (:path target)}
-
         enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map path)
     (add-proxy-route s target path options enable-redirect)))
