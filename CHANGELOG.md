@@ -1,3 +1,17 @@
+## 0.8.0
+
+* Adds a new option, `:redirect-if-no-trailing-slash`,
+  that determines whether or not a 302 response will be
+  returned when making requests to endpoints with registered
+  handlers without a trailing slash on the end.
+* By default, requests will now route through to a handler
+  when no trailing slash is present on the request URL rather
+  than returning a 302 response (which was the behavior in
+  previous versions).
+* Adds graceful shutdown support and a new option to the
+  webserver config, `shutdown-timeout-seconds`, that allows
+  users to set the stop timeout of the Jetty server.
+
 ## 0.7.7
 
 This is a minor feature and bugfix release.
