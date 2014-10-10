@@ -3,7 +3,7 @@
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection
-                                             ContextHandlerCollection AllowSymLinkAliasChecker)
+                                             ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler)
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
@@ -122,6 +122,11 @@
 
 (def RegisteredEndpoints
   {schema/Str [Endpoint]})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Constants
+
+(def default-graceful-stop-timeout 60000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -465,14 +470,22 @@
         ^HandlerCollection hc (HandlerCollection.)
         log-handler (config/maybe-init-log-handler options)]
     (.setHandlers hc (into-array Handler [(:handlers webserver-context)]))
-    (let [maybe-zipped (if (or (not (contains? options :gzip-enable))
+    (let [shutdown-timeout (when (not (nil? (:shutdown-timeout-seconds options)))
+                             (* 1000 (:shutdown-timeout-seconds options)))
+          maybe-zipped (if (or (not (contains? options :gzip-enable))
                                (:gzip-enable options))
                          (gzip-handler hc)
                          hc)
           maybe-logged (if log-handler
                          (doto log-handler (.setHandler hc))
-                         maybe-zipped)]
-      (.setHandler s maybe-logged)
+                         maybe-zipped)
+          statistics-handler (if (or (nil? shutdown-timeout) (pos? shutdown-timeout))
+                               (doto (StatisticsHandler.)
+                                 (.setHandler maybe-logged))
+                               maybe-logged)]
+      (.setHandler s statistics-handler)
+      (if (not (nil? shutdown-timeout))
+        (.setStopTimeout s (or shutdown-timeout default-graceful-stop-timeout)))
       (assoc webserver-context :server s))))
 
 (schema/defn ^:always-validate start-webserver! :- ServerContext
@@ -824,7 +837,6 @@
                        :target-host (:host target)
                        :target-port (:port target)
                        :target-path (:path target)}
-
         enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map path)
     (add-proxy-route s target path options enable-redirect)))

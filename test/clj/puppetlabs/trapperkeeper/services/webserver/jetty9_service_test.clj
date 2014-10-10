@@ -9,6 +9,7 @@
             (appender TestListAppender))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.http.client.async :as async]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
             [puppetlabs.trapperkeeper.app :as tk-app]
@@ -647,3 +648,47 @@
         (Thread/sleep 10)
         (let [list (TestListAppender/list)]
           (is (re-find #"\"GET /hello/ HTTP/1.1\" 200 13\n" (first list))))))))
+
+(deftest graceful-shutdown-test
+  (testing "jetty9 webservers shut down gracefully by default"
+    (with-app-with-config
+      app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler (fn [_] (Thread/sleep 3000) {:status 200 :body "Hello, World!"})]
+        (add-ring-handler ring-handler "/hello")
+        (let [response (async/get "http://localhost:8080/hello" {:as :text})]
+          (Thread/sleep 50)
+          (tk-app/stop app)
+          (is (= (:status @response) 200))
+          (is (= (:body @response) "Hello, World!"))))))
+
+  (testing "jetty9's stop timeout can be changed from config"
+    (with-app-with-config
+      app
+      [jetty9-service]
+      {:webserver {:port 8080 :shutdown-timeout-seconds 1}}
+      (let [s (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler (fn [_] (Thread/sleep 2000) {:status 200 :body "Hello, World!"})]
+        (add-ring-handler ring-handler "/hello")
+        (let [response (async/get "http://localhost:8080/hello" {:as :text})]
+          (Thread/sleep 50)
+          (tk-app/stop app)
+          (is (not (nil? (:error @response))))))))
+
+  (testing "no graceful shutdown when stop timeout is set to 0"
+    (with-app-with-config
+      app
+      [jetty9-service]
+      {:webserver {:port 8080 :shutdown-timeout-seconds 0}}
+      (let [s (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler (fn [_] (Thread/sleep 300) {:status 200 :body "Hello, World!"})]
+        (add-ring-handler ring-handler "/hello")
+        (let [response (async/get "http://localhost:8080/hello" {:as :text})]
+          (Thread/sleep 50)
+          (tk-app/stop app)
+          (is (not (nil? (:error @response)))))))))

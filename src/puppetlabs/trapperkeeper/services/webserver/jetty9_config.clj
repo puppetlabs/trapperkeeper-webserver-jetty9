@@ -63,7 +63,8 @@
    (schema/optional-key :default-server)             schema/Bool
    (schema/optional-key :static-content)             [StaticContent]
    (schema/optional-key :gzip-enable)                schema/Bool
-   (schema/optional-key :access-log-config)          schema/Str})
+   (schema/optional-key :access-log-config)          schema/Str
+   (schema/optional-key :shutdown-timeout-seconds)   schema/Int})
 
 (def MultiWebserverRawConfigUnvalidated
   {schema/Keyword  WebserverRawConfig})
