@@ -484,8 +484,7 @@
                                  (.setHandler maybe-logged))
                                maybe-logged)]
       (.setHandler s statistics-handler)
-      (if (not (nil? shutdown-timeout))
-        (.setStopTimeout s (or shutdown-timeout default-graceful-stop-timeout)))
+      (.setStopTimeout s (or shutdown-timeout default-graceful-stop-timeout))
       (assoc webserver-context :server s))))
 
 (schema/defn ^:always-validate start-webserver! :- ServerContext
