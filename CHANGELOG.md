@@ -1,3 +1,10 @@
+## 0.8.1
+
+This is a minor bugfix release.
+
+* Fix an issue wherein the default graceful shutdown
+  timeout was not being set to 60 seconds.
+
 ## 0.8.0
 
 * Adds a new option, `:redirect-if-no-trailing-slash`,
