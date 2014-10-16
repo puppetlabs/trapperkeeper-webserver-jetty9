@@ -276,7 +276,6 @@
      :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
      :keystore-config (get-keystore-config! config)
      :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
-     ;:protocols (:ssl-protocols config)
      :protocols (or (:ssl-protocols config) default-protocols)
      :client-auth (get-client-auth! config)
      :ssl-crl-path (get-ssl-crl-path! config)}))

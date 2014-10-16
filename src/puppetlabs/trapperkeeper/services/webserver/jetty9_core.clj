@@ -175,7 +175,9 @@
   [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols]}
    :- config/WebserverSslContextFactory]
   (if (some #(= "sslv3" %) (map str/lower-case protocols))
-    (log/warn "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we recommend removing it from the `ssl-protocols` list"))
+    (log/warn (str "`ssl-protocols` contains SSLv3, a protocol with known "
+                  "vulnerabilities; we recommend removing it from the "
+                  "`ssl-protocols` list")))
 
   (let [context (doto (SslContextFactory.)
                   (.setKeyStore (:keystore keystore-config))
