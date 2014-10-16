@@ -8,7 +8,6 @@
             (java.nio.file.attribute FileAttribute)
             (appender TestListAppender))
   (:require [clojure.test :refer :all]
-            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.http.client.async :as async]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
@@ -22,7 +21,7 @@
               :refer [with-app-with-empty-config
                       with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-              :refer [with-test-logging]]
+              :refer [with-test-logging with-log-output logs-matching]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
             [schema.core :as schema]))
 
@@ -692,3 +691,29 @@
           (Thread/sleep 50)
           (tk-app/stop app)
           (is (not (nil? (:error @response)))))))))
+
+(deftest warn-if-sslv3-supported-test
+  (letfn [(start-server [ssl-protocols]
+            (let [config (if ssl-protocols
+                           (assoc-in jetty-ssl-pem-config [:webserver :ssl-protocols] ssl-protocols)
+                           jetty-ssl-pem-config)]
+              (with-app-with-config
+                app
+                [jetty9-service]
+                config)))]
+    (testing "warns if SSLv3 is in the protocol list"
+      (with-test-logging
+        (start-server ["SSLv3" "TLSv1"])
+        (is (logged? #"known vulnerabilities"))))
+    (testing "warns regardless of case"
+      (with-test-logging
+        (start-server ["sslv3"])
+        (is (logged? #"known vulnerabilities"))))
+    (testing "does not warn if sslv3 is not in the protocol list"
+      (with-log-output logs
+        (start-server ["TLSv1"])
+        (is (= 0 (count (logs-matching #"known vulnerabilities" @logs))))))
+    (testing "does not warn with default settings"
+      (with-log-output logs
+        (start-server nil)
+        (is (= 0 (count (logs-matching #"known vulnerabilities" @logs))))))))

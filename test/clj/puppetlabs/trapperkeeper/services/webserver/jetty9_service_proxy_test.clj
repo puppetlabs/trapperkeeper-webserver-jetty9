@@ -82,6 +82,7 @@
            (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy")))
        ~@body)))
 
+;; TODO: break this into more deftests
 (deftest test-proxy-servlet
   (let [common-ssl-config       {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
                                  :ssl-key     "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
