@@ -174,15 +174,15 @@
   "Creates a new SslContextFactory instance from a map of SSL config options."
   [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols]}
    :- config/WebserverSslContextFactory]
-  ;; TODO: switch to doto
-  (let [context (SslContextFactory.)]
-    (.setKeyStore context (:keystore keystore-config))
-    (.setKeyStorePassword context (:key-password keystore-config))
-    (.setTrustStore context (:truststore keystore-config))
-    (.setIncludeCipherSuites context (into-array String cipher-suites))
-    (if (some #(= "sslv3" %) (map str/lower-case protocols))
-      (log/warn "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we recommend removing it from the `ssl-protocols` list"))
-    (.setIncludeProtocols context (into-array String protocols))
+  (if (some #(= "sslv3" %) (map str/lower-case protocols))
+    (log/warn "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we recommend removing it from the `ssl-protocols` list"))
+
+  (let [context (doto (SslContextFactory.)
+                  (.setKeyStore (:keystore keystore-config))
+                  (.setKeyStorePassword (:key-password keystore-config))
+                  (.setTrustStore (:truststore keystore-config))
+                  (.setIncludeCipherSuites (into-array String cipher-suites))
+                  (.setIncludeProtocols (into-array String protocols)))]
     (if (:trust-password keystore-config)
       (.setTrustStorePassword context (:trust-password keystore-config)))
     (case client-auth
