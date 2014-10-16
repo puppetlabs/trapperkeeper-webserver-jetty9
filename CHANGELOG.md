@@ -1,3 +1,12 @@
+## 0.9.0
+
+This is a security release.
+
+* [TK-96](https://tickets.puppetlabs.com/browse/TK-96): Define
+  a default set of SSL protocols that the server should allow
+  (TLSv1, TLSv1.1, TLSv1.2) and use them if the user doesn't
+  explicitly set the `ssl-protocols` setting.
+
 ## 0.8.1
 
 This is a minor bugfix release.
