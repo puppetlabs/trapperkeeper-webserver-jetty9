@@ -279,7 +279,8 @@ route:
   scheme.  The default value is `:orig`, which means that proxied requests will
   use the same scheme as the original request.
 * `:ssl-config`: optional; may be set to either `:use-server-config` (default) or
-  to a map containing the keys `:ssl-cert`, `:ssl-key`, and `:ssl-ca-cert`.  If
+  to a map containing the keys `:ssl-cert`, `:ssl-key`, and `:ssl-ca-cert`, as
+  well as the optional keys `:cipher-suites` and `:protocols`.  If
   `:use-server-config`, then any proxied requests that use HTTPS will use the same
   SSL context/configuration that the web server is configured with.  If you specify
   a map, then the entries must point to the PEM files that should be used for the

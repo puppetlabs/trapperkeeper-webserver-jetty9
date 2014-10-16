@@ -72,13 +72,18 @@
 (def ServletHandlerOptions
   (assoc CommonOptions (schema/optional-key :servlet-init-params) {schema/Str schema/Str}))
 
+(def ProxySslConfig
+  (merge config/WebserverSslPemConfig
+         {(schema/optional-key :cipher-suites) [schema/Str]
+          (schema/optional-key :protocols)     (schema/maybe [schema/Str])}))
+
 (def ProxyOptions
   (assoc CommonOptions
     (schema/optional-key :scheme) (schema/enum :orig :http :https
                                                "orig" "http" "https")
-    (schema/optional-key :ssl-config) (schema/either
-                                        (schema/eq :use-server-config)
-                                        config/WebserverSslPemConfig)
+    (schema/optional-key :ssl-config) (schema/conditional
+                                        keyword? (schema/eq :use-server-config)
+                                        map?     ProxySslConfig)
     (schema/optional-key :rewrite-uri-callback-fn) (schema/pred ifn?)
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :failure-callback-fn) (schema/pred ifn?)
@@ -167,12 +172,19 @@
 (schema/defn ^:always-validate
   ssl-context-factory :- SslContextFactory
   "Creates a new SslContextFactory instance from a map of SSL config options."
-  [{:keys [keystore-config client-auth ssl-crl-path ]}
+  [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols]}
    :- config/WebserverSslContextFactory]
-  (let [context (SslContextFactory.)]
-    (.setKeyStore context (:keystore keystore-config))
-    (.setKeyStorePassword context (:key-password keystore-config))
-    (.setTrustStore context (:truststore keystore-config))
+  (if (some #(= "sslv3" %) (map str/lower-case protocols))
+    (log/warn (str "`ssl-protocols` contains SSLv3, a protocol with known "
+                  "vulnerabilities; we recommend removing it from the "
+                  "`ssl-protocols` list")))
+
+  (let [context (doto (SslContextFactory.)
+                  (.setKeyStore (:keystore keystore-config))
+                  (.setKeyStorePassword (:key-password keystore-config))
+                  (.setTrustStore (:truststore keystore-config))
+                  (.setIncludeCipherSuites (into-array String cipher-suites))
+                  (.setIncludeProtocols (into-array String protocols)))]
     (if (:trust-password keystore-config)
       (.setTrustStorePassword context (:trust-password keystore-config)))
     (case client-auth
@@ -189,11 +201,13 @@
 
 (schema/defn ^:always-validate
   get-proxy-client-context-factory :- SslContextFactory
-  [ssl-config :- config/WebserverSslPemConfig]
+  [ssl-config :- ProxySslConfig]
   (ssl-context-factory {:keystore-config
                          (config/pem-ssl-config->keystore-ssl-config
                            ssl-config)
-                        :client-auth :none}))
+                        :client-auth :none
+                        :cipher-suites (or (:cipher-suites ssl-config) config/acceptable-ciphers)
+                        :protocols     (or (:protocols ssl-config) config/default-protocols)}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
@@ -244,12 +258,11 @@
       (let [ssl-ctxt-factory (ssl-context-factory
                                {:keystore-config (:keystore-config https)
                                 :client-auth     (:client-auth https)
-                                :ssl-crl-path    (:ssl-crl-path https)})
+                                :ssl-crl-path    (:ssl-crl-path https)
+                                :cipher-suites   (:cipher-suites https)
+                                :protocols       (:protocols https)})
             connector        (ssl-connector server ssl-ctxt-factory https)]
-        (when-let [ciphers (:cipher-suites https)]
-          (.setIncludeCipherSuites ssl-ctxt-factory (into-array ciphers)))
-        (when-let [protocols (:protocols https)]
-          (.setIncludeProtocols ssl-ctxt-factory (into-array protocols)))
+
         (.addConnector server connector)
         (swap! (:state webserver-context) assoc :ssl-context-factory ssl-ctxt-factory)))
     server))

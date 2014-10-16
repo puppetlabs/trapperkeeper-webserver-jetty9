@@ -21,7 +21,7 @@
    "SSL_RSA_WITH_RC4_128_SHA"
    "SSL_RSA_WITH_3DES_EDE_CBC_SHA"
    "SSL_RSA_WITH_RC4_128_MD5"])
-(def default-protocols nil)
+(def default-protocols ["TLSv1" "TLSv1.1" "TLSv1.2"])
 
 (def default-http-port 8080)
 (def default-https-port 8081)
@@ -106,14 +106,14 @@
 (def WebserverSslContextFactory
   {:keystore-config                    WebserverSslKeystoreConfig
    :client-auth                        WebserverSslClientAuth
-   (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)})
+   (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)
+   :cipher-suites                      [schema/Str]
+   :protocols                          (schema/maybe [schema/Str])})
 
 (def WebserverSslConnector
   (merge
     WebserverConnector
-    WebserverSslContextFactory
-    {:cipher-suites [schema/Str]
-     :protocols     (schema/maybe [schema/Str])}))
+    WebserverSslContextFactory))
 
 (def HasConnector
   (schema/either
@@ -276,7 +276,7 @@
      :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
      :keystore-config (get-keystore-config! config)
      :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
-     :protocols (:ssl-protocols config)
+     :protocols (or (:ssl-protocols config) default-protocols)
      :client-auth (get-client-auth! config)
      :ssl-crl-path (get-ssl-crl-path! config)}))
 
