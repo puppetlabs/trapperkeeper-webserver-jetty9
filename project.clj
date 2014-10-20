@@ -12,7 +12,7 @@
                  [prismatic/schema "0.2.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/certificate-authority "0.5.0"]
+                 [puppetlabs/certificate-authority "0.6.0"]
 
                  [ch.qos.logback/logback-access "1.1.1"]
 
@@ -27,7 +27,7 @@
                  [org.eclipse.jetty/jetty-proxy "9.1.0.v20131115"]
                  [org.eclipse.jetty/jetty-jmx "9.1.0.v20131115"]
 
-                 [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api]]]
+                 [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api commons-codec]]]
 
   :plugins [[lein-release "1.0.5"]]
 
@@ -54,7 +54,7 @@
                                   "examples/webrouting_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[puppetlabs/http-client "0.2.9-SNAPSHOT"]
+                   :dependencies [[puppetlabs/http-client "0.3.1"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]
