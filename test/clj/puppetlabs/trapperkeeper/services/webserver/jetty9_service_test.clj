@@ -717,3 +717,18 @@
       (with-log-output logs
         (start-server nil)
         (is (= 0 (count (logs-matching #"known vulnerabilities" @logs))))))))
+
+(deftest sslv3-unsupported-test
+  (testing "SSLv3 is not supported by default"
+    (with-app-with-config
+      app
+      [jetty9-service]
+      jetty-ssl-pem-config
+      (let [s                (tk-app/get-service app :WebserverService)
+            add-ring-handler (partial add-ring-handler s)
+            ring-handler     (fn [_] {:status 200 :body "Hello, World!"})]
+        (add-ring-handler ring-handler "/hello")
+        (is (thrown?
+              ConnectionClosedException
+              (http-get "https://localhost:8081/hello" (merge default-options-for-https-client
+                                                              {:ssl-protocols ["SSLv3"]}))))))))
