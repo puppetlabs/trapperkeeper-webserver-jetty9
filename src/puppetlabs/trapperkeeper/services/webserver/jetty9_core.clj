@@ -27,6 +27,7 @@
 
   (:require [ring.util.servlet :as servlet]
             [ring.util.codec :as codec]
+            [ring.middleware.cors :refer [wrap-cors]]
             [clojure.string :as str]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
@@ -64,6 +65,9 @@
 (def CommonOptions
   {(schema/optional-key :server-id) schema/Keyword
    (schema/optional-key :redirect-if-no-trailing-slash) schema/Bool})
+
+(def RingHandlerOptions
+  (assoc CommonOptions (schema/optional-key :ring-cors-config) (schema/pred vector?)))
 
 (def ContextHandlerOptions
   (assoc CommonOptions (schema/optional-key :context-listeners) [ServletContextListener]
@@ -308,6 +312,28 @@
   (.addHandler (:handlers webserver-context) handler)
   handler)
 
+; This variant of cors-ring-handler contains a workaround for ring-cors issue #5. We've raised a PR against ring-cors
+; with a fix but until/if that's accepted this handler works around it.
+(defn- cors-ring-handler
+  "Wraps the ring handler to support CORS if a config is present"
+  [handler ring-cors-config]
+  (if (empty? ring-cors-config)
+    handler
+    (fn [request]
+      (let [resp (handler request)]
+        ; If the response is nil, don't pass through ring-cors
+        (if ((complement nil?) resp)
+          (let [cors-wrapped-handler (apply wrap-cors (fn [request] resp) ring-cors-config)]
+            (cors-wrapped-handler request)))))))
+
+; When our fix for issue #5 in ring-cors is accepted, use this variant
+;(defn- cors-ring-handler
+;  "Wraps the ring handler to support CORS if a config is present"
+;  [handler ring-cors-config]
+;  (if (empty? ring-cors-config)
+;    handler
+;    (apply wrap-cors (ring-cors-issue5-workaround-handler handler) ring-cors-config)))
+
 (defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
   [handler]
@@ -542,13 +568,23 @@
 
 (schema/defn ^:always-validate
   add-ring-handler :- ContextHandler
-  [webserver-context :- ServerContext
-   handler :- (schema/pred ifn? 'ifn?)
-   path :- schema/Str
-   enable-trailing-slash-redirect?]
-  (let [ctxt-handler (doto (ContextHandler. path)
-                       (.setHandler (ring-handler handler)))]
-    (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
+  ([webserver-context :- ServerContext
+    handler :- (schema/pred ifn? 'ifn?)
+    path :- schema/Str
+    enable-trailing-slash-redirect?
+    ring-cors-config :- schema/Any]
+   (add-ring-handler
+     webserver-context
+     (cors-ring-handler handler ring-cors-config)
+     path
+     enable-trailing-slash-redirect?))
+  ([webserver-context :- ServerContext
+    handler :- (schema/pred ifn? 'ifn?)
+    path :- schema/Str
+    enable-trailing-slash-redirect?]
+   (let [ctxt-handler (doto (ContextHandler. path)
+                        (.setHandler (ring-handler handler)))]
+     (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?))))
 
 (schema/defn ^:always-validate
   add-servlet-handler :- ContextHandler
@@ -803,15 +839,15 @@
       (nil? new-config) (start-server-multiple context config))))
 
 (schema/defn ^:always-validate add-ring-handler!
-  [context handler path options :- CommonOptions]
-  (let [server-id     (:server-id options)
-        s             (get-server-context context server-id)
-        state         (:state s)
-        endpoint-map  {:type     :ring}
-
-        enable-redirect  (:redirect-if-no-trailing-slash options)]
+  [context handler path options :- RingHandlerOptions]
+  (let [server-id        (:server-id options)
+        s                (get-server-context context server-id)
+        state            (:state s)
+        endpoint-map     {:type :ring}
+        enable-redirect  (:redirect-if-no-trailing-slash options)
+        ring-cors-config (:ring-cors-config options)]
     (register-endpoint! state endpoint-map path)
-    (add-ring-handler s handler path enable-redirect)))
+    (add-ring-handler s handler path enable-redirect ring-cors-config)))
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context servlet path options :- ServletHandlerOptions]
