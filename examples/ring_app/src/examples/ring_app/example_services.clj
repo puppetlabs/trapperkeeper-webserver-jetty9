@@ -63,7 +63,9 @@
   ;; Implement the `init` lifecycle function to register the ring handler
   (init [this context]
     (let [endpoint "/bert"]
-      (add-ring-handler (partial ring-handler inc-and-get endpoint) endpoint))
+      (add-ring-handler (partial ring-handler inc-and-get endpoint) endpoint
+        {:ring-cors-config [:access-control-allow-origin #"http://localhost:8081"
+                            :access-control-allow-methods [:get :put :post :delete]]}))
     context)
 
   (stop [this context]

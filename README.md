@@ -86,18 +86,27 @@ You may specify `""` as the value for `path` if you are only registering a singl
 handler and do not need to prefix the URL.
 
 There is also a three argument version of this function which takes these arguments:
-`[handler path options]`. `options` is a map containing two optional keys. The first is
-`:server-id`, which specifies which server you want to add the ring-handler to. If
+`[handler path options]`. `options` is a map containing three optional keys:
+
+* `:server-id` - Specifies which server you want to add the ring-handler to. If
 `:server-id` is specified, the ring handler will be added to the server with id
 `:server-id`. If no `:server-id` is specified, or the two argument version is called,
 the ring handler will be added to the default server. Calling the two-argument version or
 leaving out `:server-id` will not work in a multiserver set-up if no default server is specified.
 
-The second optional argument is `:redirect-if-no-trailing-slash`. When set to `true`,
+* `:redirect-if-no-trailing-slash` - When set to `true`,
 all requests made to the endpoint at which the ring-handler was registered will, if
 no trailing slash is present, return a 302 redirect response to the same URL but with a trailing slash
 added. If the option is set to `false`, no redirect will occur, and the request will be
 routed through to the registered handler. This option defaults to `false`.
+
+* `:ring-cors-config` - Used to configure CORS support for the ring-handler. If this option is omitted then CORS is 
+not enabled. The value of this argument must be a vector of [ring-cors](https://github.com/r0man/ring-cors) 
+configuration options and will be passed directly to 'wrap-cors' function. For example:
+    ```clj
+    :ring-cors-config [:access-control-allow-origin #"http://example.com"
+                       :access-control-allow-methods [:get :put :post :delete]]
+    ```
 
 Here's an example of how to use the `:WebserverService`:
 
