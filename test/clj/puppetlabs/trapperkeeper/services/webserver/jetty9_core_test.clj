@@ -177,21 +177,16 @@
 
 (defn validate-no-cors-headers
   [http-verb port options http-status]
-  ;; The client/get function asks for compression by default
   (let [resp (http-verb (format "http://localhost:%d/test" port) options)]
     (is (= (get-in resp [:status]) http-status)
       (format "Expected an http status of '%d' but got this response: %s" http-status resp))
     (is (nil? (get-in resp [:headers :access-control-allow-origin]))
       (format "Expected no access-control-allow-origin header but got this response: %s" resp))
     (is (nil? (get-in resp [:headers :access-control-allow-methods]))
-      (format "Expected no access-control-allow-methods header but got this response: %s" resp))
-    ))
+      (format "Expected no access-control-allow-methods header but got this response: %s" resp))))
 
 (defn validate-cors-headers
   ([http-verb port options origin methods]
-   (validate-cors-headers http-verb port options origin methods nil))
-  ([http-verb port options origin methods body]
-   ;; The client/get function asks for compression by default
    (let [resp (http-verb (format "http://localhost:%d/test" port) options)]
      (is (= (get-in resp [:headers "access-control-allow-origin"]) origin)
        (format "Expected an access-control-allow-origin header with the value '%s' but got this response: %s"
@@ -202,17 +197,17 @@
 
 (deftest cors
   (testing "CORS support: "
+
+    ; Normal handler
     (let [app (fn [req] (rr/response (str "I'm the response to request:" req)))
           origin "http://example.com"
           methods "GET, OPTIONS, POST"]
-
       ; CORS disabled
       (with-test-webserver-with-cors-config app port {} nil
         (testing "a request with no origin gives a 200 response with no CORS headers"
           (validate-no-cors-headers http-client/get port {} 200))
         (testing "a request with an origin gives a 200 response with no CORS headers"
           (validate-no-cors-headers http-client/get port {:headers {"Origin" origin}} 200)))
-
       ; CORS enabled
       (with-test-webserver-with-cors-config app port {}
         [:access-control-allow-origin (re-pattern origin)
@@ -228,4 +223,15 @@
         (testing "a request with an invalid origin and invalid method gives a 404 with no CORS headers"
           (validate-no-cors-headers http-client/put port {:headers {"Origin" "bad.example.com"}} 404))
         (testing "a preflight with a valid origin gives a 200 response with expected CORS headers"
-          (validate-cors-headers http-client/options port {:headers {"Origin" origin}} origin methods))))))
+          (validate-cors-headers http-client/options port {:headers {"Origin" origin}} origin methods))))
+    ; Nil handler
+    (let [app (fn [req] nil)
+          origin "http://example.com"]
+      ; CORS enabled
+      (with-test-webserver-with-cors-config app port {}
+        [:access-control-allow-origin (re-pattern origin)
+         :access-control-allow-methods [:get :post :options]]
+        (testing "a request with no origin gives a response with no CORS headers"
+          (validate-no-cors-headers http-client/get port {} 404))
+        (testing "a request with an origin gives a response with no CORS headers"
+          (validate-no-cors-headers http-client/get port {:headers {"Origin" origin}} 404))))))

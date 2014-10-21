@@ -312,13 +312,27 @@
   (.addHandler (:handlers webserver-context) handler)
   handler)
 
+; This variant of cors-ring-handler contains a workaround for ring-cors issue #5. We've raised a PR against ring-cors
+; with a fix but until/if that's accepted this handler works around it.
 (defn- cors-ring-handler
   "Wraps the ring handler to support CORS if a config is present"
   [handler ring-cors-config]
   (if (empty? ring-cors-config)
     handler
-    (apply wrap-cors handler ring-cors-config))
-  )
+    (fn [request]
+      (let [resp (handler request)]
+        ; If the response is nil, don't pass through ring-cors
+        (if ((complement nil?) resp)
+          (let [cors-wrapped-handler (apply wrap-cors (fn [request] resp) ring-cors-config)]
+            (cors-wrapped-handler request)))))))
+
+; When our fix for issue #5 in ring-cors is accepted, use this variant
+;(defn- cors-ring-handler
+;  "Wraps the ring handler to support CORS if a config is present"
+;  [handler ring-cors-config]
+;  (if (empty? ring-cors-config)
+;    handler
+;    (apply wrap-cors (ring-cors-issue5-workaround-handler handler) ring-cors-config)))
 
 (defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
