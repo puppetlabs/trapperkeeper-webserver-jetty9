@@ -1,8 +1,8 @@
-(def tk-version "0.5.1")
-(def ks-version "0.7.2")
+(def tk-version "1.0.0")
+(def ks-version "1.0.0")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "0.9.1-SNAPSHOT"
-  :description "We are trapperkeeper.  We are one."
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.0.0-SNAPSHOT"
+  :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
   ;; Abort when version ranges or version conflicts are detected in
   ;; dependencies. Also supports :warn to simply emit warnings.
   ;; requires lein 2.2.0+.
@@ -54,7 +54,7 @@
                                   "examples/webrouting_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[puppetlabs/http-client "0.3.1"]
+                   :dependencies [[puppetlabs/http-client "0.4.0"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]
