@@ -88,7 +88,8 @@
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :failure-callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int
-    (schema/optional-key :follow-redirects) schema/Bool))
+    (schema/optional-key :follow-redirects) schema/Bool
+    (schema/optional-key :idle-timeout) schema/Int))
 
 (def ServerContext
   {:state     Atom
@@ -328,7 +329,7 @@
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
                                   (get-proxy-client-context-factory (:ssl-config options)))
-        request-buffer-size     (:request-buffer-size options)]
+        {:keys [request-buffer-size idle-timeout]} options]
     (proxy [ProxyServlet] []
       (rewriteURI [req]
         (let [query (.getQueryString req)
@@ -370,6 +371,8 @@
           (if (:follow-redirects options)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
+          (when idle-timeout
+            (.setIdleTimeout client idle-timeout))
           client))
 
       (customizeProxyRequest [proxy-req req]

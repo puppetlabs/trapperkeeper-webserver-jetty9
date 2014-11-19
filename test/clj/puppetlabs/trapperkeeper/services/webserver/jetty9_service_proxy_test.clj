@@ -59,6 +59,14 @@
                       :body    ""}
     {:status 404 :body "D'oh"}))
 
+(defn timeout-inducing-ring-handler
+  "This ring handler is meant to sleep for so long that the proxy's timeout
+  occurs a proper error is returned."
+  [_]
+  (Thread/sleep 1000)
+  {:status 200
+   :body   "This should have timed out."})
+
 (defmacro with-target-and-proxy-servers
   [{:keys [target proxy proxy-config proxy-opts ring-handler]} & body]
   `(with-app-with-config proxy-target-app#
@@ -644,4 +652,20 @@
        :ring-handler proxy-ring-handler}
       (let [response (http-get "http://localhost:10000/hello-proxy/world")]
         (is (= (:status response) 500))
-        (is (= (:body response) "Proxying failed: port out of range:123456789"))))))
+        (is (= (:body response) "Proxying failed: port out of range:123456789")))))
+
+  (testing "setting an idle timeout fails properly properly"
+    (with-target-and-proxy-servers
+      {:target       {:host "0.0.0.0"
+                      :port 9000}
+       :proxy        {:host "0.0.0.0"
+                      :port 10000}
+       :proxy-config {:host "localhost"
+                      :port 9000
+                      :path "/hello"}
+       :proxy-opts   {:idle-timeout 20}
+       :ring-handler timeout-inducing-ring-handler}
+      (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
+        (is (= 504 (:status response)))))))
+
+
