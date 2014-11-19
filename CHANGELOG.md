@@ -1,3 +1,8 @@
+## 1.0.0
+
+* Promoting previous version to 1.0.0 so that we can begin to
+  be more deliberate about adhering to semver in the future.
+
 ## 0.9.0
 
 This is a security release.

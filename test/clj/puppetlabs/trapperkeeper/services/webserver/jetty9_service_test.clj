@@ -9,6 +9,7 @@
             (appender TestListAppender))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.async :as async]
+            [puppetlabs.http.client.common :as http-client-common]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
             [puppetlabs.trapperkeeper.app :as tk-app]
@@ -658,11 +659,12 @@
             add-ring-handler (partial add-ring-handler s)
             ring-handler (fn [_] (Thread/sleep 3000) {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
-        (let [response (async/get "http://localhost:8080/hello" {:as :text})]
-          (Thread/sleep 50)
-          (tk-app/stop app)
-          (is (= (:status @response) 200))
-          (is (= (:body @response) "Hello, World!"))))))
+        (with-open [async-client (async/create-client {})]
+          (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
+            (Thread/sleep 50)
+            (tk-app/stop app)
+            (is (= (:status @response) 200))
+            (is (= (:body @response) "Hello, World!")))))))
 
   (testing "jetty9's stop timeout can be changed from config"
     (with-app-with-config
@@ -673,10 +675,11 @@
             add-ring-handler (partial add-ring-handler s)
             ring-handler (fn [_] (Thread/sleep 2000) {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
-        (let [response (async/get "http://localhost:8080/hello" {:as :text})]
-          (Thread/sleep 50)
-          (tk-app/stop app)
-          (is (not (nil? (:error @response))))))))
+        (with-open [async-client (async/create-client {})]
+          (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
+            (Thread/sleep 50)
+            (tk-app/stop app)
+            (is (not (nil? (:error @response)))))))))
 
   (testing "no graceful shutdown when stop timeout is set to 0"
     (with-app-with-config
@@ -687,10 +690,11 @@
             add-ring-handler (partial add-ring-handler s)
             ring-handler (fn [_] (Thread/sleep 300) {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
-        (let [response (async/get "http://localhost:8080/hello" {:as :text})]
-          (Thread/sleep 50)
-          (tk-app/stop app)
-          (is (not (nil? (:error @response)))))))))
+        (with-open [async-client (async/create-client {})]
+          (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
+            (Thread/sleep 50)
+            (tk-app/stop app)
+            (is (not (nil? (:error @response))))))))))
 
 (deftest warn-if-sslv3-supported-test
   (letfn [(start-server [ssl-protocols]
