@@ -372,7 +372,7 @@
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
           (when idle-timeout
-            (.setIdleTimeout client idle-timeout))
+            (.setIdleTimeout client (* 1000 idle-timeout)))
           client))
 
       (customizeProxyRequest [proxy-req req]

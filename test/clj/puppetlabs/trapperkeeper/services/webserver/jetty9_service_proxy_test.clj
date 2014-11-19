@@ -63,7 +63,7 @@
   "This ring handler is meant to sleep for so long that the proxy's timeout
   occurs a proper error is returned."
   [_]
-  (Thread/sleep 1000)
+  (Thread/sleep 1250)
   {:status 200
    :body   "This should have timed out."})
 
@@ -663,7 +663,7 @@
        :proxy-config {:host "localhost"
                       :port 9000
                       :path "/hello"}
-       :proxy-opts   {:idle-timeout 20}
+       :proxy-opts   {:idle-timeout 1}
        :ring-handler timeout-inducing-ring-handler}
       (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
         (is (= 504 (:status response)))))))
