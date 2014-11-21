@@ -656,12 +656,16 @@
       [jetty9-service]
       jetty-plaintext-config
       (let [s (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            ring-handler (fn [_] (Thread/sleep 3000) {:status 200 :body "Hello, World!"})]
+            add-ring-handler   (partial add-ring-handler s)
+            in-request-handler (promise)
+            ring-handler       (fn [_]
+                                 (deliver in-request-handler true)
+                                 (Thread/sleep 3000)
+                                 {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
         (with-open [async-client (async/create-client {})]
           (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
-            (Thread/sleep 50)
+            @in-request-handler
             (tk-app/stop app)
             (is (= (:status @response) 200))
             (is (= (:body @response) "Hello, World!")))))))
@@ -672,12 +676,16 @@
       [jetty9-service]
       {:webserver {:port 8080 :shutdown-timeout-seconds 1}}
       (let [s (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            ring-handler (fn [_] (Thread/sleep 2000) {:status 200 :body "Hello, World!"})]
+            add-ring-handler   (partial add-ring-handler s)
+            in-request-handler (promise)
+            ring-handler       (fn [_]
+                                 (deliver in-request-handler true)
+                                 (Thread/sleep 2000)
+                                 {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
         (with-open [async-client (async/create-client {})]
           (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
-            (Thread/sleep 50)
+            @in-request-handler
             (tk-app/stop app)
             (is (not (nil? (:error @response)))))))))
 
@@ -687,12 +695,16 @@
       [jetty9-service]
       {:webserver {:port 8080 :shutdown-timeout-seconds 0}}
       (let [s (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            ring-handler (fn [_] (Thread/sleep 300) {:status 200 :body "Hello, World!"})]
+            add-ring-handler   (partial add-ring-handler s)
+            in-request-handler (promise)
+            ring-handler       (fn [_]
+                                 (deliver in-request-handler true)
+                                 (Thread/sleep 300)
+                                 {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
         (with-open [async-client (async/create-client {})]
           (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
-            (Thread/sleep 50)
+            @in-request-handler
             (tk-app/stop app)
             (is (not (nil? (:error @response))))))))))
 
