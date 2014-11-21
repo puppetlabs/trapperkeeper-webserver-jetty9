@@ -136,9 +136,9 @@
 (def default-graceful-stop-timeout 60000)
 
 (def default-proxy-idle-timeout
-  "The default number of seconds to wait before the proxy gives up on the
+  "The default number of milliseconds to wait before the proxy gives up on the
   upstream server if the :idle-timeout value isn't set in the proxy config."
-  60)
+  60000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -374,7 +374,8 @@
 
       (createHttpClient []
         (let [client (proxy-super createHttpClient)
-              timeout (* 1000 (or idle-timeout default-proxy-idle-timeout))]
+              timeout (if idle-timeout (* 1000 idle-timeout)
+                                       default-proxy-idle-timeout)]
           (if (:follow-redirects options)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
