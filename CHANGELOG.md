@@ -1,3 +1,8 @@
+## 1.1.0
+
+* This release adds an additional configuration option to
+  `add-proxy-route` ([TK-110](https://tickets.puppetlabs.com/browse/TK-110)).
+
 ## 1.0.0
 
 * Promoting previous version to 1.0.0 so that we can begin to
