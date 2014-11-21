@@ -88,7 +88,9 @@
     (schema/optional-key :callback-fn) (schema/pred ifn?)
     (schema/optional-key :failure-callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int
-    (schema/optional-key :follow-redirects) schema/Bool))
+    (schema/optional-key :follow-redirects) schema/Bool
+    (schema/optional-key :idle-timeout) (schema/both schema/Int
+                                                     (schema/pred pos?))))
 
 (def ServerContext
   {:state     Atom
@@ -132,6 +134,11 @@
 ;;; Constants
 
 (def default-graceful-stop-timeout 60000)
+
+(def default-proxy-idle-timeout
+  "The default number of milliseconds to wait before the proxy gives up on the
+  upstream server if the :idle-timeout value isn't set in the proxy config."
+  60000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -328,7 +335,7 @@
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
                                   (get-proxy-client-context-factory (:ssl-config options)))
-        request-buffer-size     (:request-buffer-size options)]
+        {:keys [request-buffer-size idle-timeout]} options]
     (proxy [ProxyServlet] []
       (rewriteURI [req]
         (let [query (.getQueryString req)
@@ -366,10 +373,13 @@
           client))
 
       (createHttpClient []
-        (let [client (proxy-super createHttpClient)]
+        (let [client (proxy-super createHttpClient)
+              timeout (if idle-timeout (* 1000 idle-timeout)
+                                       default-proxy-idle-timeout)]
           (if (:follow-redirects options)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
+          (.setIdleTimeout client timeout)
           client))
 
       (customizeProxyRequest [proxy-req req]
