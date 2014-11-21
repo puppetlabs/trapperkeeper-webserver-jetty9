@@ -89,7 +89,8 @@
     (schema/optional-key :failure-callback-fn) (schema/pred ifn?)
     (schema/optional-key :request-buffer-size) schema/Int
     (schema/optional-key :follow-redirects) schema/Bool
-    (schema/optional-key :idle-timeout) schema/Int))
+    (schema/optional-key :idle-timeout) (schema/both schema/Int
+                                                     (schema/pred pos?))))
 
 (def ServerContext
   {:state     Atom
