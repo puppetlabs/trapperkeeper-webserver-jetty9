@@ -7,15 +7,14 @@
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
-           (javax.servlet.http HttpServletRequest HttpServletResponse)
-           (java.util.concurrent Executors TimeoutException)
+           (javax.servlet.http HttpServletResponse)
+           (java.util.concurrent TimeoutException)
            (org.eclipse.jetty.servlets.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
            (org.eclipse.jetty.webapp WebAppContext)
            (java.util HashSet)
            (org.eclipse.jetty.http MimeTypes)
            (javax.servlet Servlet ServletContextListener)
-           (java.io File IOException)
            (org.eclipse.jetty.proxy ProxyServlet)
            (java.net URI)
            (java.security Security)
@@ -23,14 +22,12 @@
            (clojure.lang Atom)
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
-           (org.eclipse.jetty.util URIUtil))
+           (org.eclipse.jetty.util URIUtil BlockingArrayQueue))
 
   (:require [ring.util.servlet :as servlet]
             [ring.util.codec :as codec]
             [clojure.string :as str]
-            [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [schema.core :as schema]))
 
@@ -135,10 +132,17 @@
 
 (def default-graceful-stop-timeout 60000)
 
+(def default-request-idle-timeout
+  1000)
+
 (def default-proxy-idle-timeout
   "The default number of milliseconds to wait before the proxy gives up on the
   upstream server if the :idle-timeout value isn't set in the proxy config."
   60000)
+
+(def default-queue-idle-timeout 60000)
+
+(def default-queue-min-threads 8)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -259,11 +263,27 @@
       (.setHost (:host config)))))
 
 (schema/defn ^:always-validate
+  queue-thread-pool :- QueuedThreadPool
+  [max-threads :- schema/Int
+   queue-max-size :- schema/Int]
+  (let [queue-min-size (if (> default-queue-min-threads queue-max-size)
+                         queue-max-size
+                         default-queue-min-threads)]
+    (QueuedThreadPool. max-threads
+                       queue-min-size
+                       default-queue-idle-timeout
+                       (BlockingArrayQueue.
+                         queue-min-size
+                         queue-min-size
+                         queue-max-size))))
+
+(schema/defn ^:always-validate
   create-server :- Server
   "Construct a Jetty Server instance."
   [webserver-context :- ServerContext
    config :- config/WebserverConfig]
-  (let [server (Server. (QueuedThreadPool. (:max-threads config)))]
+  (let [server (Server. (queue-thread-pool (:max-threads config)
+                                           (:queue-max-size config)))]
     (when (:jmx-enable config)
       (let [mb-container (MBeanContainer. (ManagementFactory/getPlatformMBeanServer))]
         (doto server
@@ -452,7 +472,8 @@
   [webserver-context :- ServerContext]
   (when (started? webserver-context)
     (log/info "Shutting down web server.")
-    (.stop (:server webserver-context))))
+    (.stop (:server webserver-context))
+    (log/info "Web server shutdown")))
 
 (schema/defn ^:always-validate
   create-webserver :- ServerContext

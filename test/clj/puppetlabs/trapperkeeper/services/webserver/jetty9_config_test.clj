@@ -25,6 +25,7 @@
   [config expected]
   (= (-> expected
          (update-in [:max-threads] (fnil identity default-max-threads))
+         (update-in [:queue-max-size] (fnil identity default-queue-max-size))
          (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
          (update-in [:http :request-header-max-size] (fnil identity default-request-header-size)))
      (process-config config)))
@@ -34,6 +35,7 @@
   (let [actual (process-config config)]
     (= (-> expected
            (update-in [:max-threads] (fnil identity default-max-threads))
+           (update-in [:queue-max-size] (fnil identity default-queue-max-size))
            (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
@@ -64,7 +66,14 @@
 
     (is (expected-http-config?
           {:port 8000 :request-header-max-size 16192}
-          {:http {:host default-host :port 8000 :request-header-max-size 16192}})))
+          {:http {:host default-host
+                  :port 8000
+                  :request-header-max-size 16192}}))
+
+    (is (expected-http-config?
+          {:port 8000 :queue-max-size 123}
+          {:http {:host default-host :port 8000}
+           :queue-max-size 123})))
 
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?

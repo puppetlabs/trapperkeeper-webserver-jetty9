@@ -31,6 +31,7 @@
 (def default-jmx-enable "true")
 (def default-request-header-buffer-size 8192)
 (def default-request-header-size 8192)
+(def default-queue-max-size (Integer/MAX_VALUE))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -44,6 +45,7 @@
   {(schema/optional-key :port)                       schema/Int
    (schema/optional-key :host)                       schema/Str
    (schema/optional-key :max-threads)                schema/Int
+   (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
    (schema/optional-key :ssl-port)                   schema/Int
    (schema/optional-key :ssl-host)                   schema/Str
@@ -126,6 +128,7 @@
     {(schema/optional-key :http)  WebserverConnector
      (schema/optional-key :https) WebserverSslConnector
      :max-threads                 schema/Int
+     :queue-max-size              schema/Int
      :jmx-enable                  schema/Bool}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -377,6 +380,7 @@
                    (maybe-add-http-connector config)
                    (maybe-add-https-connector config)
                    (assoc :max-threads (determine-max-threads config (num-cpus)))
+                   (assoc :queue-max-size (get config :queue-max-size default-queue-max-size))
                    (assoc :jmx-enable (parse-bool (get config :jmx-enable default-jmx-enable))))]
     (when-not (some #(contains? result %) [:http :https])
       (throw (IllegalArgumentException.

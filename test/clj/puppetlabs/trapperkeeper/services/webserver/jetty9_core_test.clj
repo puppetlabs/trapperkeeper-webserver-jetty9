@@ -1,13 +1,12 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core-test
-  (:import
-    (org.eclipse.jetty.server.handler ContextHandler ContextHandlerCollection))
+  (:import (org.eclipse.jetty.server.handler ContextHandlerCollection))
   (:require [clojure.test :refer :all]
             [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
             [puppetlabs.trapperkeeper.testutils.webserver
-              :refer [with-test-webserver with-test-webserver-and-config]]))
+             :refer [with-test-webserver with-test-webserver-and-config]]))
 
 (deftest handlers
   (testing "create-handlers should allow for handlers to be added"
@@ -174,3 +173,73 @@
                 :overrides                 {:myoverride "my-override-value"}}
                @(:state context))
             "config unexpectedly changed for override-webserver-settings!")))))
+
+(defn get-thread-pool-and-queue-for-create-server
+  [max-threads queue-max-size]
+  (let [server           (jetty/create-server {:state (atom nil)
+                                               :handlers
+                                                 (ContextHandlerCollection.)
+                                               :server nil}
+                                              {:http {:port 0
+                                                      :host "0.0.0.0"
+                                                      :request-header-max-size
+                                                        100}
+                                               :jmx-enable false
+                                               :max-threads max-threads
+                                               :queue-max-size queue-max-size})
+        thread-pool      (.getThreadPool server)
+        ;; Using reflection here because the .getQueue method is protected
+        ;; and I didn't see any other way to pull the queue back from
+        ;; the thread pool.
+        get-queue-method (-> thread-pool
+                             (.getClass)
+                             (.getDeclaredMethod "getQueue" nil))
+        _                (.setAccessible get-queue-method true)
+        queue            (.invoke get-queue-method thread-pool nil)]
+    {:thread-pool thread-pool
+     :queue queue}))
+
+(deftest create-server-tests
+  (testing "thread pool given proper values"
+    (testing "max threads passed through"
+      (dotimes [x 5]
+        (let [{:keys [thread-pool]}
+          (get-thread-pool-and-queue-for-create-server x 1)]
+          (is (= x (.getMaxThreads thread-pool))
+              "Unexpected max threads for queue"))))
+
+    (testing "default idle timeout passed through"
+      (let [{:keys [thread-pool]}
+             (get-thread-pool-and-queue-for-create-server 42 1)]
+        (is (= jetty/default-queue-idle-timeout
+               (.getIdleTimeout thread-pool)))))
+
+    (testing "when queue-max-size less than default-queue-min-threads"
+      (let [max-threads    23
+            queue-min-size (dec jetty/default-queue-min-threads)
+            {:keys [thread-pool queue]}
+              (get-thread-pool-and-queue-for-create-server max-threads
+                                                           queue-min-size)]
+        (is (= max-threads (.getMaxThreads thread-pool))
+            "Unexpected max threads for thread pool")
+        (is (= queue-min-size (.getMinThreads thread-pool))
+            "Unexpected min threads for queue")
+        (is (= queue-min-size (.getCapacity queue))
+            "Unexpected initial capacity for queue")
+        (is (= queue-min-size (.getMaxCapacity queue))
+            "Unexpected max capacity for queue")))
+
+    (testing "when queue-max-size greater than default-queue-min-threads"
+      (let [max-threads    42
+            queue-min-size (inc jetty/default-queue-min-threads)
+            {:keys [thread-pool queue]}
+            (get-thread-pool-and-queue-for-create-server max-threads
+                                                         queue-min-size)]
+        (is (= max-threads (.getMaxThreads thread-pool))
+            "Unexpected max threads for thread pool")
+        (is (= jetty/default-queue-min-threads (.getMinThreads thread-pool))
+            "Unexpected min threads for queue")
+        (is (= jetty/default-queue-min-threads (.getCapacity queue))
+            "Unexpected initial capacity for queue")
+        (is (= queue-min-size (.getMaxCapacity queue))
+            "Unexpected max capacity for queue")))))
