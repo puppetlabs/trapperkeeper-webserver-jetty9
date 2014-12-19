@@ -242,3 +242,42 @@
       "./dev-resources/config/jetty/ssl/certs/master-with-root-ca.pem"
       "./dev-resources/config/jetty/ssl/certs/master-with-intermediate-ca.pem"
       "./dev-resources/config/jetty/ssl/certs/ca-root.pem")))
+
+(deftest determine-max-threads-test
+  (testing "Determining the number of connectors."
+    (is (= 0 (connector-count {})))
+    (is (= 1 (connector-count {:port 8000 :host "foo.local"})))
+    (is (= 1 (connector-count (assoc valid-ssl-pem-config
+                                     :ssl-port 8001))))
+    (is (= 2 (connector-count (merge {:port 8000 :host "foo.local"}
+                                     {:ssl-port 8001}
+                                     valid-ssl-pem-config)))))
+
+  (testing "The number of threads per connector"
+    (is (= 3 (threads-per-connector 1)))
+    (is (= 4 (threads-per-connector 2)))
+    (is (= 5 (threads-per-connector 3)))
+    (is (= 7 (threads-per-connector 4))))
+
+  (testing "Number of acceptors per cpu"
+    (is (= 1 (acceptors-count 1)))
+    (is (= 1 (acceptors-count 2)))
+    (is (= 1 (acceptors-count 3)))
+    (is (= 2 (acceptors-count 4))))
+
+  (testing "The default number of threads are returned."
+    (is (= default-max-threads (determine-max-threads {} 1)))
+    (is (= default-max-threads (determine-max-threads
+                                 {:port 8000 :host "foo.local"} 1))))
+
+  (testing "The max threads set in the config is used."
+    (let [max-threads 42]
+      (is (= max-threads (determine-max-threads
+                           {:max-threads max-threads} 1)))))
+
+  (testing (str "More than the default max threads are returned with a lot of "
+                "cores and a warning is logged.")
+    (with-test-logging
+      (is (< default-max-threads (determine-max-threads
+                                   {:port 8000 :host "foo.local"} 100)))
+      (is (logged? #"Thread pool size not configured so using a size of")))))

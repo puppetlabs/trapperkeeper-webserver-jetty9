@@ -260,17 +260,29 @@
                  ssl-crl-path))))))
 
 (schema/defn ^:always-validate
+  contains-keys? :- schema/Bool
+  [config :- WebserverRawConfig
+   keys   :- #{schema/Keyword}]
+  (boolean (some #(contains? config %) keys)))
+
+(defn contains-http-connector? [config]
+  (contains-keys? config #{:port :host}))
+
+(schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
   [config :- WebserverRawConfig]
-  (if (some #(contains? config %) #{:port :host})
+  (if (contains-http-connector? config)
     {:host         (or (:host config) default-host)
      :port         (or (:port config) default-http-port)
      :request-header-max-size (or (:request-header-max-size config) default-request-header-size)}))
 
+(schema/defn contains-https-connector? [config]
+  (contains-keys? config #{:ssl-port :ssl-host}))
+
 (schema/defn ^:always-validate
   maybe-get-https-connector :- (schema/maybe WebserverSslConnector)
   [config :- WebserverRawConfig]
-  (if (some #(contains? config %) #{:ssl-port :ssl-host})
+  (if (contains-https-connector? config)
     {:host (or (:ssl-host config) default-host)
      :port (or (:ssl-port config) default-https-port)
      :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
@@ -305,6 +317,54 @@
     (throw (IllegalArgumentException.
              "Error: More than one default server specified in configuration"))))
 
+(defn selectors-count
+  "The number of selector threads that should be allocated per connector per core."
+  [num-cpus]
+  num-cpus)
+
+(defn acceptors-count
+  "The number of acceptor threads that should be allocated per connector per core."
+  [num-cpus]
+  (max 1 (int (/ num-cpus 2))))
+
+(defn threads-per-connector
+  "The total number of threads needed per attached connector."
+  [num-cpus]
+  (+ 1 (acceptors-count num-cpus)
+       (selectors-count num-cpus)))
+
+(schema/defn ^:always-validate
+  connector-count :- schema/Int
+  "Return the number of connectors found in the config."
+  [config :- WebserverRawConfig]
+  (let [connectors [(contains-http-connector? config)
+                    (contains-https-connector? config)]]
+    (count (filter true? connectors))))
+
+(schema/defn ^:always-validate
+  calculate-minimum-threads :- schema/Int
+  "Calculate the number threads needed to operate based on the number of cores
+  abvailable and the number of connectors present."
+  [config   :- WebserverRawConfig
+   num-cpus :- schema/Int]
+  (* (connector-count config)
+     (threads-per-connector num-cpus)))
+
+(schema/defn ^:always-validate
+  determine-max-threads :- schema/Int
+  "Determine the size of the Jetty thread pool. If the size is specified in the
+  config then use that value, otherwise determine the minimum number of threads
+  needed to operate. If that number is larger than the default then use it,
+  otherwise use the default."
+  [config   :- WebserverRawConfig
+   num-cpus :- schema/Int]
+  (let [calc-max-threads (max (calculate-minimum-threads config num-cpus)
+                              default-max-threads)]
+    (or (:max-threads config)
+        (do (log/warn "Thread pool size not configured so using a size of "
+                      calc-max-threads)
+            calc-max-threads))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -314,7 +374,7 @@
   (let [result (-> {}
                    (maybe-add-http-connector config)
                    (maybe-add-https-connector config)
-                   (assoc :max-threads (get config :max-threads default-max-threads))
+                   (assoc :max-threads (determine-max-threads config (num-cpus)))
                    (assoc :jmx-enable (parse-bool (get config :jmx-enable default-jmx-enable))))]
     (when-not (some #(contains? result %) [:http :https])
       (throw (IllegalArgumentException.
