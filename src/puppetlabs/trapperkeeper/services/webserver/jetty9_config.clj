@@ -342,7 +342,7 @@
     (count (filter true? connectors))))
 
 (schema/defn ^:always-validate
-  calculate-minimum-threads :- schema/Int
+  calculate-required-threads :- schema/Int
   "Calculate the number threads needed to operate based on the number of cores
   abvailable and the number of connectors present."
   [config   :- WebserverRawConfig
@@ -358,7 +358,7 @@
   otherwise use the default."
   [config   :- WebserverRawConfig
    num-cpus :- schema/Int]
-  (let [calc-max-threads (max (calculate-minimum-threads config num-cpus)
+  (let [calc-max-threads (max (calculate-required-threads config num-cpus)
                               default-max-threads)]
     (or (:max-threads config)
         (do (log/warn "Thread pool size not configured so using a size of "
