@@ -265,6 +265,10 @@
     (is (= 1 (acceptors-count 3)))
     (is (= 2 (acceptors-count 4))))
 
+  (testing "Number of selectors per cpu"
+    (doseq [n (range 42)]
+      (is (= n (selectors-count n)))))
+
   (testing "The default number of threads are returned."
     (is (= default-max-threads (determine-max-threads {} 1)))
     (is (= default-max-threads (determine-max-threads
