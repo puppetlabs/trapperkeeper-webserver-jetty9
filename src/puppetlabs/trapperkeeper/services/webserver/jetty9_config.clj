@@ -330,8 +330,8 @@
 (defn threads-per-connector
   "The total number of threads needed per attached connector."
   [num-cpus]
-  (+ 1 (acceptors-count num-cpus)
-       (selectors-count num-cpus)))
+  (+ (acceptors-count num-cpus)
+     (selectors-count num-cpus)))
 
 (schema/defn ^:always-validate
   connector-count :- schema/Int
@@ -347,8 +347,8 @@
   abvailable and the number of connectors present."
   [config   :- WebserverRawConfig
    num-cpus :- schema/Int]
-  (* (connector-count config)
-     (threads-per-connector num-cpus)))
+  (+ 1 (* (connector-count config)
+          (threads-per-connector num-cpus))))
 
 (schema/defn ^:always-validate
   determine-max-threads :- schema/Int
