@@ -254,10 +254,10 @@
                                      valid-ssl-pem-config)))))
 
   (testing "The number of threads per connector"
-    (is (= 3 (threads-per-connector 1)))
-    (is (= 4 (threads-per-connector 2)))
-    (is (= 5 (threads-per-connector 3)))
-    (is (= 7 (threads-per-connector 4))))
+    (is (= 2 (threads-per-connector 1)))
+    (is (= 3 (threads-per-connector 2)))
+    (is (= 4 (threads-per-connector 3)))
+    (is (= 6 (threads-per-connector 4))))
 
   (testing "Number of acceptors per cpu"
     (is (= 1 (acceptors-count 1)))
