@@ -4,11 +4,11 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
             [me.raynes.fs :as fs]
-            [schema.core :as schema]
             [puppetlabs.certificate-authority.core :as ssl]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]))
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]))
 
 (def valid-ssl-pem-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
@@ -285,3 +285,25 @@
       (is (< default-max-threads (determine-max-threads
                                    {:port 8000 :host "foo.local"} 100)))
       (is (logged? #"Thread pool size not configured so using a size of")))))
+
+(defn thread-pool-size-test-config
+  [raw-config]
+  (let [calc-size (calculate-required-threads raw-config (ks/num-cpus))
+        low-size  (- calc-size 1)
+        config    (assoc raw-config :max-threads low-size)
+        exp-re    (re-pattern (str "Insufficient max threads in ThreadPool: max="
+                                   low-size " < needed=" calc-size))]
+    {:config config
+     :exp-re exp-re}))
+
+(deftest calculated-thread-pool-size
+  (testing "Verify that our thread pool size algorithm matches Jetty's"
+    (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
+                                                :ssl-port 0, :ssl-host "0.0.0.0"})
+          config-1 (thread-pool-size-test-config test-1)
+          test-2   {:port 0, :host "0.0.0.0"}
+          config-2 (thread-pool-size-test-config test-2)]
+      (doseq [{:keys [config exp-re]} [config-1 config-2]]
+        (is (thrown-with-msg?
+              java.lang.IllegalStateException exp-re
+              (jetty9/start-webserver! (jetty9/initialize-context) config)))))))
