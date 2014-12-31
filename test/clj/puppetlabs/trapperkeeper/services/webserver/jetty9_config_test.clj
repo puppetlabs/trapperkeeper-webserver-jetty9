@@ -306,4 +306,9 @@
       (doseq [{:keys [config exp-re]} [config-1 config-2]]
         (is (thrown-with-msg?
               java.lang.IllegalStateException exp-re
-              (jetty9/start-webserver! (jetty9/initialize-context) config)))))))
+              (jetty9/start-webserver! (jetty9/initialize-context) config))
+            (str "The current method that the Jetty9 service uses to calculate "
+                 "the minimum size of a thread pool has drifted from how Jetty "
+                 "itself calculates the size. This is most likely due to a "
+                 "change of the Jetty version being used. The
+                 calculate-required-threads function should be updated."))))))
