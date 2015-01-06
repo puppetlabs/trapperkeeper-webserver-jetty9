@@ -344,7 +344,7 @@
 (schema/defn ^:always-validate
   calculate-required-threads :- schema/Int
   "Calculate the number threads needed to operate based on the number of cores
-  abvailable and the number of connectors present."
+  available and the number of connectors present."
   [config   :- WebserverRawConfig
    num-cpus :- schema/Int]
   (+ 1 (* (connector-count config)
