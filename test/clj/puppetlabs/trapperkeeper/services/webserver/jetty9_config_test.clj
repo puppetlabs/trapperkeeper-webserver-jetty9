@@ -286,7 +286,7 @@
                                    {:port 8000 :host "foo.local"} 100)))
       (is (logged? #"Thread pool size not configured so using a size of")))))
 
-(defn thread-pool-size-test-config
+(defn small-thread-pool-size-test-config
   [raw-config]
   (let [calc-size (calculate-required-threads raw-config (ks/num-cpus))
         low-size  (- calc-size 1)
@@ -296,13 +296,18 @@
     {:config config
      :exp-re exp-re}))
 
+(defn correct-thread-pool-size-test-config
+  [raw-config]
+  (let [calc-size (calculate-required-threads raw-config (ks/num-cpus))]
+    (assoc raw-config :max-threads calc-size)))
+
 (deftest calculated-thread-pool-size
   (testing "Verify that our thread pool size algorithm matches Jetty's"
     (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
                                                 :ssl-port 0, :ssl-host "0.0.0.0"})
-          config-1 (thread-pool-size-test-config test-1)
+          config-1 (small-thread-pool-size-test-config test-1)
           test-2   {:port 0, :host "0.0.0.0"}
-          config-2 (thread-pool-size-test-config test-2)]
+          config-2 (small-thread-pool-size-test-config test-2)]
       (doseq [{:keys [config exp-re]} [config-1 config-2]]
         (is (thrown-with-msg?
               java.lang.IllegalStateException exp-re
@@ -311,4 +316,16 @@
                  "the minimum size of a thread pool has drifted from how Jetty "
                  "itself calculates the size. This is most likely due to a "
                  "change of the Jetty version being used. The
-                 calculate-required-threads function should be updated."))))))
+                 calculate-required-threads function should be updated.")))))
+
+  (testing "Our thread pool size algo still allows Jetty to start"
+    (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
+                                                :ssl-port 0, :ssl-host "0.0.0.0"})
+          config-1 (correct-thread-pool-size-test-config test-1)
+          test-2   {:port 0, :host "0.0.0.0"}
+          config-2 (correct-thread-pool-size-test-config test-2)]
+      (doseq [config [config-1 config-2]]
+        (let [ctxt (jetty9/start-webserver! (jetty9/initialize-context) config)]
+          (is (= (type (:server ctxt)) org.eclipse.jetty.server.Server))
+          (jetty9/shutdown ctxt))))))
+
