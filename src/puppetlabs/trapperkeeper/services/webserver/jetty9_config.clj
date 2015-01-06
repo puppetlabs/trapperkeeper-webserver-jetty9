@@ -360,12 +360,12 @@
   otherwise use the default."
   [config   :- WebserverRawConfig
    num-cpus :- schema/Int]
-  (let [calc-max-threads (max (calculate-required-threads config num-cpus)
-                              default-max-threads)]
-    (or (:max-threads config)
-        (do (log/warn "Thread pool size not configured so using a size of "
-                      calc-max-threads)
-            calc-max-threads))))
+  (or (:max-threads config)
+      (let [calc-max-threads (max (calculate-required-threads config num-cpus)
+                                  default-max-threads)]
+        (log/warn "Thread pool size not configured so using a size of "
+                  calc-max-threads)
+        calc-max-threads)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
