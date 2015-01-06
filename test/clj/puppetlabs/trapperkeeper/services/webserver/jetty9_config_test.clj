@@ -4,11 +4,11 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
             [me.raynes.fs :as fs]
-            [schema.core :as schema]
             [puppetlabs.certificate-authority.core :as ssl]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]))
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]))
 
 (def valid-ssl-pem-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
@@ -242,3 +242,90 @@
       "./dev-resources/config/jetty/ssl/certs/master-with-root-ca.pem"
       "./dev-resources/config/jetty/ssl/certs/master-with-intermediate-ca.pem"
       "./dev-resources/config/jetty/ssl/certs/ca-root.pem")))
+
+(deftest determine-max-threads-test
+  (testing "Determining the number of connectors."
+    (is (= 0 (connector-count {})))
+    (is (= 1 (connector-count {:port 8000 :host "foo.local"})))
+    (is (= 1 (connector-count (assoc valid-ssl-pem-config
+                                     :ssl-port 8001))))
+    (is (= 2 (connector-count (merge {:port 8000 :host "foo.local"}
+                                     {:ssl-port 8001}
+                                     valid-ssl-pem-config)))))
+
+  (testing "The number of threads per connector"
+    (is (= 2 (threads-per-connector 1)))
+    (is (= 3 (threads-per-connector 2)))
+    (is (= 4 (threads-per-connector 3)))
+    (is (= 6 (threads-per-connector 4))))
+
+  (testing "Number of acceptors per cpu"
+    (is (= 1 (acceptors-count 1)))
+    (is (= 1 (acceptors-count 2)))
+    (is (= 1 (acceptors-count 3)))
+    (is (= 2 (acceptors-count 4))))
+
+  (testing "Number of selectors per cpu"
+    (doseq [n (range 42)]
+      (is (= n (selectors-count n)))))
+
+  (testing "The default number of threads are returned."
+    (is (= default-max-threads (determine-max-threads {} 1)))
+    (is (= default-max-threads (determine-max-threads
+                                 {:port 8000 :host "foo.local"} 1))))
+
+  (testing "The max threads set in the config is used."
+    (let [max-threads 42]
+      (is (= max-threads (determine-max-threads
+                           {:max-threads max-threads} 1)))))
+
+  (testing (str "More than the default max threads are returned with a lot of "
+                "cores and a warning is logged.")
+    (with-test-logging
+      (is (< default-max-threads (determine-max-threads
+                                   {:port 8000 :host "foo.local"} 100)))
+      (is (logged? #"Thread pool size not configured so using a size of")))))
+
+(defn small-thread-pool-size-test-config
+  [raw-config]
+  (let [calc-size (calculate-required-threads raw-config (ks/num-cpus))
+        low-size  (- calc-size 1)
+        config    (assoc raw-config :max-threads low-size)
+        exp-re    (re-pattern (str "Insufficient max threads in ThreadPool: max="
+                                   low-size " < needed=" calc-size))]
+    {:config config
+     :exp-re exp-re}))
+
+(defn correct-thread-pool-size-test-config
+  [raw-config]
+  (let [calc-size (calculate-required-threads raw-config (ks/num-cpus))]
+    (assoc raw-config :max-threads calc-size)))
+
+(deftest calculated-thread-pool-size
+  (testing "Verify that our thread pool size algorithm matches Jetty's"
+    (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
+                                                :ssl-port 0, :ssl-host "0.0.0.0"})
+          config-1 (small-thread-pool-size-test-config test-1)
+          test-2   {:port 0, :host "0.0.0.0"}
+          config-2 (small-thread-pool-size-test-config test-2)]
+      (doseq [{:keys [config exp-re]} [config-1 config-2]]
+        (is (thrown-with-msg?
+              java.lang.IllegalStateException exp-re
+              (jetty9/start-webserver! (jetty9/initialize-context) config))
+            (str "The current method that the Jetty9 service uses to calculate "
+                 "the minimum size of a thread pool has drifted from how Jetty "
+                 "itself calculates the size. This is most likely due to a "
+                 "change of the Jetty version being used. The
+                 calculate-required-threads function should be updated.")))))
+
+  (testing "Our thread pool size algo still allows Jetty to start"
+    (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
+                                                :ssl-port 0, :ssl-host "0.0.0.0"})
+          config-1 (correct-thread-pool-size-test-config test-1)
+          test-2   {:port 0, :host "0.0.0.0"}
+          config-2 (correct-thread-pool-size-test-config test-2)]
+      (doseq [config [config-1 config-2]]
+        (let [ctxt (jetty9/start-webserver! (jetty9/initialize-context) config)]
+          (is (= (type (:server ctxt)) org.eclipse.jetty.server.Server))
+          (jetty9/shutdown ctxt))))))
+

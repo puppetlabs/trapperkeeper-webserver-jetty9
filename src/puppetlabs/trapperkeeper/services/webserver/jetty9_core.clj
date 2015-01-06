@@ -1,7 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core
   (:import (org.eclipse.jetty.server Handler Server Request ServerConnector
                                      HttpConfiguration HttpConnectionFactory
-                                     ConnectionFactory)
+                                     ConnectionFactory AbstractConnectionFactory)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection
                                              ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler)
            (org.eclipse.jetty.util.resource Resource)
@@ -173,6 +173,8 @@
       (log/info (str "webserver config overridden for key '" (name key) "'")))
     (merge options overrides)))
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Context Functions
 
@@ -234,7 +236,12 @@
    ssl-ctxt-factory  :- SslContextFactory
    config :- config/WebserverSslConnector]
   (let [request-size (:request-header-max-size config)]
-    (doto (ServerConnector. server ssl-ctxt-factory (connection-factory request-size))
+    (doto (ServerConnector. server
+                            nil nil nil
+                            (config/acceptors-count (ks/num-cpus))
+                            (config/selectors-count (ks/num-cpus))
+                            (AbstractConnectionFactory/getFactories
+                              ssl-ctxt-factory (connection-factory request-size)))
       (.setPort (:port config))
       (.setHost (:host config)))))
 
@@ -243,7 +250,11 @@
   [server :- Server
    config :- config/WebserverConnector]
   (let [request-size (:request-header-max-size config)]
-    (doto (ServerConnector. server (connection-factory request-size))
+    (doto (ServerConnector. server
+                            nil nil nil
+                            (config/acceptors-count (ks/num-cpus))
+                            (config/selectors-count (ks/num-cpus))
+                            (connection-factory request-size))
       (.setPort (:port config))
       (.setHost (:host config)))))
 
