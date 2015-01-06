@@ -276,7 +276,9 @@
      :port         (or (:port config) default-http-port)
      :request-header-max-size (or (:request-header-max-size config) default-request-header-size)}))
 
-(schema/defn contains-https-connector? [config]
+(schema/defn ^:always-validate
+  contains-https-connector? :- schema/Bool
+  [config :- WebserverRawConfig]
   (contains-keys? config #{:ssl-port :ssl-host}))
 
 (schema/defn ^:always-validate
