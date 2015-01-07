@@ -28,6 +28,7 @@
             [ring.util.codec :as codec]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [schema.core :as schema]))
 
