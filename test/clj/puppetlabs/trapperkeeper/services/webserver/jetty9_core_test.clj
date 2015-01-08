@@ -1,16 +1,13 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core-test
   (:import
-    (org.eclipse.jetty.server.handler ContextHandlerCollection)
-    (org.apache.http ConnectionClosedException)
-    (java.util.concurrent ExecutionException))
+    (org.eclipse.jetty.server.handler ContextHandlerCollection))
   (:require [clojure.test :refer :all]
             [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
             [puppetlabs.http.client.sync :as http-sync]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
             [puppetlabs.trapperkeeper.testutils.webserver
-              :refer [with-test-webserver with-test-webserver-and-config]]
-            [puppetlabs.kitchensink.core :as ks]))
+              :refer [with-test-webserver with-test-webserver-and-config]]))
 
 (deftest handlers
   (testing "create-handlers should allow for handlers to be added"
@@ -247,56 +244,3 @@
             "Unexpected initial capacity for queue")
         (is (= queue-min-size (.getMaxCapacity queue))
             "Unexpected max capacity for queue")))))
-
-(defn get-responses
-  [num-requests port]
-  (doall (for [_ (range num-requests)]
-           (future
-             (http-sync/get
-               (str "http://localhost:"
-                    port
-                    "/hello")
-               {:as :text})))))
-
-(deftest queue-max-size-tests
-  (testing "queue-max-size"
-    (let [response-body  "hello world"
-          app            (fn [_]
-                           (Thread/sleep 5000)
-                           (-> response-body
-                               (rr/response)
-                               (rr/status 200)
-                               (rr/content-type "text/plain")
-                               (rr/charset "UTF-8")))
-          ;; Jetty needs at least num-cpus entries (and likely a bit more) in
-          ;; the queue in order to boot up successfully.  Jetty does some
-          ;; priming of selector threads using the queue independently of
-          ;; any incoming requests, for example.
-          queue-max-size (* (ks/num-cpus) 2)
-          ;; For the fail case, need to generate some number of concurrent
-          ;; requests in excess of the size of the queue in order for the queue
-          ;; to be completely filled and for some requests to start being
-          ;; dropped
-          num-requests   (+ queue-max-size 30)]
-      (testing "of default (infinite) size doesn't lead to any request fails"
-        (with-test-webserver-and-config
-          app port {:shutdown-timeout-seconds 0}
-          (let [responses (get-responses num-requests port)]
-            (doseq [response responses]
-              (is (= 200 (:status @response))
-                  "Unsuccessful response status for one request")
-              (is (= response-body (:body @response))
-                  "Unsuccessful response body for one request")))))
-      (testing "of sufficiently low queue-max-size causes some requests to fail"
-        (with-test-webserver-and-config
-          app port {:queue-max-size queue-max-size
-                    :shutdown-timeout-seconds 0}
-          (let [responses (doall (get-responses num-requests port))]
-            (is (some #(try
-                        @%
-                        false
-                        (catch ExecutionException e
-                          (instance? ConnectionClosedException
-                                     (.. e getCause))))
-                      responses)
-                "Didn't encounter connection close for any requests")))))))
