@@ -1,3 +1,10 @@
+## 1.1.0
+
+* [TK-130](https://tickets.puppetlabs.com/browse/TK-130)
+  The default value for Jetty's maximum threadpool size is now
+  calculated to ensure it can start up on a box with a large
+  number of cores.
+
 ## 1.0.1
 
 * This release adds an additional configuration option to
