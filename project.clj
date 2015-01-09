@@ -3,6 +3,9 @@
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.1.1-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
+  :url "https://github.com/puppetlabs/trapperkeeper-webserver-jetty9"
+  :license {:name "Apache License, Version 2.0"
+            :url "http://www.apache.org/licenses/LICENSE-2.0"}
   ;; Abort when version ranges or version conflicts are detected in
   ;; dependencies. Also supports :warn to simply emit warnings.
   ;; requires lein 2.2.0+.
