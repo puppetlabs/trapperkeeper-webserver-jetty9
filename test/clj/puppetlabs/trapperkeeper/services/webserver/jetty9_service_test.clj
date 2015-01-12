@@ -686,7 +686,8 @@
         (with-open [async-client (async/create-client {})]
           (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
             @in-request-handler
-            (tk-app/stop app)
+            (with-test-logging
+              (tk-app/stop app))
             (is (not (nil? (:error @response)))))))))
 
   (testing "no graceful shutdown when stop timeout is set to 0"
