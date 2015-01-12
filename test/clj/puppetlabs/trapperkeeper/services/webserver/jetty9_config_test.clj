@@ -318,14 +318,15 @@
           test-2   {:port 0, :host "0.0.0.0"}
           config-2 (small-thread-pool-size-test-config test-2)]
       (doseq [{:keys [config exp-re]} [config-1 config-2]]
-        (is (thrown-with-msg?
-              java.lang.IllegalStateException exp-re
-              (jetty9/start-webserver! (jetty9/initialize-context) config))
-            (str "The current method that the Jetty9 service uses to calculate "
-                 "the minimum size of a thread pool has drifted from how Jetty "
-                 "itself calculates the size. This is most likely due to a "
-                 "change of the Jetty version being used. The
-                 calculate-required-threads function should be updated.")))))
+        (with-test-logging
+          (is (thrown-with-msg?
+                IllegalStateException exp-re
+                (jetty9/start-webserver! (jetty9/initialize-context) config))
+              (str "The current method that the Jetty9 service uses to calculate "
+                   "the minimum size of a thread pool has drifted from how Jetty "
+                   "itself calculates the size. This is most likely due to a "
+                   "change of the Jetty version being used. The
+                   calculate-required-threads function should be updated."))))))
 
   (testing "Our thread pool size algo still allows Jetty to start"
     (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"

@@ -131,19 +131,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def default-graceful-stop-timeout 60000)
-
-(def default-request-idle-timeout
-  1000)
+(def default-graceful-stop-timeout
+  "The default number of milliseconds that is allowed for requests active at
+  the time the server is stopped to remain running until the server shuts
+  down."
+  60000)
 
 (def default-proxy-idle-timeout
   "The default number of milliseconds to wait before the proxy gives up on the
   upstream server if the :idle-timeout value isn't set in the proxy config."
   60000)
 
-(def default-queue-idle-timeout 60000)
+(def default-queue-idle-timeout
+  "The maximum number of milliseconds that a thread in the queue can remain
+  idle before the thread may be thrown away.  A value less than or equal to 0
+  would allow a thread to remain idle indefinitely."
+  60000)
 
-(def default-queue-min-threads 8)
+(def default-queue-min-threads
+  "The minimum number of threads to create and maintain in the queue."
+  8)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -267,9 +274,7 @@
   queue-thread-pool :- QueuedThreadPool
   [max-threads :- schema/Int
    queue-max-size :- schema/Int]
-  (let [queue-min-size (if (> default-queue-min-threads queue-max-size)
-                         queue-max-size
-                         default-queue-min-threads)]
+  (let [queue-min-size (min default-queue-min-threads queue-max-size)]
     (QueuedThreadPool. max-threads
                        queue-min-size
                        default-queue-idle-timeout
