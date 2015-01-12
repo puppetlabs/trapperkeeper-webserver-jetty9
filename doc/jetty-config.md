@@ -22,6 +22,16 @@ This sets the maximum number of threads assigned to responding to HTTP and HTTPS
 requests, effectively changing how many concurrent requests can be made at one
 time. Defaults to 100.
 
+### `queue-max-size`
+
+This can be used to set an upper-bound on the size of the worker queue that the
+web server uses to temporarily store incoming client connections before they
+can be serviced.  This value defaults to "unbounded".  A request which is
+rejected by the web server because the queue is full would be seen by the
+client as having initially connected to the server socket at the TCP layer but
+having been closed almost immediately afterward by the server with no HTTP
+layer response body.
+
 ### `request-header-max-size`
 
 This sets the maximum size of an HTTP Request Header. If a header is sent

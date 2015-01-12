@@ -25,6 +25,7 @@
   [config expected]
   (= (-> expected
          (update-in [:max-threads] (fnil identity default-max-threads))
+         (update-in [:queue-max-size] (fnil identity default-queue-max-size))
          (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
          (update-in [:http :request-header-max-size] (fnil identity default-request-header-size)))
      (process-config config)))
@@ -34,6 +35,7 @@
   (let [actual (process-config config)]
     (= (-> expected
            (update-in [:max-threads] (fnil identity default-max-threads))
+           (update-in [:queue-max-size] (fnil identity default-queue-max-size))
            (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
            (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
            (update-in [:https :protocols] (fnil identity default-protocols))
@@ -64,7 +66,14 @@
 
     (is (expected-http-config?
           {:port 8000 :request-header-max-size 16192}
-          {:http {:host default-host :port 8000 :request-header-max-size 16192}})))
+          {:http {:host default-host
+                  :port 8000
+                  :request-header-max-size 16192}}))
+
+    (is (expected-http-config?
+          {:port 8000 :queue-max-size 123}
+          {:http {:host default-host :port 8000}
+           :queue-max-size 123})))
 
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?
@@ -309,14 +318,15 @@
           test-2   {:port 0, :host "0.0.0.0"}
           config-2 (small-thread-pool-size-test-config test-2)]
       (doseq [{:keys [config exp-re]} [config-1 config-2]]
-        (is (thrown-with-msg?
-              java.lang.IllegalStateException exp-re
-              (jetty9/start-webserver! (jetty9/initialize-context) config))
-            (str "The current method that the Jetty9 service uses to calculate "
-                 "the minimum size of a thread pool has drifted from how Jetty "
-                 "itself calculates the size. This is most likely due to a "
-                 "change of the Jetty version being used. The
-                 calculate-required-threads function should be updated.")))))
+        (with-test-logging
+          (is (thrown-with-msg?
+                IllegalStateException exp-re
+                (jetty9/start-webserver! (jetty9/initialize-context) config))
+              (str "The current method that the Jetty9 service uses to calculate "
+                   "the minimum size of a thread pool has drifted from how Jetty "
+                   "itself calculates the size. This is most likely due to a "
+                   "change of the Jetty version being used. The
+                   calculate-required-threads function should be updated."))))))
 
   (testing "Our thread pool size algo still allows Jetty to start"
     (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
