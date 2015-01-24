@@ -15,7 +15,7 @@
                  [prismatic/schema "0.2.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/certificate-authority "0.6.0"]
+                 [puppetlabs/ssl-utils "0.7.0"]
 
                  [ch.qos.logback/logback-access "1.1.1"]
 
