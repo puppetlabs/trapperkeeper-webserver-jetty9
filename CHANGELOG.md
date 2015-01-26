@@ -1,3 +1,12 @@
+## 1.1.1
+
+* [TK-82](https://tickets.puppetlabs.com/browse/TK-82)
+  Add configuration option to control maximum number of
+  open HTTP connections that Jetty will maintain.
+* Upgrade trapperkeeper dependency to 1.0.1.
+* Upgrade jvm-ssl-utils (previously known as jvm-certificate-authority)
+  dependency to 0.7.0.
+
 ## 1.1.0
 
 * [TK-130](https://tickets.puppetlabs.com/browse/TK-130)
