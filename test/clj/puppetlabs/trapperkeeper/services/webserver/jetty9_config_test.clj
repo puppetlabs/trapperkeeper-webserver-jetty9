@@ -4,7 +4,7 @@
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
             [me.raynes.fs :as fs]
-            [puppetlabs.certificate-authority.core :as ssl]
+            [puppetlabs.ssl-utils.core :as ssl]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
@@ -338,4 +338,3 @@
         (let [ctxt (jetty9/start-webserver! (jetty9/initialize-context) config)]
           (is (= (type (:server ctxt)) org.eclipse.jetty.server.Server))
           (jetty9/shutdown ctxt))))))
-

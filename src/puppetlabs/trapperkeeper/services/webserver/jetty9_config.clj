@@ -7,7 +7,7 @@
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
-            [puppetlabs.certificate-authority.core :as ssl]
+            [puppetlabs.ssl-utils.core :as ssl]
             [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid parse-bool]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

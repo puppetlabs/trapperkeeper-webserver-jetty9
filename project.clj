@@ -1,4 +1,4 @@
-(def tk-version "1.0.0")
+(def tk-version "1.0.1")
 (def ks-version "1.0.0")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.1.1-SNAPSHOT"
@@ -15,7 +15,7 @@
                  [prismatic/schema "0.2.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/certificate-authority "0.6.0"]
+                 [puppetlabs/ssl-utils "0.7.0"]
 
                  [ch.qos.logback/logback-access "1.1.1"]
 
@@ -75,4 +75,3 @@
 
   :main puppetlabs.trapperkeeper.main
   )
-
