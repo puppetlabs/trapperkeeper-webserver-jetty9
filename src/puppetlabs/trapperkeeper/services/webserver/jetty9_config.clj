@@ -323,14 +323,18 @@
              "Error: More than one default server specified in configuration"))))
 
 (defn selectors-count
-  "The number of selector threads that should be allocated per connector per core."
+  "The number of selector threads that should be allocated per connector per
+  core.  This algorithm duplicates the default that Jetty 9.2.7.v20150116 uses.
+  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.7.v20150116/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L229"
   [num-cpus]
-  num-cpus)
+  (max 1 (min 4 (int (/ num-cpus 2)))))
 
 (defn acceptors-count
-  "The number of acceptor threads that should be allocated per connector per core."
+  "The number of acceptor threads that should be allocated per connector per
+  core.  This algorithm duplicates the default that Jetty 9.2.7.v20150116 uses.
+  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.7.v20150116/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L190"
   [num-cpus]
-  (max 1 (int (/ num-cpus 2))))
+  (max 1 (min 4 (int (/ num-cpus 8)))))
 
 (defn threads-per-connector
   "The total number of threads needed per attached connector."
@@ -349,7 +353,9 @@
 (schema/defn ^:always-validate
   calculate-required-threads :- schema/Int
   "Calculate the number threads needed to operate based on the number of cores
-  available and the number of connectors present."
+  available and the number of connectors present.  This algorithm duplicates
+  the default that Jetty 9.2.7.v20150116 uses.  See:
+  https://github.com/eclipse/jetty.project/blob/jetty-9.2.7.v20150116/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L334-L350"
   [config   :- WebserverRawConfig
    num-cpus :- schema/Int]
   (+ 1 (* (connector-count config)
@@ -363,12 +369,11 @@
   otherwise use the default."
   [config   :- WebserverRawConfig
    num-cpus :- schema/Int]
-  (or (:max-threads config)
-      (let [calc-max-threads (max (calculate-required-threads config num-cpus)
-                                  default-max-threads)]
-        (log/warn "Thread pool size not configured so using a size of "
-                  calc-max-threads)
-        calc-max-threads)))
+  (let [max-threads (or (:max-threads config)
+                        (max (calculate-required-threads config num-cpus)
+                             default-max-threads))]
+    (log/debugf "Using webserver thread pool size of %d" max-threads)
+    max-threads))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -393,6 +398,7 @@
   (let [handler (RequestLogHandler.)
         logger (RequestLogImpl.)]
     (.setFileName logger (:access-log-config config))
+    (.setQuiet logger true)
     (.setRequestLog handler logger)
     handler))
 

@@ -13,7 +13,7 @@
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
            (org.eclipse.jetty.webapp WebAppContext)
            (java.util HashSet)
-           (org.eclipse.jetty.http MimeTypes)
+           (org.eclipse.jetty.http MimeTypes HttpHeader HttpHeaderValue)
            (javax.servlet Servlet ServletContextListener)
            (org.eclipse.jetty.proxy ProxyServlet)
            (java.net URI)
@@ -22,7 +22,8 @@
            (clojure.lang Atom)
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
-           (org.eclipse.jetty.util URIUtil BlockingArrayQueue))
+           (org.eclipse.jetty.util URIUtil BlockingArrayQueue)
+           (java.io IOException))
 
   (:require [ring.util.servlet :as servlet]
             [ring.util.codec :as codec]
@@ -204,7 +205,15 @@
                   (.setKeyStore (:keystore keystore-config))
                   (.setKeyStorePassword (:key-password keystore-config))
                   (.setTrustStore (:truststore keystore-config))
+                  ;; Need to clear out the default cipher suite exclude list so
+                  ;; that Jetty doesn't potentially remove one or more ciphers
+                  ;; that we want to be included.
+                  (.setExcludeCipherSuites (into-array String []))
                   (.setIncludeCipherSuites (into-array String cipher-suites))
+                  ;; Need to clear out the default protocols exclude list so
+                  ;; that Jetty doesn't potentially remove one or more protocols
+                  ;; that we want to be included.
+                  (.setExcludeProtocols (into-array String []))
                   (.setIncludeProtocols (into-array String protocols)))]
     (if (:trust-password keystore-config)
       (.setTrustStorePassword context (:trust-password keystore-config)))
@@ -350,6 +359,15 @@
    enable-trailing-slash-redirect?]
   (.setAllowNullPathInfo handler (not enable-trailing-slash-redirect?))
   (.addHandler (:handlers webserver-context) handler)
+  ;; If this handler is being added after the server has been started, we
+  ;; need to mark the handler as "managed" so that the server will stop the
+  ;; handler when the server is stopped.  We also need to manually start the
+  ;; handler.  The server takes care of marking handlers as managed and starting
+  ;; them if the handlers are already registered when the server is started.
+  (if-let [server (.getServer handler)]
+    (when (and (.isRunning server) (not (.isRunning handler)))
+      (.manage (:handlers webserver-context) handler)
+      (.start handler)))
   handler)
 
 (defn- ring-handler
@@ -371,7 +389,8 @@
    target :- ProxyTarget
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
-                                  (get-proxy-client-context-factory (:ssl-config options)))
+                                  (get-proxy-client-context-factory
+                                    (:ssl-config options)))
         {:keys [request-buffer-size idle-timeout]} options]
     (proxy [ProxyServlet] []
       (rewriteURI [req]
@@ -401,7 +420,8 @@
       (newHttpClient []
         (let [client (if custom-ssl-ctxt-factory
                        (HttpClient. custom-ssl-ctxt-factory)
-                       (if-let [ssl-ctxt-factory (:ssl-context-factory @(:state webserver-context))]
+                       (if-let [ssl-ctxt-factory (:ssl-context-factory
+                                                   @(:state webserver-context))]
                          (HttpClient. ssl-ctxt-factory)
                          (HttpClient.)))]
           (if request-buffer-size
@@ -423,17 +443,34 @@
         (if-let [callback-fn (:callback-fn options)]
          (callback-fn proxy-req req)))
 
+      ;; The implementation of onResponseFailure is duplicated heavily from:
+      ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.7.v20150116/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/ProxyServlet.java#L585-L614
+      ;; The only significant difference is that a 'failure-callback-fn', if
+      ;; defined in options, is invoked just prior to completing the async
+      ;; context for cases that the response was not already committed upstream.
       (onResponseFailure [req resp proxy-resp failure]
         (do
-          (log/debug (str (.getRequestId this req) " proxying failed: " failure))
-          (when-not (.isCommitted resp)
-            (if (instance? TimeoutException failure)
-              (.setStatus resp HttpServletResponse/SC_GATEWAY_TIMEOUT)
-              (.setStatus resp HttpServletResponse/SC_BAD_GATEWAY))
-            (when-let [failure-callback-fn (:failure-callback-fn options)]
-              (failure-callback-fn req resp proxy-resp failure))
-            (.complete (.getAttribute req "org.eclipse.jetty.proxy.ProxyServlet.asyncContext")))))
-        )))
+          (let [request-id    (.getRequestId this req)
+                async-context (.getAsyncContext req)]
+            (log/debug failure (str request-id " proxying failed"))
+            (if (.isCommitted resp)
+              (try
+                (.sendError resp -1)
+                (.complete async-context)
+                (catch IOException _
+                  (log/debug failure (str request-id
+                                          " could not close the connection"))))
+              (do
+                (.resetBuffer resp)
+                (if (instance? TimeoutException failure)
+                  (.setStatus resp HttpServletResponse/SC_GATEWAY_TIMEOUT)
+                  (.setStatus resp HttpServletResponse/SC_BAD_GATEWAY))
+                (.setHeader resp
+                            (.asString HttpHeader/CONNECTION)
+                            (.asString HttpHeaderValue/CLOSE))
+                (when-let [failure-callback-fn (:failure-callback-fn options)]
+                  (failure-callback-fn req resp proxy-resp failure))
+                (.complete async-context)))))))))
 
 (schema/defn ^:always-validate
   register-endpoint!
@@ -600,19 +637,17 @@
 
 (schema/defn ^:always-validate
   add-servlet-handler :- ContextHandler
-  ([webserver-context servlet path]
-   (add-servlet-handler webserver-context servlet path {}))
-  ([webserver-context :- ServerContext
-    servlet :- Servlet
-    path :- schema/Str
-    servlet-init-params :- {schema/Any schema/Any}
-    enable-trailing-slash-redirect?]
-   (let [holder   (doto (ServletHolder. servlet)
-                    (.setInitParameters servlet-init-params))
-         handler  (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
-                    (.setContextPath path)
-                    (.addServlet holder "/*"))]
-     (add-handler webserver-context handler enable-trailing-slash-redirect?))))
+  [webserver-context :- ServerContext
+   servlet :- Servlet
+   path :- schema/Str
+   servlet-init-params :- {schema/Any schema/Any}
+   enable-trailing-slash-redirect?]
+  (let [holder (doto (ServletHolder. servlet)
+                 (.setInitParameters servlet-init-params))
+        handler (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
+                  (.setContextPath path)
+                  (.addServlet holder "/*"))]
+    (add-handler webserver-context handler enable-trailing-slash-redirect?)))
 
 (schema/defn ^:always-validate
   add-war-handler :- ContextHandler

@@ -23,13 +23,13 @@
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
                  ;; Jetty Webserver
-                 [org.eclipse.jetty/jetty-server "9.1.0.v20131115"
+                 [org.eclipse.jetty/jetty-server "9.2.7.v20150116"
                   :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
-                 [org.eclipse.jetty/jetty-servlet "9.1.0.v20131115"]
-                 [org.eclipse.jetty/jetty-servlets "9.1.0.v20131115"]
-                 [org.eclipse.jetty/jetty-webapp "9.1.0.v20131115"]
-                 [org.eclipse.jetty/jetty-proxy "9.1.0.v20131115"]
-                 [org.eclipse.jetty/jetty-jmx "9.1.0.v20131115"]
+                 [org.eclipse.jetty/jetty-servlet "9.2.7.v20150116"]
+                 [org.eclipse.jetty/jetty-servlets "9.2.7.v20150116"]
+                 [org.eclipse.jetty/jetty-webapp "9.2.7.v20150116"]
+                 [org.eclipse.jetty/jetty-proxy "9.2.7.v20150116"]
+                 [org.eclipse.jetty/jetty-jmx "9.2.7.v20150116"]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api commons-codec]]]
 
@@ -68,8 +68,8 @@
                                                                   commons-io
                                                                   org.clojure/tools.macro]]]
                     :injections [(require 'spyscope.core)]
-                    ; Enable SSLv3 for unit tests that exercise SSLv3
-                    :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]} 
+                    ;; Enable SSLv3 for unit tests that exercise SSLv3
+                    :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]}
 
              :testutils {:source-paths ^:replace ["test/clj"]
                          :java-source-paths ^:replace ["test/java"]}

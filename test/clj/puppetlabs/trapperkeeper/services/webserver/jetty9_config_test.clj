@@ -264,19 +264,36 @@
 
   (testing "The number of threads per connector"
     (is (= 2 (threads-per-connector 1)))
-    (is (= 3 (threads-per-connector 2)))
-    (is (= 4 (threads-per-connector 3)))
-    (is (= 6 (threads-per-connector 4))))
+    (is (= 2 (threads-per-connector 2)))
+    (is (= 2 (threads-per-connector 3)))
+    (is (= 3 (threads-per-connector 4)))
+    (is (= 5 (threads-per-connector 8)))
+    (is (= 6 (threads-per-connector 16)))
+    (is (= 7 (threads-per-connector 24)))
+    (is (= 8 (threads-per-connector 32)))
+    (is (= 8 (threads-per-connector 64))))
 
   (testing "Number of acceptors per cpu"
     (is (= 1 (acceptors-count 1)))
     (is (= 1 (acceptors-count 2)))
     (is (= 1 (acceptors-count 3)))
-    (is (= 2 (acceptors-count 4))))
+    (is (= 1 (acceptors-count 4)))
+    (is (= 1 (acceptors-count 8)))
+    (is (= 2 (acceptors-count 16)))
+    (is (= 3 (acceptors-count 24)))
+    (is (= 4 (acceptors-count 32)))
+    (is (= 4 (acceptors-count 64))))
 
   (testing "Number of selectors per cpu"
-    (doseq [n (range 42)]
-      (is (= n (selectors-count n)))))
+    (is (= 1 (selectors-count 1)))
+    (is (= 1 (selectors-count 2)))
+    (is (= 1 (selectors-count 3)))
+    (is (= 2 (selectors-count 4)))
+    (is (= 4 (selectors-count 8)))
+    (is (= 4 (selectors-count 16)))
+    (is (= 4 (selectors-count 24)))
+    (is (= 4 (selectors-count 32)))
+    (is (= 4 (selectors-count 64))))
 
   (testing "The default number of threads are returned."
     (is (= default-max-threads (determine-max-threads {} 1)))
@@ -289,19 +306,38 @@
                            {:max-threads max-threads} 1)))))
 
   (testing (str "More than the default max threads are returned with a lot of "
-                "cores and a warning is logged.")
+                "cores.")
     (with-test-logging
-      (is (< default-max-threads (determine-max-threads
-                                   {:port 8000 :host "foo.local"} 100)))
-      (is (logged? #"Thread pool size not configured so using a size of")))))
+      ;; We're defining the number of selectors and acceptors based on the
+      ;; defaults that Jetty 9.2.7.v20150116 uses and those are capped at 4
+      ;; each.  For a single connector, the minimum number of threads that
+      ;; Jetty needs to start will never be larger than 9 - 4 selectors +
+      ;; 4 acceptors + 1 base thread - regardless of the number of CPU cores
+      ;; on the host.  Since the default-max-threads is '100', then, it isn't
+      ;; currently possible to have the number of needed threads exceed the
+      ;; default-max-threads for a 'real-world' configuration.  To prove that
+      ;; the thread adjustment code works, this test artificially adjusts the
+      ;; default-max-threads down to a number lower than Jetty would compute
+      ;; as the minimum needed.
+      (with-redefs [default-max-threads 1]
+        (let [config {:port 8000 :host "foo.local"}
+              num-cpus 100]
+        (is (= (calculate-required-threads config num-cpus)
+               (determine-max-threads config num-cpus))))))))
 
 (defn small-thread-pool-size-test-config
   [raw-config]
-  (let [calc-size (calculate-required-threads raw-config (ks/num-cpus))
-        low-size  (- calc-size 1)
-        config    (assoc raw-config :max-threads low-size)
-        exp-re    (re-pattern (str "Insufficient max threads in ThreadPool: max="
-                                   low-size " < needed=" calc-size))]
+  (let [num-cpus   (ks/num-cpus)
+        calc-size  (calculate-required-threads raw-config num-cpus)
+        connectors (connector-count raw-config)
+        low-size   (- calc-size 1)
+        config     (assoc raw-config :max-threads low-size)
+        exp-re     (re-pattern (str "Insufficient threads: max="
+                                    low-size " < needed\\(acceptors="
+                                    (* (acceptors-count num-cpus) connectors)
+                                    " \\+ selectors="
+                                    (* (selectors-count num-cpus) connectors)
+                                    " \\+ request=1\\)"))]
     {:config config
      :exp-re exp-re}))
 
