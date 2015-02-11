@@ -63,7 +63,7 @@
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/java.jmx "0.2.0"]
-                                  [spyscope "0.1.4"]
+                                  [spyscope "0.1.5" :exclusions [clj-time]]
                                   [compojure "1.1.8" :exclusions [ring/ring-core
                                                                   commons-io
                                                                   org.clojure/tools.macro]]]

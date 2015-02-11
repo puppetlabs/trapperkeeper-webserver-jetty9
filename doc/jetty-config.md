@@ -39,6 +39,12 @@ that exceeds this value, Jetty will return an HTTP 413 Error response. This
 defaults to 8192 bytes, and only needs to be configured if an exceedingly large
 header is being sent in an HTTP Request.
 
+### `so-linger-seconds`
+
+This sets the TCP SO_LINGER time, in seconds, that the webserver uses for
+underlying socket connections.  Values less than 0 result in SO_LINGER
+being disabled.
+
 ### `ssl-host`
 
 This sets the hostname to listen on for _encrypted_ HTTPS traffic. If not
