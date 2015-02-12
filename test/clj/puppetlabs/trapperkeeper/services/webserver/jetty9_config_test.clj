@@ -1,6 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config-test
   (:import (clojure.lang ExceptionInfo)
-           (java.util Arrays))
+           (java.util Arrays)
+           (org.eclipse.jetty.server Server))
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
             [me.raynes.fs :as fs]
@@ -8,7 +9,12 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]))
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service
+             :refer [jetty9-service add-ring-handler]]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]))
 
 (def valid-ssl-pem-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
@@ -336,5 +342,53 @@
           config-2 (correct-thread-pool-size-test-config test-2)]
       (doseq [config [config-1 config-2]]
         (let [ctxt (jetty9/start-webserver! (jetty9/initialize-context) config)]
-          (is (= (type (:server ctxt)) org.eclipse.jetty.server.Server))
+          (is (= (type (:server ctxt)) Server))
           (jetty9/shutdown ctxt))))))
+
+(deftest test-advanced-scripting-config
+  (testing "Verify that we can use scripting to handle advanced configuration scenarios"
+    (let [config {:webserver
+                  {:port               9000
+                   :host               "localhost"
+                   :post-config-script (str "import org.eclipse.jetty.server.ServerConnector;"
+                                            "ServerConnector c = (ServerConnector)(server.getConnectors()[0]);\n"
+                                            "c.setPort(10000);")}}]
+      (with-test-logging
+        (with-app-with-config app
+          [jetty9-service]
+          config
+          (let [s (tk-app/get-service app :WebserverService)
+                add-ring-handler (partial add-ring-handler s)
+                body "Hi World"
+                path "/hi_world"
+                ring-handler (fn [req] {:status 200 :body body})]
+            (testing "A warning is logged when using post-config-script"
+              (is (logged? #"The 'post-config-script' setting is for advanced use"
+                           :warn)))
+
+            (testing "scripted changes are executed properly"
+              (add-ring-handler ring-handler path)
+              (let [response (http-get
+                               (format "http://localhost:10000/%s" path))]
+                (is (= (:status response) 200))
+                (is (= (:body response) body)))))))))
+
+  (testing "Server fails to start with bad post-config-script"
+    (let [base-config {:port 9000
+                       :host "localhost"}]
+      (testing "Throws an error if the script can't be compiled."
+        (is (thrown-with-msg?
+              IllegalArgumentException
+              #"Invalid script string in webserver 'post-config-script' configuration"
+              (jetty9/start-webserver!
+                (jetty9/initialize-context)
+                (merge base-config
+                       {:post-config-script (str "AHAHHHGHAHAHAHEASD!  OMG!")})))))
+      (testing "Throws an error if the script can't be executed."
+        (is (thrown-with-msg?
+              IllegalArgumentException
+              #"Invalid script string in webserver 'post-config-script' configuration"
+              (jetty9/start-webserver!
+                (jetty9/initialize-context)
+                (merge base-config
+                       {:post-config-script (str "Object x = null; x.toString();")}))))))))

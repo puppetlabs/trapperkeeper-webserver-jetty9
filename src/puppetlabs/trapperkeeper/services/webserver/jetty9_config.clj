@@ -3,7 +3,11 @@
            (java.io FileInputStream)
            (clojure.lang ExceptionInfo)
            (org.eclipse.jetty.server.handler RequestLogHandler)
-           (ch.qos.logback.access.jetty RequestLogImpl))
+           (ch.qos.logback.access.jetty RequestLogImpl)
+           (org.eclipse.jetty.server Server)
+           (org.codehaus.janino ExpressionEvaluator ScriptEvaluator)
+           (org.codehaus.commons.compiler CompileException)
+           (java.lang.reflect InvocationTargetException))
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -66,7 +70,8 @@
    (schema/optional-key :static-content)             [StaticContent]
    (schema/optional-key :gzip-enable)                schema/Bool
    (schema/optional-key :access-log-config)          schema/Str
-   (schema/optional-key :shutdown-timeout-seconds)   schema/Int})
+   (schema/optional-key :shutdown-timeout-seconds)   schema/Int
+   (schema/optional-key :post-config-script)         schema/Str})
 
 (def MultiWebserverRawConfigUnvalidated
   {schema/Keyword  WebserverRawConfig})
@@ -400,3 +405,21 @@
   [config]
   (if (:access-log-config config)
     (init-log-handler config)))
+
+(schema/defn ^:always-validate
+  execute-post-config-script!
+  [s :- Server
+   script :- schema/Str]
+  (log/warn (str "The 'post-config-script' setting is for advanced use cases only, "
+                 "and may be subject to minor changes when the application is upgraded."))
+  (let [script-err-msg "Invalid script string in webserver 'post-config-script' configuration"]
+    (try
+      (let [evaluator (doto (ScriptEvaluator.)
+                        (.setParameters (into-array String ["server"])
+                                        (into-array Class [Server]))
+                        (.cook script))]
+        (.evaluate evaluator (into-array Object [s])))
+      (catch CompileException ex
+        (throw (IllegalArgumentException. script-err-msg ex)))
+      (catch InvocationTargetException ex
+        (throw (IllegalArgumentException. script-err-msg ex))))))

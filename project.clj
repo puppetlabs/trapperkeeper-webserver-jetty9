@@ -1,4 +1,4 @@
-(def tk-version "1.0.1")
+(def tk-version "1.0.2-SNAPSHOT")
 (def ks-version "1.0.0")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.1.2-SNAPSHOT"
@@ -12,12 +12,15 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.logging "0.2.6"]
+                 [clj-time "0.5.1"]
                  [prismatic/schema "0.2.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/ssl-utils "0.7.0"]
 
                  [ch.qos.logback/logback-access "1.1.1"]
+
+                 [org.codehaus.janino/janino "2.7.8"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
