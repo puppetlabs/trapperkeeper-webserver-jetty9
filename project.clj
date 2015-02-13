@@ -10,8 +10,9 @@
   ;; dependencies. Also supports :warn to simply emit warnings.
   ;; requires lein 2.2.0+.
   :pedantic? :abort
-  :dependencies [[org.clojure/clojure "1.5.1"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.2.6"]
+                 [clj-time "0.5.1"]
                  [prismatic/schema "0.2.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
@@ -66,7 +67,9 @@
                                   [compojure "1.1.8" :exclusions [ring/ring-core
                                                                   commons-io
                                                                   org.clojure/tools.macro]]]
-                    :injections [(require 'spyscope.core)]}
+                    :injections [(require 'spyscope.core)]
+                    ; Enable SSLv3 for unit tests that exercise SSLv3
+                    :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]} 
 
              :testutils {:source-paths ^:replace ["test/clj"]
                          :java-source-paths ^:replace ["test/java"]}
