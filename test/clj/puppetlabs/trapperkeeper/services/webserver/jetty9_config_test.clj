@@ -309,7 +309,7 @@
                 "cores.")
     (with-test-logging
       ;; We're defining the number of selectors and acceptors based on the
-      ;; defaults that Jetty 9.2.7.v20150116 uses and those are capped at 4
+      ;; defaults that Jetty 9.2.8.v20150217 uses and those are capped at 4
       ;; each.  For a single connector, the minimum number of threads that
       ;; Jetty needs to start will never be larger than 9 - 4 selectors +
       ;; 4 acceptors + 1 base thread - regardless of the number of CPU cores

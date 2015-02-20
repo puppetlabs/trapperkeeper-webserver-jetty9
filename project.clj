@@ -23,13 +23,13 @@
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
                  ;; Jetty Webserver
-                 [org.eclipse.jetty/jetty-server "9.2.7.v20150116"
+                 [org.eclipse.jetty/jetty-server "9.2.8.v20150217"
                   :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
-                 [org.eclipse.jetty/jetty-servlet "9.2.7.v20150116"]
-                 [org.eclipse.jetty/jetty-servlets "9.2.7.v20150116"]
-                 [org.eclipse.jetty/jetty-webapp "9.2.7.v20150116"]
-                 [org.eclipse.jetty/jetty-proxy "9.2.7.v20150116"]
-                 [org.eclipse.jetty/jetty-jmx "9.2.7.v20150116"]
+                 [org.eclipse.jetty/jetty-servlet "9.2.8.v20150217"]
+                 [org.eclipse.jetty/jetty-servlets "9.2.8.v20150217"]
+                 [org.eclipse.jetty/jetty-webapp "9.2.8.v20150217"]
+                 [org.eclipse.jetty/jetty-proxy "9.2.8.v20150217"]
+                 [org.eclipse.jetty/jetty-jmx "9.2.8.v20150217"]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api commons-codec]]]
 
