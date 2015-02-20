@@ -27,7 +27,9 @@
          (update-in [:max-threads] (fnil identity default-max-threads))
          (update-in [:queue-max-size] (fnil identity default-queue-max-size))
          (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
-         (update-in [:http :request-header-max-size] (fnil identity default-request-header-size)))
+         (update-in [:http :request-header-max-size] (fnil identity default-request-header-size))
+         (update-in [:http :so-linger-milliseconds] (fnil identity
+                                                          default-so-linger-in-milliseconds)))
      (process-config config)))
 
 (defn expected-https-config?
@@ -41,6 +43,8 @@
            (update-in [:https :protocols] (fnil identity default-protocols))
            (update-in [:https :client-auth] (fnil identity default-client-auth))
            (update-in [:https :request-header-max-size] (fnil identity default-request-header-size))
+           (update-in [:https :so-linger-milliseconds] (fnil identity
+                                                             default-so-linger-in-milliseconds))
            (update-in [:https :ssl-crl-path] identity))
        (-> actual
            (update-in [:https] dissoc :keystore-config)))))
@@ -60,15 +64,21 @@
           {:http {:host "foo.local" :port default-http-port}}))
 
     (is (expected-http-config?
-          {:port 8000 :max-threads 500}
-          {:http        {:host default-host :port 8000}
-           :max-threads 500}))
-
-    (is (expected-http-config?
           {:port 8000 :request-header-max-size 16192}
           {:http {:host default-host
                   :port 8000
                   :request-header-max-size 16192}}))
+
+    (is (expected-http-config?
+          {:port 8000 :so-linger-seconds 7}
+          {:http {:host default-host
+                  :port 8000
+                  :so-linger-milliseconds 7000}}))
+
+    (is (expected-http-config?
+          {:port 8000 :max-threads 500}
+          {:http        {:host default-host :port 8000}
+           :max-threads 500}))
 
     (is (expected-http-config?
           {:port 8000 :queue-max-size 123}
@@ -93,8 +103,37 @@
 
     (is (expected-https-config?
           (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local" :ssl-port 8001 :request-header-max-size 16192})
-          {:https {:host "foo.local" :port 8001 :request-header-max-size 16192}})))
+                 {:ssl-host "foo.local"
+                  :ssl-port 8001
+                  :request-header-max-size 16192})
+          {:https {:host "foo.local"
+                   :port 8001
+                   :request-header-max-size 16192}}))
+
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-host "foo.local"
+                  :ssl-port 8001
+                  :so-linger-seconds 22})
+          {:https {:host "foo.local"
+                   :port 8001
+                   :so-linger-milliseconds 22000}}))
+
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-host "foo.local"
+                  :ssl-port 8001
+                  :max-threads 93})
+          {:https {:host "foo.local" :port 8001}
+           :max-threads 93}))
+
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-host "foo.local"
+                  :ssl-port 8001
+                  :queue-max-size 99})
+          {:https {:host "foo.local" :port 8001}
+           :queue-max-size 99})))
 
   (testing "jks ssl config"
     (is (expected-https-config?
@@ -158,7 +197,10 @@
     (is (expected-https-config?
           (merge valid-ssl-pem-config
                  {:ssl-host "foo.local" :port 8000})
-          {:http  {:host default-host :port 8000 :request-header-max-size default-request-header-size}
+          {:http  {:host default-host
+                   :port 8000
+                   :request-header-max-size default-request-header-size
+                   :so-linger-milliseconds -1}
            :https {:host "foo.local" :port default-https-port}})))
 
   (testing "process-config fails for invalid server config"

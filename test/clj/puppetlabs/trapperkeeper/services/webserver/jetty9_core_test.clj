@@ -1,6 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core-test
   (:import
-    (org.eclipse.jetty.server.handler ContextHandlerCollection))
+    (org.eclipse.jetty.server.handler ContextHandlerCollection)
+    (java.security KeyStore))
   (:require [clojure.test :refer :all]
             [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
@@ -175,19 +176,30 @@
                @(:state context))
             "config unexpectedly changed for override-webserver-settings!")))))
 
+(defn get-webserver-context-for-server
+  []
+  {:state (atom nil)
+   :handlers
+           (ContextHandlerCollection.)
+   :server nil})
+
+(defn get-http-config-for-server
+  [max-threads queue-max-size so-linger-milliseconds]
+  {:http {:port 0
+          :host "0.0.0.0"
+          :request-header-max-size 100
+          :so-linger-milliseconds so-linger-milliseconds}
+   :jmx-enable false
+   :max-threads max-threads
+   :queue-max-size queue-max-size})
+
 (defn get-thread-pool-and-queue-for-create-server
   [max-threads queue-max-size]
-  (let [server           (jetty/create-server {:state (atom nil)
-                                               :handlers
-                                                 (ContextHandlerCollection.)
-                                               :server nil}
-                                              {:http {:port 0
-                                                      :host "0.0.0.0"
-                                                      :request-header-max-size
-                                                        100}
-                                               :jmx-enable false
-                                               :max-threads max-threads
-                                               :queue-max-size queue-max-size})
+  (let [server           (jetty/create-server
+                           (get-webserver-context-for-server)
+                           (get-http-config-for-server max-threads
+                                                       queue-max-size
+                                                       0))
         thread-pool      (.getThreadPool server)
         ;; Using reflection here because the .getQueue method is protected
         ;; and I didn't see any other way to pull the queue back from
@@ -234,8 +246,8 @@
       (let [max-threads    42
             queue-min-size (inc jetty/default-queue-min-threads)
             {:keys [thread-pool queue]}
-            (get-thread-pool-and-queue-for-create-server max-threads
-                                                         queue-min-size)]
+              (get-thread-pool-and-queue-for-create-server max-threads
+                                                           queue-min-size)]
         (is (= max-threads (.getMaxThreads thread-pool))
             "Unexpected max threads for thread pool")
         (is (= jetty/default-queue-min-threads (.getMinThreads thread-pool))
@@ -243,4 +255,49 @@
         (is (= jetty/default-queue-min-threads (.getCapacity queue))
             "Unexpected initial capacity for queue")
         (is (= queue-min-size (.getMaxCapacity queue))
-            "Unexpected max capacity for queue")))))
+            "Unexpected max capacity for queue"))))
+  (testing "so-linger-time configured properly for http connector"
+    (let [server (jetty/create-server
+                   (get-webserver-context-for-server)
+                   (get-http-config-for-server 0
+                                               0
+                                               500))
+          connectors (.getConnectors server)]
+      (is (= 1 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 500 (.getSoLingerTime (first connectors)))
+          "Unexpected so linger time for connector")))
+  (testing "so-linger-time configured properly for multiple connectors"
+    (let [server (jetty/create-server
+                   (get-webserver-context-for-server)
+                   {:http {:port 25
+                           :host "0.0.0.0"
+                           :request-header-max-size 100
+                           :so-linger-milliseconds 41}
+                    :https {:port 92
+                            :host "0.0.0.0"
+                            :protocols nil
+                            :cipher-suites nil
+                            :keystore-config
+                              {:truststore (-> (KeyStore/getDefaultType)
+                                               (KeyStore/getInstance))
+                               :key-password "hello"
+                               :keystore (-> (KeyStore/getDefaultType)
+                                             (KeyStore/getInstance))}
+                            :request-header-max-size 100
+                            :so-linger-milliseconds 42
+                            :client-auth :want}
+                    :jmx-enable false
+                    :max-threads 100
+                    :queue-max-size 101})
+          connectors (.getConnectors server)]
+      (is (= 2 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 25 (.getPort (first connectors)))
+          "Unexpected port for first connector")
+      (is (= 41 (.getSoLingerTime (first connectors)))
+          "Unexpected so linger time for first connector")
+      (is (= 92 (.getPort (second connectors)))
+          "Unexpected port for second connector")
+      (is (= 42 (.getSoLingerTime (second connectors)))
+          "Unexpected so linger time for second connector"))))

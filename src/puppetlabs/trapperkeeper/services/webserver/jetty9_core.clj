@@ -255,7 +255,8 @@
                             (AbstractConnectionFactory/getFactories
                               ssl-ctxt-factory (connection-factory request-size)))
       (.setPort (:port config))
-      (.setHost (:host config)))))
+      (.setHost (:host config))
+      (.setSoLingerTime (:so-linger-milliseconds config)))))
 
 (schema/defn ^:always-validate
   plaintext-connector :- ServerConnector
@@ -268,7 +269,8 @@
                             (config/selectors-count (ks/num-cpus))
                             (connection-factory request-size))
       (.setPort (:port config))
-      (.setHost (:host config)))))
+      (.setHost (:host config))
+      (.setSoLingerTime (:so-linger-milliseconds config)))))
 
 (schema/defn ^:always-validate
   queue-thread-pool :- QueuedThreadPool

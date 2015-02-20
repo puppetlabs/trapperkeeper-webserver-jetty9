@@ -33,6 +33,11 @@
 (def default-request-header-size 8192)
 (def default-queue-max-size (Integer/MAX_VALUE))
 
+(def default-so-linger-in-milliseconds
+  "The default SO_LINGER time to set on the ServerConnector in milliseconds.
+  A value less than 0 indicates that SO_LINGER should be disabled."
+  -1)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
@@ -47,6 +52,7 @@
    (schema/optional-key :max-threads)                schema/Int
    (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
+   (schema/optional-key :so-linger-seconds)          schema/Int
    (schema/optional-key :ssl-port)                   schema/Int
    (schema/optional-key :ssl-host)                   schema/Str
    (schema/optional-key :ssl-key)                    schema/Str
@@ -101,9 +107,10 @@
   (schema/enum :need :want :none))
 
 (def WebserverConnector
-  {:host         schema/Str
-   :port         schema/Int
-   :request-header-max-size schema/Int})
+  {:host                    schema/Str
+   :port                    schema/Int
+   :request-header-max-size schema/Int
+   :so-linger-milliseconds  schema/Int})
 
 (def WebserverSslContextFactory
   {:keystore-config                    WebserverSslKeystoreConfig
@@ -272,12 +279,20 @@
   (contains-keys? config #{:port :host}))
 
 (schema/defn ^:always-validate
+  so-linger-in-milliseconds :- schema/Int
+  [config :- WebserverRawConfig]
+  (if-let [linger-from-config (:so-linger-seconds config)]
+    (* 1000 linger-from-config)
+    default-so-linger-in-milliseconds))
+
+(schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
   [config :- WebserverRawConfig]
   (if (contains-http-connector? config)
     {:host         (or (:host config) default-host)
      :port         (or (:port config) default-http-port)
-     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)}))
+     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
+     :so-linger-milliseconds (so-linger-in-milliseconds config)}))
 
 (schema/defn ^:always-validate
   contains-https-connector? :- schema/Bool
@@ -291,6 +306,7 @@
     {:host (or (:ssl-host config) default-host)
      :port (or (:ssl-port config) default-https-port)
      :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
+     :so-linger-milliseconds (so-linger-in-milliseconds config)
      :keystore-config (get-keystore-config! config)
      :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
      :protocols (or (:ssl-protocols config) default-protocols)
