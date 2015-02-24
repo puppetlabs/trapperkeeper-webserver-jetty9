@@ -548,6 +548,8 @@
                                maybe-logged)]
       (.setHandler s statistics-handler)
       (.setStopTimeout s (or shutdown-timeout default-graceful-stop-timeout))
+      (when-let [script (:post-config-script options)]
+        (config/execute-post-config-script! s script))
       (assoc webserver-context :server s))))
 
 (schema/defn ^:always-validate start-webserver! :- ServerContext

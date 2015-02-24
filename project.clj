@@ -1,4 +1,4 @@
-(def tk-version "1.0.1")
+(def tk-version "1.1.0")
 (def ks-version "1.0.0")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.1.2-SNAPSHOT"
@@ -19,6 +19,8 @@
                  [puppetlabs/ssl-utils "0.7.0"]
 
                  [ch.qos.logback/logback-access "1.1.1"]
+
+                 [org.codehaus.janino/janino "2.7.8"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
 

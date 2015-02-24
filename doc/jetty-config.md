@@ -277,6 +277,31 @@ the response, and the size in bytes of the response.
 Optional. This is an integer representing the desired graceful stop timeout in seconds.
 Defaults to 60 seconds.
 
+### `post-config-script`
+
+Optional.  This setting is for advanced use cases only, and is intended for
+debugging purposes.  You can use it to modify low-level Jetty settings that
+are not directly exposed in our normal configuration options.  In most cases,
+if you find yourself using this, it is an indicator that we need to expose
+additional settings directly in our main configuration (so please let us know!).
+Also, the implementation details of this setting may change between releases.
+
+If you do need to use this, you can set the value to a String containing some
+Java code that should be executed against the Jetty `Server` object.  This object
+will be injected into the scope of your code in a variable named `server`.
+
+Here is a pathological example that shows how you could change the port that
+your server listens on (which you could achieve in a much simpler fashion by
+using the existing `port` setting; this example is only for the purposes of
+illustration):
+
+    post-config-script: "import org.eclipse.jetty.server.ServerConnector;
+                         ServerConnector c = (ServerConnector)(server.getConnectors()[0]);
+                         c.setPort(10000);"
+
+For more info on the Jetty `Server` object model, see the
+[Jetty Javadocs](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/server/Server.html).
+
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9
