@@ -1,9 +1,10 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-proxy-test
-  (:import  [java.net URI])
+  (:import [java.net URI])
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
+            [puppetlabs.trapperkeeper.services :refer [service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [ring.middleware.params :as ring-params]))
 
@@ -68,28 +69,58 @@
     {:status 200
      :body   "This should have timed out."}))
 
+(defprotocol TkProxyService)
+
+(defn proxy-service
+  [proxy-config proxy-opts proxy-path]
+  (service TkProxyService
+    [[:WebserverService add-proxy-route]]
+    (init [this context]
+      (if proxy-opts
+        (add-proxy-route proxy-config
+                         proxy-path
+                         proxy-opts)
+        (add-proxy-route proxy-config
+                         proxy-path))
+      context)))
+
 (defmacro with-target-and-proxy-servers
-  [{:keys [target proxy proxy-config proxy-opts ring-handler]} & body]
-  `(with-app-with-config proxy-target-app#
-     [jetty9-service]
-     {:webserver ~target}
-     (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
-       (add-ring-handler
-         target-webserver#
-         ~ring-handler
-         "/hello")
-       (add-ring-handler
-         target-webserver#
-         ~ring-handler
-         "/goodbye"))
-     (with-app-with-config proxy-app#
-       [jetty9-service]
-       {:webserver ~proxy}
-       (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
-         (if ~proxy-opts
-           (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy" ~proxy-opts)
-           (add-proxy-route proxy-webserver# ~proxy-config "/hello-proxy")))
-       ~@body)))
+  [{:keys [target proxy proxy-config proxy-opts ring-handler
+           register-proxy-route-before-server-start?]} & body]
+  (let [proxy-path "/hello-proxy"]
+    `(with-app-with-config proxy-target-app#
+      [jetty9-service]
+      {:webserver ~target}
+      (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
+        (add-ring-handler
+          target-webserver#
+          ~ring-handler
+          "/hello")
+        (add-ring-handler
+          target-webserver#
+          ~ring-handler
+          "/goodbye"))
+      (if ~register-proxy-route-before-server-start?
+        (let [proxy-service# (proxy-service ~proxy-config
+                                            ~proxy-opts
+                                            ~proxy-path)]
+          (with-app-with-config proxy-app#
+            [jetty9-service proxy-service#]
+            {:webserver ~proxy}
+            ~@body))
+        (with-app-with-config proxy-app#
+          [jetty9-service]
+          {:webserver ~proxy}
+          (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
+            (if ~proxy-opts
+              (add-proxy-route proxy-webserver#
+                               ~proxy-config
+                               ~proxy-path
+                               ~proxy-opts)
+              (add-proxy-route proxy-webserver#
+                               ~proxy-config
+                               ~proxy-path)))
+          ~@body)))))
 
 (def common-ssl-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
@@ -116,7 +147,7 @@
   (.print (.getWriter resp) (str "Proxying failed: " (.getMessage failure))))
 
 (deftest test-basic-proxy-support
-  (testing "basic proxy support"
+  (testing "basic proxy support when proxy handler registered after server start"
     (with-target-and-proxy-servers
       {:target       {:host "0.0.0.0"
                       :port 9000}
@@ -126,6 +157,24 @@
                       :port 9000
                       :path "/hello"}
        :ring-handler proxy-ring-handler}
+      (let [response (http-get "http://localhost:9000/hello/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))
+      (let [response (http-get "http://localhost:10000/hello-proxy/world")]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hello, World!")))))
+
+  (testing "basic proxy support when proxy handler registered before server start"
+    (with-target-and-proxy-servers
+      {:target       {:host "0.0.0.0"
+                      :port 9000}
+       :proxy        {:host "0.0.0.0"
+                      :port 10000}
+       :proxy-config {:host "localhost"
+                      :port 9000
+                      :path "/hello"}
+       :ring-handler proxy-ring-handler
+       :register-proxy-route-before-server-start? true}
       (let [response (http-get "http://localhost:9000/hello/world")]
         (is (= (:status response) 200))
         (is (= (:body response) "Hello, World!")))
