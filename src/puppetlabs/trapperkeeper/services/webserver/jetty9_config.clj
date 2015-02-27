@@ -90,11 +90,17 @@
        count
        (>= 1)))
 
+(defn map-of-maps? [x]
+  (and (map? x)
+       (every? map? (vals x))))
+
 (def MultiWebserverRawConfig
   (schema/both MultiWebserverRawConfigUnvalidated (schema/pred one-default? 'one-default?)))
 
 (def WebserverServiceRawConfig
-  (schema/either WebserverRawConfig MultiWebserverRawConfig))
+  (schema/conditional
+     map-of-maps? MultiWebserverRawConfig
+     :else WebserverRawConfig))
 
 (def WebserverSslPemConfig
   {:ssl-key                              schema/Str
