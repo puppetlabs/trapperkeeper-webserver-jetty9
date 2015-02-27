@@ -156,6 +156,15 @@
              :port 8001
              :cipher-suites ["FOO" "BAR"]}})))
 
+  (testing "cipher suites as a comma and space-separated string"
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-port 8001 :cipher-suites "FOO, BAR"})
+          {:https
+            {:host default-host
+             :port 8001
+             :cipher-suites ["FOO" "BAR"]}})))
+
   (testing "protocols"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
@@ -165,6 +174,14 @@
              :port 8001
              :protocols ["FOO" "BAR"]}})))
 
+  (testing "protocols as a comma and space-separated string"
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-port 8001 :ssl-protocols "FOO, BAR"})
+          {:https
+            {:host default-host
+             :port 8001
+             :protocols ["FOO" "BAR"]}})))
   (testing "ssl-crl-path"
     (is (expected-https-config?
           (merge valid-ssl-pem-config

@@ -150,25 +150,38 @@ This sets the passphrase to use for unlocking the truststore file.
 
 ### `cipher-suites`
 
-Optional. A comma-separated list of cryptographic ciphers to allow for incoming
-SSL connections. Valid names are listed in the
+Optional. The cryptographic ciphers to allow for incoming SSL
+connections. This may be formatted either as a list (in a HOCON
+configuration file) or a comma-separated string. Valid names are
+listed in the
 [official JDK cryptographic providers documentation](http://docs.oracle.com/javase/7/docs/technotes/guides/security/SunProviders.html#SupportedCipherSuites);
 you'll need to use the all-caps cipher suite name.
 
-If not supplied, trapperkeeper uses the default cipher suites for your local
-system on JDK versions older than 1.7.0u6. On newer JDK versions, trapperkeeper
-will use only non-DHE cipher suites.
+If not supplied, trapperkeeper uses this list of cipher suites:
+
+- `TLS_RSA_WITH_AES_256_CBC_SHA256`
+- `TLS_RSA_WITH_AES_256_CBC_SHA`
+- `TLS_RSA_WITH_AES_128_CBC_SHA256`
+- `TLS_RSA_WITH_AES_128_CBC_SHA`
+- `SSL_RSA_WITH_RC4_128_SHA`
+- `SSL_RSA_WITH_3DES_EDE_CBC_SHA`
+- `SSL_RSA_WITH_RC4_128_MD5`
 
 ### `ssl-protocols`
 
-Optional. A comma-separated list of protocols to allow for incoming SSL
-connections. Valid names are listed in the
+Optional. The protocols to allow for incoming SSL connections. This
+may be formatted either as a list (in a HOCON configuration file) or a
+comma-separated string. Valid names are listed in the
 [official JDK cryptographic protocol documentation](http://docs.oracle.com/javase/7/docs/technotes/guides/security/SunProviders.html#SunJSSEProvider);
-you'll need to use the names with verbatim capitalization.
-For example: `SSLv3, TLSv1, TLSv1.1, TLSv1.2`.
+you'll need to use the names with verbatim capitalization.  For
+example: `TLSv1, TLSv1.1, TLSv1.2`.
 
-If not supplied, trapperkeeper uses the default SSL protocols for your local
-system.
+If not supplied, trapperkeeper uses this list of SSL protocols: 
+
+- `TLSv1`
+- `TLSv1.1`
+- `TLSv1.2`
+
 
 ### `client-auth`
 
