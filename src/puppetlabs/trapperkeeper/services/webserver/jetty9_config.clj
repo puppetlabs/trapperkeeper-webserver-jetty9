@@ -9,6 +9,7 @@
            (org.codehaus.commons.compiler CompileException)
            (java.lang.reflect InvocationTargetException))
   (:require [clojure.tools.logging :as log]
+            [clojure.string :as str]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
             [puppetlabs.ssl-utils.core :as ssl]
@@ -67,8 +68,8 @@
    (schema/optional-key :truststore)                 schema/Str
    (schema/optional-key :key-password)               schema/Str
    (schema/optional-key :trust-password)             schema/Str
-   (schema/optional-key :cipher-suites)              [schema/Str]
-   (schema/optional-key :ssl-protocols)              [schema/Str]
+   (schema/optional-key :cipher-suites)              (schema/either schema/Str [schema/Str])
+   (schema/optional-key :ssl-protocols)              (schema/either schema/Str [schema/Str])
    (schema/optional-key :client-auth)                schema/Str
    (schema/optional-key :ssl-crl-path)               schema/Str
    (schema/optional-key :jmx-enable)                 schema/Str
@@ -280,6 +281,26 @@
                  "Non-readable path specified for ssl-crl-path option: %s"
                  ssl-crl-path))))))
 
+(schema/defn get-or-parse-sequential-config-value :- [schema/Str]
+  "Some config values can be entered as either a vector of strings or
+   a single comma-separated string. Get the value for the given config
+   key, parsing it into a seq if it's a string, or returning a default
+   if it's not provided."
+  [config :- WebserverRawConfig
+   key :- schema/Keyword
+   default :- [schema/Str]]
+  (let [value (key config)]
+    (cond
+     (string? value) (map str/trim (str/split value #","))
+     value value
+     :else default)))
+
+(defn get-cipher-suites-config [config]
+  (get-or-parse-sequential-config-value config :cipher-suites acceptable-ciphers))
+
+(defn get-ssl-protocols-config [config]
+  (get-or-parse-sequential-config-value config :ssl-protocols default-protocols))
+
 (schema/defn ^:always-validate
   contains-keys? :- schema/Bool
   [config :- WebserverRawConfig
@@ -319,8 +340,8 @@
      :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
      :so-linger-milliseconds (so-linger-in-milliseconds config)
      :keystore-config (get-keystore-config! config)
-     :cipher-suites (or (:cipher-suites config) acceptable-ciphers)
-     :protocols (or (:ssl-protocols config) default-protocols)
+     :cipher-suites (get-cipher-suites-config config)
+     :protocols (get-ssl-protocols-config config)
      :client-auth (get-client-auth! config)
      :ssl-crl-path (get-ssl-crl-path! config)}))
 
