@@ -35,7 +35,8 @@
          (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
          (update-in [:http :request-header-max-size] (fnil identity default-request-header-size))
          (update-in [:http :so-linger-milliseconds] (fnil identity
-                                                          default-so-linger-in-milliseconds)))
+                                                          default-so-linger-in-milliseconds))
+         (update-in [:http :idle-timeout-milliseconds] identity))
      (process-config config)))
 
 (defn expected-https-config?
@@ -51,6 +52,7 @@
            (update-in [:https :request-header-max-size] (fnil identity default-request-header-size))
            (update-in [:https :so-linger-milliseconds] (fnil identity
                                                              default-so-linger-in-milliseconds))
+           (update-in [:https :idle-timeout-milliseconds] identity)
            (update-in [:https :ssl-crl-path] identity))
        (-> actual
            (update-in [:https] dissoc :keystore-config)))))
@@ -89,7 +91,12 @@
     (is (expected-http-config?
           {:port 8000 :queue-max-size 123}
           {:http {:host default-host :port 8000}
-           :queue-max-size 123})))
+           :queue-max-size 123}))
+
+    (is (expected-http-config?
+          {:port 8000 :idle-timeout-milliseconds 6000}
+          {:http {:host default-host :port 8000
+                  :idle-timeout-milliseconds 6000}})))
 
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?
@@ -139,7 +146,15 @@
                   :ssl-port 8001
                   :queue-max-size 99})
           {:https {:host "foo.local" :port 8001}
-           :queue-max-size 99})))
+           :queue-max-size 99}))
+
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-host "foo.local"
+                  :ssl-port 8001
+                  :idle-timeout-milliseconds 4200})
+          {:https {:host "foo.local" :port 8001
+                   :idle-timeout-milliseconds 4200}})))
 
   (testing "jks ssl config"
     (is (expected-https-config?
@@ -223,7 +238,8 @@
           {:http  {:host default-host
                    :port 8000
                    :request-header-max-size default-request-header-size
-                   :so-linger-milliseconds -1}
+                   :so-linger-milliseconds -1
+                   :idle-timeout-milliseconds nil}
            :https {:host "foo.local" :port default-https-port}})))
 
   (testing "process-config fails for invalid server config"
@@ -487,3 +503,4 @@
                 (jetty9/initialize-context)
                 (merge base-config
                        {:post-config-script (str "Object x = null; x.toString();")}))))))))
+

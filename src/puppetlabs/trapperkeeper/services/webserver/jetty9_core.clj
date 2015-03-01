@@ -186,8 +186,6 @@
       (log/info (str "webserver config overridden for key '" (name key) "'")))
     (merge options overrides)))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Context Functions
 
@@ -260,16 +258,19 @@
    config :- (merge config/WebserverConnector
                     {schema/Keyword schema/Any})
    ssl-ctxt-factory :- (schema/maybe SslContextFactory)]
-  (let [request-size (:request-header-max-size config)]
-    (doto (ServerConnector.
-            server
-            nil nil nil
-            (config/acceptors-count (ks/num-cpus))
-            (config/selectors-count (ks/num-cpus))
-            (connection-factories request-size ssl-ctxt-factory))
-      (.setPort (:port config))
-      (.setHost (:host config))
-      (.setSoLingerTime (:so-linger-milliseconds config)))))
+  (let [request-size (:request-header-max-size config)
+        connector   (doto (ServerConnector.
+                            server
+                            nil nil nil
+                            (config/acceptors-count (ks/num-cpus))
+                            (config/selectors-count (ks/num-cpus))
+                            (connection-factories request-size ssl-ctxt-factory))
+                      (.setPort (:port config))
+                      (.setHost (:host config))
+                      (.setSoLingerTime (:so-linger-milliseconds config)))]
+    (when-let [idle-timeout (:idle-timeout-milliseconds config)]
+      (.setIdleTimeout connector idle-timeout))
+    connector))
 
 (schema/defn ^:always-validate
   ssl-connector  :- ServerConnector

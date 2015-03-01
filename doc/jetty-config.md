@@ -49,6 +49,13 @@ number of seconds, see http://man7.org/linux/man-pages/man7/socket.7.html.  Note
 that the effect of setting this option may vary depending upon the operating
 system's underlying implementation.
 
+### `idle-timeout-milliseconds`
+
+This optional setting can be used to control how long Jetty will allow a
+connection to be held open by a client without any activity on the socket.  If
+a connection is idle for longer than this value, Jetty will forcefully close
+it from the server side.  Jetty's default value for this setting is 30 seconds.
+
 ### `ssl-host`
 
 This sets the hostname to listen on for _encrypted_ HTTPS traffic. If not
