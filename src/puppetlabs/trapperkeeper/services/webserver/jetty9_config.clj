@@ -118,11 +118,14 @@
 (def WebserverSslClientAuth
   (schema/enum :need :want :none))
 
-(def WebserverConnector
-  {:host                    schema/Str
-   :port                    schema/Int
-   :request-header-max-size schema/Int
+(def WebserverConnectorCommon
+  {:request-header-max-size schema/Int
    :so-linger-milliseconds  schema/Int})
+
+(def WebserverConnector
+  (merge WebserverConnectorCommon
+         {:host schema/Str
+          :port schema/Int}))
 
 (def WebserverSslContextFactory
   {:keystore-config                    WebserverSslKeystoreConfig
@@ -318,13 +321,19 @@
     default-so-linger-in-milliseconds))
 
 (schema/defn ^:always-validate
+  common-connector-config :- WebserverConnectorCommon
+  [config :- WebserverRawConfig]
+  {:request-header-max-size   (or (:request-header-max-size config)
+                                  default-request-header-size)
+   :so-linger-milliseconds    (so-linger-in-milliseconds config)})
+
+(schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
   [config :- WebserverRawConfig]
   (if (contains-http-connector? config)
-    {:host         (or (:host config) default-host)
-     :port         (or (:port config) default-http-port)
-     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
-     :so-linger-milliseconds (so-linger-in-milliseconds config)}))
+    (merge (common-connector-config config)
+           {:host (or (:host config) default-host)
+            :port (or (:port config) default-http-port)})))
 
 (schema/defn ^:always-validate
   contains-https-connector? :- schema/Bool
@@ -335,15 +344,14 @@
   maybe-get-https-connector :- (schema/maybe WebserverSslConnector)
   [config :- WebserverRawConfig]
   (if (contains-https-connector? config)
-    {:host (or (:ssl-host config) default-host)
-     :port (or (:ssl-port config) default-https-port)
-     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
-     :so-linger-milliseconds (so-linger-in-milliseconds config)
-     :keystore-config (get-keystore-config! config)
-     :cipher-suites (get-cipher-suites-config config)
-     :protocols (get-ssl-protocols-config config)
-     :client-auth (get-client-auth! config)
-     :ssl-crl-path (get-ssl-crl-path! config)}))
+    (merge (common-connector-config config)
+           {:host                    (or (:ssl-host config) default-host)
+            :port                    (or (:ssl-port config) default-https-port)
+            :keystore-config         (get-keystore-config! config)
+            :cipher-suites           (get-cipher-suites-config config)
+            :protocols               (get-ssl-protocols-config config)
+            :client-auth             (get-client-auth! config)
+            :ssl-crl-path            (get-ssl-crl-path! config)})))
 
 (schema/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector
