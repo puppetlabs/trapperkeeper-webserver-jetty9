@@ -55,6 +55,8 @@ This optional setting can be used to control how long Jetty will allow a
 connection to be held open by a client without any activity on the socket.  If
 a connection is idle for longer than this value, Jetty will forcefully close
 it from the server side.  Jetty's default value for this setting is 30 seconds.
+Note that Jetty will not automatically close the connection if the idle timeout
+is reached while Jetty is still actively processing a client request.
 
 ### `ssl-host`
 
