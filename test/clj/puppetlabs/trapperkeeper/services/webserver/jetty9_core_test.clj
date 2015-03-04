@@ -191,12 +191,12 @@
    :server nil})
 
 (defn get-http-config-for-server
-  [max-threads queue-max-size so-linger-milliseconds]
+  [max-threads queue-max-size so-linger-milliseconds idle-timeout-milliseconds]
   {:http {:port 0
           :host "0.0.0.0"
           :request-header-max-size 100
           :so-linger-milliseconds so-linger-milliseconds
-          :idle-timeout-milliseconds nil}
+          :idle-timeout-milliseconds idle-timeout-milliseconds}
    :jmx-enable false
    :max-threads max-threads
    :queue-max-size queue-max-size})
@@ -207,7 +207,8 @@
                            (get-webserver-context-for-server)
                            (get-http-config-for-server max-threads
                                                        queue-max-size
-                                                       0))
+                                                       0
+                                                       nil))
         thread-pool      (.getThreadPool server)
         ;; Using reflection here because the .getQueue method is protected
         ;; and I didn't see any other way to pull the queue back from
@@ -220,7 +221,7 @@
     {:thread-pool thread-pool
      :queue queue}))
 
-(deftest create-server-tests
+(deftest create-server-thread-pool-test
   (testing "thread pool given proper values"
     (testing "max threads passed through"
       (dotimes [x 5]
@@ -263,13 +264,16 @@
         (is (= jetty/default-queue-min-threads (.getCapacity queue))
             "Unexpected initial capacity for queue")
         (is (= queue-min-size (.getMaxCapacity queue))
-            "Unexpected max capacity for queue"))))
+            "Unexpected max capacity for queue")))))
+
+(deftest create-server-so-linger-test
   (testing "so-linger-time configured properly for http connector"
     (let [server (jetty/create-server
                    (get-webserver-context-for-server)
                    (get-http-config-for-server 0
                                                0
-                                               500))
+                                               500
+                                               nil))
           connectors (.getConnectors server)]
       (is (= 1 (count connectors))
           "Unexpected number of connectors for server")
@@ -311,6 +315,56 @@
           "Unexpected port for second connector")
       (is (= 42 (.getSoLingerTime (second connectors)))
           "Unexpected so linger time for second connector"))))
+
+(deftest create-server-idle-timeout-test
+  (testing "idle-timeout configured properly for http connector"
+    (let [server (jetty/create-server
+                   (get-webserver-context-for-server)
+                   (get-http-config-for-server 0
+                                               0
+                                               0
+                                               3000))
+          connectors (.getConnectors server)]
+      (is (= 1 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 3000 (.getIdleTimeout (first connectors)))
+          "Unexpected idle time for connector")))
+  (testing "idle-timeout configured properly for multiple connectors"
+    (let [server (jetty/create-server
+                   (get-webserver-context-for-server)
+                   {:http {:port 25
+                           :host "0.0.0.0"
+                           :request-header-max-size 100
+                           :so-linger-milliseconds 41
+                           :idle-timeout-milliseconds 9001}
+                    :https {:port 92
+                            :host "0.0.0.0"
+                            :protocols nil
+                            :cipher-suites nil
+                            :keystore-config
+                            {:truststore (-> (KeyStore/getDefaultType)
+                                             (KeyStore/getInstance))
+                             :key-password "hello"
+                             :keystore (-> (KeyStore/getDefaultType)
+                                           (KeyStore/getInstance))}
+                            :request-header-max-size 100
+                            :so-linger-milliseconds 42
+                            :idle-timeout-milliseconds 9002
+                            :client-auth :want}
+                    :jmx-enable false
+                    :max-threads 100
+                    :queue-max-size 101})
+          connectors (.getConnectors server)]
+      (is (= 2 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 25 (.getPort (first connectors)))
+          "Unexpected port for first connector")
+      (is (= 9001 (.getIdleTimeout (first connectors)))
+          "Unexpected idle timeout for first connector")
+      (is (= 92 (.getPort (second connectors)))
+          "Unexpected port for second connector")
+      (is (= 9002 (.getIdleTimeout (second connectors)))
+          "Unexpected idle time for second connector"))))
 
 (deftest test-idle-timeout
   (let [read-lines (fn [r]
