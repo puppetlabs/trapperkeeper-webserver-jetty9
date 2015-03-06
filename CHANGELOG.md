@@ -2,8 +2,10 @@
 
 This is a feature release.
 
-* Upgrade to version 9.2.8 of upstream Jetty (we were previously at
-  v9.1.0, which was over a year old).
+* Upgrade to version 9.2.8 of upstream Jetty.  We were previously at
+  v9.1.0, which was over a year old.  The newer version contains some
+  performance improvements and bug fixes for potential networking
+  issues.
 * [TK-140](https://tickets.puppetlabs.com/browse/TK-140)
   Expose new `so-linger-seconds` setting, which can be used to adjust the TCP
   SO_LINGER time.
