@@ -1,3 +1,26 @@
+## 1.2.0
+
+This is a feature release.
+
+* Upgrade to version 9.2.8 of upstream Jetty (we were previously at
+  v9.1.0, which was over a year old).
+* [TK-140](https://tickets.puppetlabs.com/browse/TK-140)
+  Expose new `so-linger-seconds` setting, which can be used to adjust the TCP
+  SO_LINGER time.
+* [TK-144](https://tickets.puppetlabs.com/browse/TK-144)
+  Expose new `post-config-script` setting; this is for advanced / edge-case
+  configuration needs.  If you need to modify a Jetty setting that we don't
+  expose in our own config, you can provide a snippet of Java code to access
+  the Jetty Server object directly and modify additional settings.
+* [TK-133](https://tickets.puppetlabs.com/browse/TK-133)
+  Support comma-delimited strings for the config value for `ssl-protocols`
+  and `cipher-suites`.  This allows these settings to be used with older
+  config file formats, such as ini.
+* [TK-151](https://tickets.puppetlabs.com/browse/TK-151)
+  Expose new `idle-timeout-milliseconds` setting, which can be used to tell
+  Jetty to forcefully close a client connection if it is idle for a specified
+  amount of time.
+
 ## 1.1.1
 
 * [TK-82](https://tickets.puppetlabs.com/browse/TK-82)
