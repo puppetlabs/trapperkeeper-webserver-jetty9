@@ -35,7 +35,8 @@
          (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
          (update-in [:http :request-header-max-size] (fnil identity default-request-header-size))
          (update-in [:http :so-linger-milliseconds] (fnil identity
-                                                          default-so-linger-in-milliseconds)))
+                                                          default-so-linger-in-milliseconds))
+         (update-in [:http :idle-timeout-milliseconds] identity))
      (process-config config)))
 
 (defn expected-https-config?
@@ -51,11 +52,12 @@
            (update-in [:https :request-header-max-size] (fnil identity default-request-header-size))
            (update-in [:https :so-linger-milliseconds] (fnil identity
                                                              default-so-linger-in-milliseconds))
+           (update-in [:https :idle-timeout-milliseconds] identity)
            (update-in [:https :ssl-crl-path] identity))
        (-> actual
            (update-in [:https] dissoc :keystore-config)))))
 
-(deftest process-config-test
+(deftest process-config-http-test
   (testing "process-config successfully builds a WebserverConfig for plaintext connector"
     (is (expected-http-config?
           {:port 8000}
@@ -89,8 +91,14 @@
     (is (expected-http-config?
           {:port 8000 :queue-max-size 123}
           {:http {:host default-host :port 8000}
-           :queue-max-size 123})))
+           :queue-max-size 123}))
 
+    (is (expected-http-config?
+          {:port 8000 :idle-timeout-milliseconds 6000}
+          {:http {:host default-host :port 8000
+                  :idle-timeout-milliseconds 6000}}))))
+
+(deftest process-config-https-test
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
@@ -139,14 +147,24 @@
                   :ssl-port 8001
                   :queue-max-size 99})
           {:https {:host "foo.local" :port 8001}
-           :queue-max-size 99})))
+           :queue-max-size 99}))
 
+    (is (expected-https-config?
+          (merge valid-ssl-pem-config
+                 {:ssl-host "foo.local"
+                  :ssl-port 8001
+                  :idle-timeout-milliseconds 4200})
+          {:https {:host "foo.local" :port 8001
+                   :idle-timeout-milliseconds 4200}}))))
+
+(deftest process-config-jks-test
   (testing "jks ssl config"
     (is (expected-https-config?
           (merge valid-ssl-keystore-config
                  {:ssl-port 8001})
-          {:https {:host default-host :port 8001}})))
+          {:https {:host default-host :port 8001}}))))
 
+(deftest process-config-ciphers-test
   (testing "cipher suites"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
@@ -163,8 +181,9 @@
           {:https
             {:host default-host
              :port 8001
-             :cipher-suites ["FOO" "BAR"]}})))
+             :cipher-suites ["FOO" "BAR"]}}))))
 
+(deftest process-config-protocols-test
   (testing "protocols"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
@@ -181,7 +200,9 @@
           {:https
             {:host default-host
              :port 8001
-             :protocols ["FOO" "BAR"]}})))
+             :protocols ["FOO" "BAR"]}}))))
+
+(deftest process-config-crl-test
   (testing "ssl-crl-path"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
@@ -191,8 +212,9 @@
           {:https
             {:host default-host
              :port 8001
-             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}})))
+             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}}))))
 
+(deftest process-config-client-auth-test
   (testing "client auth"
     (letfn [(get-client-auth [config]
                              (-> config
@@ -214,8 +236,9 @@
             unsupported value is specified for the client-auth option"
         (is (thrown-with-msg? java.lang.IllegalArgumentException
                               #"Unexpected value found for client auth config option: bogus.  Expected need, want, or none."
-                              (get-client-auth {:ssl-port 8081 :client-auth "bogus"}))))))
+                              (get-client-auth {:ssl-port 8081 :client-auth "bogus"})))))))
 
+(deftest process-config-http-plus-https-test
   (testing "process-config successfully builds a WebserverConfig for plaintext+ssl"
     (is (expected-https-config?
           (merge valid-ssl-pem-config
@@ -223,9 +246,11 @@
           {:http  {:host default-host
                    :port 8000
                    :request-header-max-size default-request-header-size
-                   :so-linger-milliseconds -1}
-           :https {:host "foo.local" :port default-https-port}})))
+                   :so-linger-milliseconds -1
+                   :idle-timeout-milliseconds nil}
+           :https {:host "foo.local" :port default-https-port}}))))
 
+(deftest process-config-invalid-test
   (testing "process-config fails for invalid server config"
     (are [config]
       (thrown? ExceptionInfo
@@ -487,3 +512,4 @@
                 (jetty9/initialize-context)
                 (merge base-config
                        {:post-config-script (str "Object x = null; x.toString();")}))))))))
+

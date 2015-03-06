@@ -297,5 +297,5 @@
         (let [response (http-get "http://localhost:8080/hello" {:as :text
                                                                 :follow-redirects false})]
           (is (= (:status response) 302))
-          (is (= (get-in response [:headers "location"] "http://localhost:8080/hello/")))
+          (is (= (get-in response [:headers "location"]) "http://localhost:8080/hello/"))
           (is (= (get-in response [:opts :url]) "http://localhost:8080/hello")))))))

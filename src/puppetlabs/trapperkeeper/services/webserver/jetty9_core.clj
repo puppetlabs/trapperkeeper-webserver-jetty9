@@ -186,8 +186,6 @@
       (log/info (str "webserver config overridden for key '" (name key) "'")))
     (merge options overrides)))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Context Functions
 
@@ -242,13 +240,37 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
 
-(defn- connection-factory
-  [request-header-size]
+(defn- connection-factories
+  [request-header-size ssl-ctxt-factory]
   (let [http-config (doto (HttpConfiguration.)
                       (.setSendDateHeader true)
-                      (.setRequestHeaderSize request-header-size))]
-    (into-array ConnectionFactory
-                [(HttpConnectionFactory. http-config)])))
+                      (.setRequestHeaderSize request-header-size))
+        factories   (into-array ConnectionFactory
+                                [(HttpConnectionFactory. http-config)])]
+    (if ssl-ctxt-factory
+      (AbstractConnectionFactory/getFactories
+        ssl-ctxt-factory factories)
+      factories)))
+
+(schema/defn ^:always-validate
+  connector* :- ServerConnector
+  [server :- Server
+   config :- (merge config/WebserverConnector
+                    {schema/Keyword schema/Any})
+   ssl-ctxt-factory :- (schema/maybe SslContextFactory)]
+  (let [request-size (:request-header-max-size config)
+        connector   (doto (ServerConnector.
+                            server
+                            nil nil nil
+                            (config/acceptors-count (ks/num-cpus))
+                            (config/selectors-count (ks/num-cpus))
+                            (connection-factories request-size ssl-ctxt-factory))
+                      (.setPort (:port config))
+                      (.setHost (:host config))
+                      (.setSoLingerTime (:so-linger-milliseconds config)))]
+    (when-let [idle-timeout (:idle-timeout-milliseconds config)]
+      (.setIdleTimeout connector idle-timeout))
+    connector))
 
 (schema/defn ^:always-validate
   ssl-connector  :- ServerConnector
@@ -256,30 +278,13 @@
   [server            :- Server
    ssl-ctxt-factory  :- SslContextFactory
    config :- config/WebserverSslConnector]
-  (let [request-size (:request-header-max-size config)]
-    (doto (ServerConnector. server
-                            nil nil nil
-                            (config/acceptors-count (ks/num-cpus))
-                            (config/selectors-count (ks/num-cpus))
-                            (AbstractConnectionFactory/getFactories
-                              ssl-ctxt-factory (connection-factory request-size)))
-      (.setPort (:port config))
-      (.setHost (:host config))
-      (.setSoLingerTime (:so-linger-milliseconds config)))))
+  (connector* server config ssl-ctxt-factory))
 
 (schema/defn ^:always-validate
   plaintext-connector :- ServerConnector
   [server :- Server
    config :- config/WebserverConnector]
-  (let [request-size (:request-header-max-size config)]
-    (doto (ServerConnector. server
-                            nil nil nil
-                            (config/acceptors-count (ks/num-cpus))
-                            (config/selectors-count (ks/num-cpus))
-                            (connection-factory request-size))
-      (.setPort (:port config))
-      (.setHost (:host config))
-      (.setSoLingerTime (:so-linger-milliseconds config)))))
+  (connector* server config nil))
 
 (schema/defn ^:always-validate
   queue-thread-pool :- QueuedThreadPool

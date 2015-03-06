@@ -1,14 +1,21 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core-test
   (:import
     (org.eclipse.jetty.server.handler ContextHandlerCollection)
-    (java.security KeyStore))
+    (java.security KeyStore)
+    (java.net SocketTimeoutException Socket)
+    (java.io InputStreamReader BufferedReader PrintWriter))
   (:require [clojure.test :refer :all]
             [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
             [puppetlabs.http.client.sync :as http-sync]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
             [puppetlabs.trapperkeeper.testutils.webserver
-              :refer [with-test-webserver with-test-webserver-and-config]]))
+             :refer [with-test-webserver with-test-webserver-and-config]]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service
+             :refer [jetty9-service add-ring-handler]]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]))
 
 (deftest handlers
   (testing "create-handlers should allow for handlers to be added"
@@ -184,11 +191,12 @@
    :server nil})
 
 (defn get-http-config-for-server
-  [max-threads queue-max-size so-linger-milliseconds]
+  [max-threads queue-max-size so-linger-milliseconds idle-timeout-milliseconds]
   {:http {:port 0
           :host "0.0.0.0"
           :request-header-max-size 100
-          :so-linger-milliseconds so-linger-milliseconds}
+          :so-linger-milliseconds so-linger-milliseconds
+          :idle-timeout-milliseconds idle-timeout-milliseconds}
    :jmx-enable false
    :max-threads max-threads
    :queue-max-size queue-max-size})
@@ -199,7 +207,8 @@
                            (get-webserver-context-for-server)
                            (get-http-config-for-server max-threads
                                                        queue-max-size
-                                                       0))
+                                                       0
+                                                       nil))
         thread-pool      (.getThreadPool server)
         ;; Using reflection here because the .getQueue method is protected
         ;; and I didn't see any other way to pull the queue back from
@@ -212,7 +221,7 @@
     {:thread-pool thread-pool
      :queue queue}))
 
-(deftest create-server-tests
+(deftest create-server-thread-pool-test
   (testing "thread pool given proper values"
     (testing "max threads passed through"
       (dotimes [x 5]
@@ -255,13 +264,16 @@
         (is (= jetty/default-queue-min-threads (.getCapacity queue))
             "Unexpected initial capacity for queue")
         (is (= queue-min-size (.getMaxCapacity queue))
-            "Unexpected max capacity for queue"))))
+            "Unexpected max capacity for queue")))))
+
+(deftest create-server-so-linger-test
   (testing "so-linger-time configured properly for http connector"
     (let [server (jetty/create-server
                    (get-webserver-context-for-server)
                    (get-http-config-for-server 0
                                                0
-                                               500))
+                                               500
+                                               nil))
           connectors (.getConnectors server)]
       (is (= 1 (count connectors))
           "Unexpected number of connectors for server")
@@ -273,7 +285,8 @@
                    {:http {:port 25
                            :host "0.0.0.0"
                            :request-header-max-size 100
-                           :so-linger-milliseconds 41}
+                           :so-linger-milliseconds 41
+                           :idle-timeout-milliseconds nil}
                     :https {:port 92
                             :host "0.0.0.0"
                             :protocols nil
@@ -286,6 +299,7 @@
                                              (KeyStore/getInstance))}
                             :request-header-max-size 100
                             :so-linger-milliseconds 42
+                            :idle-timeout-milliseconds nil
                             :client-auth :want}
                     :jmx-enable false
                     :max-threads 100
@@ -301,3 +315,103 @@
           "Unexpected port for second connector")
       (is (= 42 (.getSoLingerTime (second connectors)))
           "Unexpected so linger time for second connector"))))
+
+(deftest create-server-idle-timeout-test
+  (testing "idle-timeout configured properly for http connector"
+    (let [server (jetty/create-server
+                   (get-webserver-context-for-server)
+                   (get-http-config-for-server 0
+                                               0
+                                               0
+                                               3000))
+          connectors (.getConnectors server)]
+      (is (= 1 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 3000 (.getIdleTimeout (first connectors)))
+          "Unexpected idle time for connector")))
+  (testing "idle-timeout configured properly for multiple connectors"
+    (let [server (jetty/create-server
+                   (get-webserver-context-for-server)
+                   {:http {:port 25
+                           :host "0.0.0.0"
+                           :request-header-max-size 100
+                           :so-linger-milliseconds 41
+                           :idle-timeout-milliseconds 9001}
+                    :https {:port 92
+                            :host "0.0.0.0"
+                            :protocols nil
+                            :cipher-suites nil
+                            :keystore-config
+                            {:truststore (-> (KeyStore/getDefaultType)
+                                             (KeyStore/getInstance))
+                             :key-password "hello"
+                             :keystore (-> (KeyStore/getDefaultType)
+                                           (KeyStore/getInstance))}
+                            :request-header-max-size 100
+                            :so-linger-milliseconds 42
+                            :idle-timeout-milliseconds 9002
+                            :client-auth :want}
+                    :jmx-enable false
+                    :max-threads 100
+                    :queue-max-size 101})
+          connectors (.getConnectors server)]
+      (is (= 2 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 25 (.getPort (first connectors)))
+          "Unexpected port for first connector")
+      (is (= 9001 (.getIdleTimeout (first connectors)))
+          "Unexpected idle timeout for first connector")
+      (is (= 92 (.getPort (second connectors)))
+          "Unexpected port for second connector")
+      (is (= 9002 (.getIdleTimeout (second connectors)))
+          "Unexpected idle time for second connector"))))
+
+(deftest test-idle-timeout
+  (let [read-lines (fn [r]
+                     (let [sb (StringBuilder.)]
+                       (loop [l (.readLine r)]
+                         (when l
+                           (.append sb l)
+                           (.append sb "\n")
+                           ;; readLine will block until the socket is closed,
+                           ;; or will throw a SocketTimeoutException if there
+                           ;; is no data available within the SoTimeout value.
+                           (recur (.readLine r))))
+                       (.toString sb)))
+        body "Hi World\n"
+        path "/hi_world"
+        ring-handler (fn [req] {:status 200 :body body})
+        read-response (fn [client-so-timeout]
+                        (let [s (Socket. "localhost" 9000)
+                              out (PrintWriter. (.getOutputStream s) true)]
+                          (.setSoTimeout s client-so-timeout)
+                          (.println out (str "GET " path " HTTP/1.1\n"
+                                             "Host: localhost\n"
+                                             "\n"))
+                          (let [in (BufferedReader. (InputStreamReader. (.getInputStream s)))]
+                            (read-lines in))))]
+    (let [config {:webserver {:port 9000
+                              :host "localhost"
+                              :idle-timeout-milliseconds 500}}]
+      (with-test-logging
+        (with-app-with-config app
+          [jetty9-service]
+          config
+          (let [s (tk-app/get-service app :WebserverService)
+                add-ring-handler (partial add-ring-handler s)]
+            (add-ring-handler ring-handler path)
+
+            (testing "Verify that server doesn't close socket before idle timeout"
+              ;; if we set the client socket timeout lower than the server
+              ;; socket timeout, we should get a timeout exception from the
+              ;; client side while attempting to read from the socket.
+              (is (thrown-with-msg? SocketTimeoutException #"Read timed out"
+                                    (read-response 250))))
+            (testing "Verify that server closes the socket after idle timeout"
+              ;; if we set the client socket timeout higher than the server,
+              ;; then the server should close the socket after its timeout,
+              ;; which will cause our read to stop blocking and allow us to
+              ;; validate the contents of the data we read from the socket.
+              (let [resp (read-response 750)]
+                (is (re-find #"(?is)HTTP.*200 OK.*Hi World"
+                             resp))))))))))

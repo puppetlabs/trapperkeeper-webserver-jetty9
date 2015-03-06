@@ -58,6 +58,7 @@
    (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
    (schema/optional-key :so-linger-seconds)          schema/Int
+   (schema/optional-key :idle-timeout-milliseconds)  schema/Int
    (schema/optional-key :ssl-port)                   schema/Int
    (schema/optional-key :ssl-host)                   schema/Str
    (schema/optional-key :ssl-key)                    schema/Str
@@ -118,11 +119,15 @@
 (def WebserverSslClientAuth
   (schema/enum :need :want :none))
 
+(def WebserverConnectorCommon
+  {:request-header-max-size schema/Int
+   :so-linger-milliseconds  schema/Int
+   :idle-timeout-milliseconds (schema/maybe schema/Int)})
+
 (def WebserverConnector
-  {:host                    schema/Str
-   :port                    schema/Int
-   :request-header-max-size schema/Int
-   :so-linger-milliseconds  schema/Int})
+  (merge WebserverConnectorCommon
+         {:host schema/Str
+          :port schema/Int}))
 
 (def WebserverSslContextFactory
   {:keystore-config                    WebserverSslKeystoreConfig
@@ -318,13 +323,20 @@
     default-so-linger-in-milliseconds))
 
 (schema/defn ^:always-validate
+  common-connector-config :- WebserverConnectorCommon
+  [config :- WebserverRawConfig]
+  {:request-header-max-size   (or (:request-header-max-size config)
+                                  default-request-header-size)
+   :so-linger-milliseconds    (so-linger-in-milliseconds config)
+   :idle-timeout-milliseconds (:idle-timeout-milliseconds config)})
+
+(schema/defn ^:always-validate
   maybe-get-http-connector :- (schema/maybe WebserverConnector)
   [config :- WebserverRawConfig]
   (if (contains-http-connector? config)
-    {:host         (or (:host config) default-host)
-     :port         (or (:port config) default-http-port)
-     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
-     :so-linger-milliseconds (so-linger-in-milliseconds config)}))
+    (merge (common-connector-config config)
+           {:host (or (:host config) default-host)
+            :port (or (:port config) default-http-port)})))
 
 (schema/defn ^:always-validate
   contains-https-connector? :- schema/Bool
@@ -335,15 +347,14 @@
   maybe-get-https-connector :- (schema/maybe WebserverSslConnector)
   [config :- WebserverRawConfig]
   (if (contains-https-connector? config)
-    {:host (or (:ssl-host config) default-host)
-     :port (or (:ssl-port config) default-https-port)
-     :request-header-max-size (or (:request-header-max-size config) default-request-header-size)
-     :so-linger-milliseconds (so-linger-in-milliseconds config)
-     :keystore-config (get-keystore-config! config)
-     :cipher-suites (get-cipher-suites-config config)
-     :protocols (get-ssl-protocols-config config)
-     :client-auth (get-client-auth! config)
-     :ssl-crl-path (get-ssl-crl-path! config)}))
+    (merge (common-connector-config config)
+           {:host                    (or (:ssl-host config) default-host)
+            :port                    (or (:ssl-port config) default-https-port)
+            :keystore-config         (get-keystore-config! config)
+            :cipher-suites           (get-cipher-suites-config config)
+            :protocols               (get-ssl-protocols-config config)
+            :client-auth             (get-client-auth! config)
+            :ssl-crl-path            (get-ssl-crl-path! config)})))
 
 (schema/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector
