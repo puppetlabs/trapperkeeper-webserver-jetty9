@@ -1,7 +1,7 @@
 (def tk-version "1.1.0")
 (def ks-version "1.0.0")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.2.0-SNAPSHOT"
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.2.0"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
   :url "https://github.com/puppetlabs/trapperkeeper-webserver-jetty9"
   :license {:name "Apache License, Version 2.0"
