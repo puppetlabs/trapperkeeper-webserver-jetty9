@@ -88,8 +88,6 @@
 (def default-queue-max-size (Integer/MAX_VALUE))
 
 
-(def default-request-header-buffer-size 8192)
-(def default-request-header-size 8192)
 
 (def default-so-linger-in-milliseconds
   "The default SO_LINGER time to set on the ServerConnector in milliseconds.
@@ -173,8 +171,8 @@
   (schema/enum :need :want :none))
 
 (def WebserverConnectorCommon
-  {:request-header-max-size schema/Int
-   :so-linger-milliseconds  schema/Int
+  {:request-header-max-size   (schema/maybe schema/Int)
+   :so-linger-milliseconds    schema/Int
    :idle-timeout-milliseconds (schema/maybe schema/Int)})
 
 (def WebserverConnector
@@ -378,8 +376,7 @@
 (schema/defn ^:always-validate
   common-connector-config :- WebserverConnectorCommon
   [config :- WebserverRawConfig]
-  {:request-header-max-size   (or (:request-header-max-size config)
-                                  default-request-header-size)
+  {:request-header-max-size   (:request-header-max-size config)
    :so-linger-milliseconds    (so-linger-in-milliseconds config)
    :idle-timeout-milliseconds (:idle-timeout-milliseconds config)})
 

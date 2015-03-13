@@ -34,9 +34,19 @@
 ;;
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-default-config-test
   (:require [clojure.test :refer :all]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test])
+  (:import (org.eclipse.jetty.server HttpConfiguration)
+           (org.eclipse.jetty.client HttpClient)))
 
 (use-fixtures :once schema-test/validate-schemas)
+
+(deftest default-request-header-size-test
+  (let [http-config (HttpConfiguration.)]
+    (is (= 8192 (.getRequestHeaderSize http-config)))))
+
+(deftest default-proxy-request-buffer-size-test
+  (let [client (HttpClient.)]
+    (is (= 4096 (.getRequestBufferSize client)))))
 
 
 

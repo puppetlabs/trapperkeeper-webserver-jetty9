@@ -240,11 +240,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
 
+(defn- http-configuration
+  [request-header-size]
+  (let [http-config (doto (HttpConfiguration.)
+                      (.setSendDateHeader true))]
+    (if request-header-size
+      (.setRequestHeaderSize http-config request-header-size))
+    http-config))
+
 (defn- connection-factories
   [request-header-size ssl-ctxt-factory]
-  (let [http-config (doto (HttpConfiguration.)
-                      (.setSendDateHeader true)
-                      (.setRequestHeaderSize request-header-size))
+  (let [http-config (http-configuration request-header-size)
         factories   (into-array ConnectionFactory
                                 [(HttpConnectionFactory. http-config)])]
     (if ssl-ctxt-factory
@@ -431,9 +437,8 @@
                                                    @(:state webserver-context))]
                          (HttpClient. ssl-ctxt-factory)
                          (HttpClient.)))]
-          (if request-buffer-size
-            (.setRequestBufferSize client request-buffer-size)
-            (.setRequestBufferSize client config/default-request-header-buffer-size))
+          (when request-buffer-size
+            (.setRequestBufferSize client request-buffer-size))
           client))
 
       (createHttpClient []
