@@ -1,11 +1,10 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config
   (:import [java.security KeyStore]
            (java.io FileInputStream)
-           (clojure.lang ExceptionInfo)
            (org.eclipse.jetty.server.handler RequestLogHandler)
            (ch.qos.logback.access.jetty RequestLogImpl)
            (org.eclipse.jetty.server Server)
-           (org.codehaus.janino ExpressionEvaluator ScriptEvaluator)
+           (org.codehaus.janino ScriptEvaluator)
            (org.codehaus.commons.compiler CompileException)
            (java.lang.reflect InvocationTargetException))
   (:require [clojure.tools.logging :as log]
@@ -17,7 +16,53 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants / Defaults
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; NOTE: We are making a decisive move away from overriding Jetty's
+;;; implicit default values for settings when downstream TK apps do not
+;;; explicitly provide values for them.  Please see the comments/tests in
+;;; `jetty9_default_config_test.clj` for full details.
+;;;
+;;; Below we are making a handful of deliberate exceptions to this rule,
+;;; but please do not perpetuate this pattern without a compelling reason to
+;;; do so.
 
+
+;;;
+;;; Host/port settings
+;;;
+;;; These are really common and fairly benign, and removing them would probably
+;;; only serve to make the bare configuration more onerous.
+;;;
+(def default-http-port 8080)
+(def default-https-port 8081)
+(def default-host "localhost")
+
+;;;
+;;; Security-related settings
+;;;
+;;; After some discussion, we decided that it was probably still appropriate to
+;;; override Jetty's defaults for these security-related settings.  In the event
+;;; that a vulnerability like "POODLE" is announced (where we needed to remove
+;;; the SSLv3 protocol from the list of allowed protocols), we would need to do
+;;; a release of tk-j9 to address it no matter what.  The choices would then be
+;;; to update our own defaults for security-related settings, or, if we're not
+;;; imposing our own defaults, to try to upgrade to a new version of Jetty where
+;;; their implicit defaults reflect the security issue.  The latter is far more
+;;; risky for our downstream apps, thus it was decided that it makes sense to
+;;; keep these overrides.
+;;;
+;;; Also note that w/rt the default list of acceptable ciphers, we're deliberately
+;;; excluding all diffie-helman ciphers due to some old JDK bugs:
+;;;
+;;; http://bugs.java.com/bugdatabase/view_bug.do?bug_id=8014618
+;;; https://github.com/puppetlabs/puppetdb/commit/03e020dc85b83d6c83c9992ca6bd14f57e8fc91a
+;;;
+;;; These have been fixed in recent versions of the JDK, and it would be nice
+;;; to be able to add the DH ciphers back in at some point, but we can't do that
+;;; until we're certain that our minimum supported JDK versions for all of our
+;;; supported distros will contain the relevant fixes.
+;;;
 (def acceptable-ciphers
   ["TLS_RSA_WITH_AES_256_CBC_SHA256"
    "TLS_RSA_WITH_AES_256_CBC_SHA"
@@ -28,15 +73,16 @@
    "SSL_RSA_WITH_RC4_128_MD5"])
 (def default-protocols ["TLSv1" "TLSv1.1" "TLSv1.2"])
 
-(def default-http-port 8080)
-(def default-https-port 8081)
-(def default-host "localhost")
+
+;; TODO: these two need to be addressed in our upcoming work around
+;; acceptors/selectors.  See TK-148.
 (def default-max-threads 100)
+(def default-queue-max-size (Integer/MAX_VALUE))
+
 (def default-client-auth :need)
 (def default-jmx-enable "true")
 (def default-request-header-buffer-size 8192)
 (def default-request-header-size 8192)
-(def default-queue-max-size (Integer/MAX_VALUE))
 
 (def default-so-linger-in-milliseconds
   "The default SO_LINGER time to set on the ServerConnector in milliseconds.
