@@ -30,192 +30,220 @@
    :key-password    "Kq8lG9LkISky9cDIYysiadxRx"
    :trust-password  "Kq8lG9LkISky9cDIYysiadxRx"})
 
-(defn expected-http-config?
-  [config expected]
-  (= (-> expected
-         (update-in [:max-threads] (fnil identity default-max-threads))
-         (update-in [:queue-max-size] (fnil identity default-queue-max-size))
-         (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
-         (update-in [:http :request-header-max-size] (fnil identity default-request-header-size))
-         (update-in [:http :so-linger-milliseconds] (fnil identity
-                                                          default-so-linger-in-milliseconds))
-         (update-in [:http :idle-timeout-milliseconds] identity))
-     (process-config config)))
+(defn munge-actual-http-config
+  [config]
+  (process-config config))
 
-(defn expected-https-config?
-  [config expected]
+(defn munge-expected-http-config
+  [expected]
+  (-> expected
+      (update-in [:max-threads] (fnil identity default-max-threads))
+      (update-in [:queue-max-size] (fnil identity default-queue-max-size))
+      (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
+      (update-in [:http :request-header-max-size] (fnil identity default-request-header-size))
+      (update-in [:http :so-linger-milliseconds] (fnil identity
+                                                       default-so-linger-in-milliseconds))
+      (update-in [:http :idle-timeout-milliseconds] identity)))
+
+(defn munge-actual-https-config
+  [config]
   (let [actual (process-config config)]
-    (= (-> expected
-           (update-in [:max-threads] (fnil identity default-max-threads))
-           (update-in [:queue-max-size] (fnil identity default-queue-max-size))
-           (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
-           (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
-           (update-in [:https :protocols] (fnil identity default-protocols))
-           (update-in [:https :client-auth] (fnil identity default-client-auth))
-           (update-in [:https :request-header-max-size] (fnil identity default-request-header-size))
-           (update-in [:https :so-linger-milliseconds] (fnil identity
-                                                             default-so-linger-in-milliseconds))
-           (update-in [:https :idle-timeout-milliseconds] identity)
-           (update-in [:https :ssl-crl-path] identity))
-       (-> actual
-           (update-in [:https] dissoc :keystore-config)))))
+    (-> actual
+        (update-in [:https] dissoc :keystore-config))))
+
+(defn munge-expected-https-config
+  [expected]
+  (-> expected
+      (update-in [:max-threads] (fnil identity default-max-threads))
+      (update-in [:queue-max-size] (fnil identity default-queue-max-size))
+      (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
+      (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
+      (update-in [:https :protocols] (fnil identity default-protocols))
+      (update-in [:https :client-auth] (fnil identity default-client-auth))
+      (update-in [:https :request-header-max-size] (fnil identity default-request-header-size))
+      (update-in [:https :so-linger-milliseconds] (fnil identity
+                                                        default-so-linger-in-milliseconds))
+      (update-in [:https :idle-timeout-milliseconds] identity)
+      (update-in [:https :ssl-crl-path] identity)))
 
 (deftest process-config-http-test
   (testing "process-config successfully builds a WebserverConfig for plaintext connector"
-    (is (expected-http-config?
-          {:port 8000}
-          {:http {:host default-host :port 8000}}))
+    (is (= (munge-actual-http-config
+             {:port 8000})
+           (munge-expected-http-config
+             {:http {:host default-host :port 8000}})))
 
-    (is (expected-http-config?
-          {:port 8000 :host "foo.local"}
-          {:http {:host "foo.local" :port 8000}}))
+    (is (= (munge-actual-http-config
+             {:port 8000 :host "foo.local"})
+           (munge-expected-http-config
+             {:http {:host "foo.local" :port 8000}})))
 
-    (is (expected-http-config?
-          {:host "foo.local"}
-          {:http {:host "foo.local" :port default-http-port}}))
+    (is (= (munge-actual-http-config
+             {:host "foo.local"})
+           (munge-expected-http-config
+             {:http {:host "foo.local" :port default-http-port}})))
 
-    (is (expected-http-config?
-          {:port 8000 :request-header-max-size 16192}
-          {:http {:host default-host
-                  :port 8000
-                  :request-header-max-size 16192}}))
+    (is (= (munge-actual-http-config
+             {:port 8000 :request-header-max-size 16192})
+           (munge-expected-http-config
+             {:http {:host                    default-host
+                     :port                    8000
+                     :request-header-max-size 16192}})))
 
-    (is (expected-http-config?
-          {:port 8000 :so-linger-seconds 7}
-          {:http {:host default-host
-                  :port 8000
-                  :so-linger-milliseconds 7000}}))
+    (is (= (munge-actual-http-config
+             {:port 8000 :so-linger-seconds 7})
+           (munge-expected-http-config
+             {:http {:host                   default-host
+                     :port                   8000
+                     :so-linger-milliseconds 7000}})))
 
-    (is (expected-http-config?
-          {:port 8000 :max-threads 500}
-          {:http        {:host default-host :port 8000}
-           :max-threads 500}))
+    (is (= (munge-actual-http-config
+             {:port 8000 :max-threads 500})
+           (munge-expected-http-config
+             {:http        {:host default-host :port 8000}
+              :max-threads 500})))
 
-    (is (expected-http-config?
-          {:port 8000 :queue-max-size 123}
-          {:http {:host default-host :port 8000}
-           :queue-max-size 123}))
+    (is (= (munge-actual-http-config
+             {:port 8000 :queue-max-size 123})
+           (munge-expected-http-config
+             {:http           {:host default-host :port 8000}
+              :queue-max-size 123})))
 
-    (is (expected-http-config?
-          {:port 8000 :idle-timeout-milliseconds 6000}
-          {:http {:host default-host :port 8000
-                  :idle-timeout-milliseconds 6000}}))))
+    (is (= (munge-actual-http-config
+             {:port 8000 :idle-timeout-milliseconds 6000})
+           (munge-expected-http-config
+             {:http {:host                      default-host :port 8000
+                     :idle-timeout-milliseconds 6000}})))))
 
 (deftest process-config-https-test
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local"})
-          {:https {:host "foo.local" :port default-https-port}}))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host "foo.local"}))
+           (munge-expected-https-config
+             {:https {:host "foo.local" :port default-https-port}})))
 
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-port 8001})
-          {:https {:host default-host :port 8001}}))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-port 8001}))
+           (munge-expected-https-config
+             {:https {:host default-host :port 8001}})))
 
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local" :ssl-port 8001})
-          {:https {:host "foo.local" :port 8001}}))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host "foo.local" :ssl-port 8001}))
+           (munge-expected-https-config
+             {:https {:host "foo.local" :port 8001}})))
 
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local"
-                  :ssl-port 8001
-                  :request-header-max-size 16192})
-          {:https {:host "foo.local"
-                   :port 8001
-                   :request-header-max-size 16192}}))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host                "foo.local"
+                     :ssl-port                8001
+                     :request-header-max-size 16192}))
+           (munge-expected-https-config
+             {:https {:host                    "foo.local"
+                      :port                    8001
+                      :request-header-max-size 16192}})))
 
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local"
-                  :ssl-port 8001
-                  :so-linger-seconds 22})
-          {:https {:host "foo.local"
-                   :port 8001
-                   :so-linger-milliseconds 22000}}))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host          "foo.local"
+                     :ssl-port          8001
+                     :so-linger-seconds 22}))
+           (munge-expected-https-config
+             {:https {:host                   "foo.local"
+                      :port                   8001
+                      :so-linger-milliseconds 22000}})))
 
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local"
-                  :ssl-port 8001
-                  :max-threads 93})
-          {:https {:host "foo.local" :port 8001}
-           :max-threads 93}))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host    "foo.local"
+                     :ssl-port    8001
+                     :max-threads 93}))
+           (munge-expected-https-config
+             {:https       {:host "foo.local" :port 8001}
+              :max-threads 93})))
 
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local"
-                  :ssl-port 8001
-                  :queue-max-size 99})
-          {:https {:host "foo.local" :port 8001}
-           :queue-max-size 99}))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host       "foo.local"
+                     :ssl-port       8001
+                     :queue-max-size 99}))
+           (munge-expected-https-config
+             {:https          {:host "foo.local" :port 8001}
+              :queue-max-size 99})))
 
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local"
-                  :ssl-port 8001
-                  :idle-timeout-milliseconds 4200})
-          {:https {:host "foo.local" :port 8001
-                   :idle-timeout-milliseconds 4200}}))))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host                  "foo.local"
+                     :ssl-port                  8001
+                     :idle-timeout-milliseconds 4200}))
+           (munge-expected-https-config
+             {:https {:host                      "foo.local" :port 8001
+                      :idle-timeout-milliseconds 4200}})))))
 
 (deftest process-config-jks-test
   (testing "jks ssl config"
-    (is (expected-https-config?
-          (merge valid-ssl-keystore-config
-                 {:ssl-port 8001})
-          {:https {:host default-host :port 8001}}))))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-keystore-config
+                    {:ssl-port 8001}))
+           (munge-expected-https-config
+             {:https {:host default-host :port 8001}})))))
 
 (deftest process-config-ciphers-test
   (testing "cipher suites"
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-port 8001 :cipher-suites ["FOO" "BAR"]})
-          {:https
-            {:host default-host
-             :port 8001
-             :cipher-suites ["FOO" "BAR"]}})))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-port 8001 :cipher-suites ["FOO" "BAR"]}))
+           (munge-expected-https-config
+             {:https
+              {:host          default-host
+               :port          8001
+               :cipher-suites ["FOO" "BAR"]}}))))
 
   (testing "cipher suites as a comma and space-separated string"
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-port 8001 :cipher-suites "FOO, BAR"})
-          {:https
-            {:host default-host
-             :port 8001
-             :cipher-suites ["FOO" "BAR"]}}))))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-port 8001 :cipher-suites "FOO, BAR"}))
+           (munge-expected-https-config
+             {:https
+              {:host          default-host
+               :port          8001
+               :cipher-suites ["FOO" "BAR"]}})))))
 
 (deftest process-config-protocols-test
   (testing "protocols"
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-port 8001 :ssl-protocols ["FOO" "BAR"]})
-          {:https
-            {:host default-host
-             :port 8001
-             :protocols ["FOO" "BAR"]}})))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-port 8001 :ssl-protocols ["FOO" "BAR"]}))
+           (munge-expected-https-config
+             {:https
+              {:host      default-host
+               :port      8001
+               :protocols ["FOO" "BAR"]}}))))
 
   (testing "protocols as a comma and space-separated string"
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-port 8001 :ssl-protocols "FOO, BAR"})
-          {:https
-            {:host default-host
-             :port 8001
-             :protocols ["FOO" "BAR"]}}))))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-port 8001 :ssl-protocols "FOO, BAR"}))
+           (munge-expected-https-config
+             {:https
+              {:host      default-host
+               :port      8001
+               :protocols ["FOO" "BAR"]}})))))
 
 (deftest process-config-crl-test
   (testing "ssl-crl-path"
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-port 8001
-                  :ssl-crl-path
-                            "./dev-resources/config/jetty/ssl/certs/ca.pem"})
-          {:https
-            {:host default-host
-             :port 8001
-             :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}}))))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-port 8001
+                     :ssl-crl-path
+                               "./dev-resources/config/jetty/ssl/certs/ca.pem"}))
+           (munge-expected-https-config
+             {:https
+              {:host         default-host
+               :port         8001
+               :ssl-crl-path "./dev-resources/config/jetty/ssl/certs/ca.pem"}})))))
 
 (deftest process-config-client-auth-test
   (testing "client auth"
@@ -243,15 +271,16 @@
 
 (deftest process-config-http-plus-https-test
   (testing "process-config successfully builds a WebserverConfig for plaintext+ssl"
-    (is (expected-https-config?
-          (merge valid-ssl-pem-config
-                 {:ssl-host "foo.local" :port 8000})
-          {:http  {:host default-host
-                   :port 8000
-                   :request-header-max-size default-request-header-size
-                   :so-linger-milliseconds -1
-                   :idle-timeout-milliseconds nil}
-           :https {:host "foo.local" :port default-https-port}}))))
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host "foo.local" :port 8000}))
+           (munge-expected-https-config
+             {:http  {:host                      default-host
+                      :port                      8000
+                      :request-header-max-size   default-request-header-size
+                      :so-linger-milliseconds    -1
+                      :idle-timeout-milliseconds nil}
+              :https {:host "foo.local" :port default-https-port}})))))
 
 (deftest process-config-invalid-test
   (testing "process-config fails for invalid server config"
