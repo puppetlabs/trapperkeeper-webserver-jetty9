@@ -41,8 +41,7 @@
       (update-in [:queue-max-size] (fnil identity default-queue-max-size))
       (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
       (update-in [:http :request-header-max-size] identity)
-      (update-in [:http :so-linger-milliseconds] (fnil identity
-                                                       default-so-linger-in-milliseconds))
+      (update-in [:http :so-linger-milliseconds] identity)
       (update-in [:http :idle-timeout-milliseconds] identity)))
 
 (defn munge-actual-https-config
@@ -61,8 +60,7 @@
       (update-in [:https :protocols] (fnil identity default-protocols))
       (update-in [:https :client-auth] (fnil identity default-client-auth))
       (update-in [:https :request-header-max-size] identity)
-      (update-in [:https :so-linger-milliseconds] (fnil identity
-                                                        default-so-linger-in-milliseconds))
+      (update-in [:https :so-linger-milliseconds] identity)
       (update-in [:https :idle-timeout-milliseconds] identity)
       (update-in [:https :ssl-crl-path] identity)))
 
@@ -278,7 +276,7 @@
              {:http  {:host                      default-host
                       :port                      8000
                       :request-header-max-size   nil
-                      :so-linger-milliseconds    -1
+                      :so-linger-milliseconds    nil
                       :idle-timeout-milliseconds nil}
               :https {:host "foo.local" :port default-https-port}})))))
 

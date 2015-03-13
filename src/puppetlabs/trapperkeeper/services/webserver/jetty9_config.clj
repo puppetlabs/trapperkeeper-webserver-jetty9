@@ -87,13 +87,6 @@
 (def default-max-threads 100)
 (def default-queue-max-size (Integer/MAX_VALUE))
 
-
-
-(def default-so-linger-in-milliseconds
-  "The default SO_LINGER time to set on the ServerConnector in milliseconds.
-  A value less than 0 indicates that SO_LINGER should be disabled."
-  -1)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
@@ -172,7 +165,7 @@
 
 (def WebserverConnectorCommon
   {:request-header-max-size   (schema/maybe schema/Int)
-   :so-linger-milliseconds    schema/Int
+   :so-linger-milliseconds    (schema/maybe schema/Int)
    :idle-timeout-milliseconds (schema/maybe schema/Int)})
 
 (def WebserverConnector
@@ -367,11 +360,10 @@
   (contains-keys? config #{:port :host}))
 
 (schema/defn ^:always-validate
-  so-linger-in-milliseconds :- schema/Int
+  so-linger-in-milliseconds :- (schema/maybe schema/Int)
   [config :- WebserverRawConfig]
-  (if-let [linger-from-config (:so-linger-seconds config)]
-    (* 1000 linger-from-config)
-    default-so-linger-in-milliseconds))
+  (when-let [linger-from-config (:so-linger-seconds config)]
+    (* 1000 linger-from-config)))
 
 (schema/defn ^:always-validate
   common-connector-config :- WebserverConnectorCommon

@@ -35,7 +35,7 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-default-config-test
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test])
-  (:import (org.eclipse.jetty.server HttpConfiguration)
+  (:import (org.eclipse.jetty.server HttpConfiguration ServerConnector Server)
            (org.eclipse.jetty.client HttpClient)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -47,6 +47,10 @@
 (deftest default-proxy-request-buffer-size-test
   (let [client (HttpClient.)]
     (is (= 4096 (.getRequestBufferSize client)))))
+
+(deftest default-so-linger-timeout-test
+  (let [connector (ServerConnector. (Server.))]
+    (is (= -1 (.getSoLingerTime connector)))))
 
 
 
