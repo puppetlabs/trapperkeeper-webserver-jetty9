@@ -2,6 +2,10 @@
 ;; VALIDATION OF DEFAULT JETTY CONFIGURATION VALUES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;; NOTE: IF A TEST IN THIS NAMESPACE FAILS, AND YOU ALTER THE VALUE TO MAKE IT
+;;  PASS, IT IS YOUR RESPONSIBILITY TO DOUBLE-CHECK THE DOCS TO SEE IF THERE
+;;  IS ANYWHERE IN THEM THAT THE NEW VALUE NEEDS TO BE ADDED.
+;;
 ;; This namespace is a little different than most of our test namespaces.  It's
 ;; not really intended to test any of our own code, it's just here to provide
 ;; us with a warning in the event that Jetty changes any of the default
