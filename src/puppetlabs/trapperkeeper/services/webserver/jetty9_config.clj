@@ -72,6 +72,7 @@
    "SSL_RSA_WITH_3DES_EDE_CBC_SHA"
    "SSL_RSA_WITH_RC4_128_MD5"])
 (def default-protocols ["TLSv1" "TLSv1.1" "TLSv1.2"])
+(def default-client-auth :need)
 
 
 ;; TODO: these two need to be addressed in our upcoming work around
@@ -79,7 +80,6 @@
 (def default-max-threads 100)
 (def default-queue-max-size (Integer/MAX_VALUE))
 
-(def default-client-auth :need)
 (def default-jmx-enable "true")
 (def default-request-header-buffer-size 8192)
 (def default-request-header-size 8192)
@@ -313,7 +313,7 @@
   [config :- WebserverRawConfig]
   (let [client-auth (:client-auth config)]
     (cond
-      (nil? client-auth) :need
+      (nil? client-auth) default-client-auth
       (contains? #{"need" "want" "none"} client-auth) (keyword client-auth)
       :else (throw
               (IllegalArgumentException.
