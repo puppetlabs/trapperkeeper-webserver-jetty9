@@ -297,7 +297,7 @@ the response, and the size in bytes of the response.
 ### `shutdown-timeout-seconds`
 
 Optional. This is an integer representing the desired graceful stop timeout in seconds.
-Defaults to 60 seconds.
+Defaults to 30 seconds.
 
 ### `post-config-script`
 

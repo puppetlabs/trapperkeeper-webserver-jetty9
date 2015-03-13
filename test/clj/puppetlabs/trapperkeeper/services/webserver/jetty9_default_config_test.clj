@@ -57,6 +57,10 @@
     (is (= -1 (.getSoLingerTime connector)))
     (is (= 30000 (.getIdleTimeout connector)))))
 
+(deftest default-server-settings-test
+  (let [server (Server.)]
+    (is (= 30000 (.getStopTimeout server)))))
+
 
 
 

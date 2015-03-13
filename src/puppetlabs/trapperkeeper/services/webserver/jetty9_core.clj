@@ -132,12 +132,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def default-graceful-stop-timeout
-  "The default number of milliseconds that is allowed for requests active at
-  the time the server is stopped to remain running until the server shuts
-  down."
-  60000)
-
 (def default-proxy-idle-timeout
   "The default number of milliseconds to wait before the proxy gives up on the
   upstream server if the :idle-timeout value isn't set in the proxy config."
@@ -595,7 +589,8 @@
                                  (.setHandler maybe-logged))
                                maybe-logged)]
       (.setHandler s statistics-handler)
-      (.setStopTimeout s (or shutdown-timeout default-graceful-stop-timeout))
+      (if shutdown-timeout
+        (.setStopTimeout s shutdown-timeout))
       (when-let [script (:post-config-script options)]
         (config/execute-post-config-script! s script))
       (assoc webserver-context :server s))))
