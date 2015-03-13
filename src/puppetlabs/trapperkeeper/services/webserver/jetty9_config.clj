@@ -74,13 +74,20 @@
 (def default-protocols ["TLSv1" "TLSv1.1" "TLSv1.2"])
 (def default-client-auth :need)
 
+;;;
+;;; JMX
+;;;
+;;; The JMX metrics seem valuable enough, and inexpensive enough, to warrant
+;;; leaving them on by default.
+(def default-jmx-enable "true")
+
 
 ;; TODO: these two need to be addressed in our upcoming work around
 ;; acceptors/selectors.  See TK-148.
 (def default-max-threads 100)
 (def default-queue-max-size (Integer/MAX_VALUE))
 
-(def default-jmx-enable "true")
+
 (def default-request-header-buffer-size 8192)
 (def default-request-header-size 8192)
 
