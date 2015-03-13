@@ -132,11 +132,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def default-proxy-idle-timeout
-  "The default number of milliseconds to wait before the proxy gives up on the
-  upstream server if the :idle-timeout value isn't set in the proxy config."
-  60000)
-
 (def default-queue-idle-timeout
   "The maximum number of milliseconds that a thread in the queue can remain
   idle before the thread may be thrown away.  A value less than or equal to 0
@@ -438,12 +433,13 @@
 
       (createHttpClient []
         (let [client (proxy-super createHttpClient)
-              timeout (if idle-timeout (* 1000 idle-timeout)
-                                       default-proxy-idle-timeout)]
+              timeout (when idle-timeout
+                        (* 1000 idle-timeout))]
           (if (:follow-redirects options)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
-          (.setIdleTimeout client timeout)
+          (if timeout
+            (.setIdleTimeout client timeout))
           client))
 
       (customizeProxyRequest [proxy-req req]

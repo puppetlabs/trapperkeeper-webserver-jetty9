@@ -48,9 +48,10 @@
   (let [http-config (HttpConfiguration.)]
     (is (= 8192 (.getRequestHeaderSize http-config)))))
 
-(deftest default-proxy-request-buffer-size-test
+(deftest default-jetty-http-client-settings-test
   (let [client (HttpClient.)]
-    (is (= 4096 (.getRequestBufferSize client)))))
+    (is (= 4096 (.getRequestBufferSize client)))
+    (is (= 0 (.getIdleTimeout client)))))
 
 (deftest default-connector-settings-test
   (let [connector (ServerConnector. (Server.))]
