@@ -16,17 +16,19 @@
             [puppetlabs.trapperkeeper.core :as tk-core]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
-              :refer :all]
+             :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
-              :refer [with-app-with-empty-config
-                      with-app-with-config]]
+             :refer [with-app-with-empty-config
+                     with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-              :refer [with-test-logging with-log-output logs-matching]]
+             :refer [with-test-logging with-log-output logs-matching]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [schema.test :as schema-test]))
 
 (use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
+(use-fixtures :once schema-test/validate-schemas)
 
 (def default-server-config
   {:webserver {:foo {:port 8080}

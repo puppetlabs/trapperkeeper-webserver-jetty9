@@ -14,7 +14,10 @@
              :refer [jetty9-service add-ring-handler]]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
-            [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]))
+            [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (def valid-ssl-pem-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"

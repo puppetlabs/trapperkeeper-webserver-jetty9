@@ -15,7 +15,10 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
              :refer [jetty9-service add-ring-handler]]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (deftest handlers
   (testing "create-handlers should allow for handlers to be added"
