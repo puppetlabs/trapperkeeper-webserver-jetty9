@@ -130,19 +130,6 @@
   {schema/Str [Endpoint]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Constants
-
-(def default-queue-idle-timeout
-  "The maximum number of milliseconds that a thread in the queue can remain
-  idle before the thread may be thrown away.  A value less than or equal to 0
-  would allow a thread to remain idle indefinitely."
-  60000)
-
-(def default-queue-min-threads
-  "The minimum number of threads to create and maintain in the queue."
-  8)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
 
 (defn- remove-leading-slash
@@ -286,10 +273,10 @@
   queue-thread-pool :- QueuedThreadPool
   [max-threads :- schema/Int
    queue-max-size :- schema/Int]
-  (let [queue-min-size (min default-queue-min-threads queue-max-size)]
+  (let [queue-min-size (min config/default-queue-min-threads queue-max-size)]
     (QueuedThreadPool. max-threads
                        queue-min-size
-                       default-queue-idle-timeout
+                       config/default-queue-idle-timeout
                        (BlockingArrayQueue.
                          queue-min-size
                          queue-min-size

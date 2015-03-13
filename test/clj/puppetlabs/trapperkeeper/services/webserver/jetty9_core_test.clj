@@ -16,7 +16,8 @@
              :refer [jetty9-service add-ring-handler]]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -236,12 +237,12 @@
     (testing "default idle timeout passed through"
       (let [{:keys [thread-pool]}
              (get-thread-pool-and-queue-for-create-server 42 1)]
-        (is (= jetty/default-queue-idle-timeout
+        (is (= config/default-queue-idle-timeout
                (.getIdleTimeout thread-pool)))))
 
     (testing "when queue-max-size less than default-queue-min-threads"
       (let [max-threads    23
-            queue-min-size (dec jetty/default-queue-min-threads)
+            queue-min-size (dec config/default-queue-min-threads)
             {:keys [thread-pool queue]}
               (get-thread-pool-and-queue-for-create-server max-threads
                                                            queue-min-size)]
@@ -256,15 +257,15 @@
 
     (testing "when queue-max-size greater than default-queue-min-threads"
       (let [max-threads    42
-            queue-min-size (inc jetty/default-queue-min-threads)
+            queue-min-size (inc config/default-queue-min-threads)
             {:keys [thread-pool queue]}
               (get-thread-pool-and-queue-for-create-server max-threads
                                                            queue-min-size)]
         (is (= max-threads (.getMaxThreads thread-pool))
             "Unexpected max threads for thread pool")
-        (is (= jetty/default-queue-min-threads (.getMinThreads thread-pool))
+        (is (= config/default-queue-min-threads (.getMinThreads thread-pool))
             "Unexpected min threads for queue")
-        (is (= jetty/default-queue-min-threads (.getCapacity queue))
+        (is (= config/default-queue-min-threads (.getCapacity queue))
             "Unexpected initial capacity for queue")
         (is (= queue-min-size (.getMaxCapacity queue))
             "Unexpected max capacity for queue")))))
