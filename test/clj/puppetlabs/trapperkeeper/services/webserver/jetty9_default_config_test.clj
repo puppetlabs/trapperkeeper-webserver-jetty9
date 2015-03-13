@@ -52,9 +52,11 @@
   (let [client (HttpClient.)]
     (is (= 4096 (.getRequestBufferSize client)))))
 
-(deftest default-so-linger-timeout-test
+(deftest default-connector-settings-test
   (let [connector (ServerConnector. (Server.))]
-    (is (= -1 (.getSoLingerTime connector)))))
+    (is (= -1 (.getSoLingerTime connector)))
+    (is (= 30000 (.getIdleTimeout connector)))))
+
 
 
 
