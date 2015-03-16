@@ -1,6 +1,5 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
-  (:import  (org.eclipse.jetty.server Server)
-            (org.apache.http ConnectionClosedException)
+  (:import  (org.apache.http ConnectionClosedException)
             (java.io IOException)
             (java.security.cert CRLException)
             (java.net BindException)
@@ -27,8 +26,9 @@
             [schema.core :as schema]
             [schema.test :as schema-test]))
 
-(use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
-(use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :once
+              ks-test-fixtures/with-no-jvm-shutdown-hooks
+              schema-test/validate-schemas)
 
 (def default-server-config
   {:webserver {:foo {:port 8080}

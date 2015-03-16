@@ -425,7 +425,7 @@
           (if (:follow-redirects options)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
-          (if timeout
+          (when timeout
             (.setIdleTimeout client timeout))
           client))
 
@@ -572,7 +572,7 @@
                                  (.setHandler maybe-logged))
                                maybe-logged)]
       (.setHandler s statistics-handler)
-      (if shutdown-timeout
+      (when shutdown-timeout
         (.setStopTimeout s shutdown-timeout))
       (when-let [script (:post-config-script options)]
         (config/execute-post-config-script! s script))
