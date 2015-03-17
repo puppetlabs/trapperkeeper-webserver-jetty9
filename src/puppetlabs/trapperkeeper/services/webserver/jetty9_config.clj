@@ -383,15 +383,15 @@
 
 (defn selectors-count
   "The number of selector threads that should be allocated per connector per
-  core.  This algorithm duplicates the default that Jetty 9.2.8.v20150217 uses.
-  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.8.v20150217/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L229"
+  core.  This algorithm duplicates the default that Jetty 9.2.10.v20150310 uses.
+  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L229"
   [num-cpus]
   (max 1 (min 4 (int (/ num-cpus 2)))))
 
 (defn acceptors-count
   "The number of acceptor threads that should be allocated per connector per
-  core.  This algorithm duplicates the default that Jetty 9.2.8.v20150217 uses.
-  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.8.v20150217/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L190"
+  core.  This algorithm duplicates the default that Jetty 9.2.10.v20150310 uses.
+  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L190"
   [num-cpus]
   (max 1 (min 4 (int (/ num-cpus 8)))))
 
@@ -413,8 +413,8 @@
   calculate-required-threads :- schema/Int
   "Calculate the number threads needed to operate based on the number of cores
   available and the number of connectors present.  This algorithm duplicates
-  the default that Jetty 9.2.8.v20150217 uses.  See:
-  https://github.com/eclipse/jetty.project/blob/jetty-9.2.8.v20150217/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L334-L350"
+  the default that Jetty 9.2.10.v20150310 uses.  See:
+  https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L334-L350"
   [config   :- WebserverRawConfig
    num-cpus :- schema/Int]
   (+ 1 (* (connector-count config)

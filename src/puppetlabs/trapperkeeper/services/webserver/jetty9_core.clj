@@ -451,7 +451,7 @@
          (callback-fn proxy-req req)))
 
       ;; The implementation of onResponseFailure is duplicated heavily from:
-      ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.8.v20150217/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L576-L607
+      ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L576-L607
       ;; The only significant difference is that a 'failure-callback-fn', if
       ;; defined in options, is invoked just prior to completing the async
       ;; context for cases that the response was not already committed upstream.
