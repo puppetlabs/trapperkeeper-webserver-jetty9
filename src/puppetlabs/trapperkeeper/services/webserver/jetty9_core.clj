@@ -29,7 +29,6 @@
             [ring.util.codec :as codec]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [schema.core :as schema]))
 
@@ -234,6 +233,10 @@
         ssl-ctxt-factory factories)
       factories)))
 
+(defn- thread-count
+  [setting]
+  (if setting setting -1))
+
 (schema/defn ^:always-validate
   connector* :- ServerConnector
   [server :- Server
@@ -244,8 +247,8 @@
         connector   (doto (ServerConnector.
                             server
                             nil nil nil
-                            (config/acceptors-count (ks/num-cpus))
-                            (config/selectors-count (ks/num-cpus))
+                            (thread-count (:acceptor-threads config))
+                            (thread-count (:selector-threads config))
                             (connection-factories request-size ssl-ctxt-factory))
                       (.setPort (:port config))
                       (.setHost (:host config)))]
@@ -270,25 +273,34 @@
   (connector* server config nil))
 
 (schema/defn ^:always-validate
-  queue-thread-pool :- QueuedThreadPool
-  [max-threads :- schema/Int
-   queue-max-size :- schema/Int]
-  (let [queue-min-size (min config/default-queue-min-threads queue-max-size)]
-    (QueuedThreadPool. max-threads
-                       queue-min-size
-                       config/default-queue-idle-timeout
-                       (BlockingArrayQueue.
-                         queue-min-size
-                         queue-min-size
-                         queue-max-size))))
+  queue-thread-pool :- (schema/maybe QueuedThreadPool)
+  [max-threads :- (schema/maybe schema/Int)
+   queue-max-size :- (schema/maybe schema/Int)]
+  (if (or max-threads queue-max-size)
+    (let [thread-pool (if max-threads
+                        (QueuedThreadPool. max-threads)
+                        (QueuedThreadPool.))]
+      (if queue-max-size
+        (let [min-threads    (.getMinThreads thread-pool)
+              queue-min-size (min queue-max-size min-threads)]
+          (QueuedThreadPool. (.getMaxThreads thread-pool)
+                             min-threads
+                             (.getIdleTimeout thread-pool)
+                             (BlockingArrayQueue.
+                               queue-min-size
+                               queue-min-size
+                               queue-max-size)))
+        thread-pool))))
 
 (schema/defn ^:always-validate
   create-server :- Server
   "Construct a Jetty Server instance."
   [webserver-context :- ServerContext
    config :- config/WebserverConfig]
-  (let [server (Server. (queue-thread-pool (:max-threads config)
-                                           (:queue-max-size config)))]
+  (let [server (if-let [pool (queue-thread-pool (:max-threads config)
+                                                (:queue-max-size config))]
+                 (Server. pool)
+                 (Server.))]
     (when (:jmx-enable config)
       (let [mb-container (MBeanContainer. (ManagementFactory/getPlatformMBeanServer))]
         (doto server

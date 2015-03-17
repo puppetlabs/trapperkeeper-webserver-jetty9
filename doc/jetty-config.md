@@ -1,7 +1,7 @@
 ## Configuring The Webserver Service
 
-The `webserver` section in your Trapperkeeper configuration files configures an embedded
-HTTP server inside trapperkeeper.
+The `webserver` section in your Trapperkeeper configuration files configures an
+embedded HTTP server inside trapperkeeper.
 
 ### `host`
 
@@ -16,21 +16,60 @@ This sets what port to use for _unencrypted_ HTTP traffic.  If not supplied, but
 `host` is supplied, a value of 8080 will be used.  If neither host nor port is
 supplied, we won't listen for unencrypted traffic at all.
 
+### `acceptor-threads`
+
+This sets the number of threads that the webserver will dedicate to accepting
+socket connections for _unencrypted_ HTTP traffic.  Defaults to the number of
+virtual cores on the host divided by 8, with a minimum of 1 and maximum of 4.
+
+### `selector-threads`
+
+This sets the number of threads that the webserver will dedicate to processing
+events on connected sockets for _unencrypted_ HTTP traffic.  Defaults to the
+number of virtual cores on the host divided by 2, with a minimum of 1 and
+maximum of 4.
+
 ### `max-threads`
 
-This sets the maximum number of threads assigned to responding to HTTP and HTTPS
-requests, effectively changing how many concurrent requests can be made at one
-time. Defaults to 100.
+This sets the maximum number of threads assigned to responding to HTTP and/or
+HTTPS requests for a single webserver, effectively changing how many concurrent
+requests can be made at one time.  Defaults to 200.
+
+Each webserver instance requires a minimum number of threads in order to boot
+properly.  The minimum number is calculated as:
+
+~~~~
+(number of "acceptor-threads" for each port) +
+(number of "selector-threads" for each port) +
+1 "worker" thread
+~~~~
+
+"1" is the minimum number of worker threads required to process incoming
+web requests.
+
+For example, if an _unencrypted_ port with 2 `acceptor-threads` and 3
+`selector-threads` and an _encrypted_ port with 4 `acceptor-threads` and 5
+`selector-threads` were configured with the webserver, the webserver would
+require that a minimum value of 15 (2 + 3 + 4 + 5 + 1) be used for the
+`max-threads` setting.  If the configured value for `max-threads` is less
+than the minimum required value, server startup will fail with an
+`IllegalStateException`, with a message containing the words
+"insufficient threads".
+
+Note that each web request must be processed on a "worker" thread which is
+separate from the acceptor and selector threads.  The configured `max-threads`
+value should allow for the maximum number of requests which are desired for the
+server be able to handle concurrently.
 
 ### `queue-max-size`
 
 This can be used to set an upper-bound on the size of the worker queue that the
 web server uses to temporarily store incoming client connections before they
-can be serviced.  This value defaults to "unbounded".  A request which is
-rejected by the web server because the queue is full would be seen by the
-client as having initially connected to the server socket at the TCP layer but
-having been closed almost immediately afterward by the server with no HTTP
-layer response body.
+can be serviced.  This value defaults to the maximum value of a 32-bit signed
+integer, 2147483647.  A request which is rejected by the web server because the
+queue is full would be seen by the client as having initially connected to the
+server socket at the TCP layer but having been closed almost immediately
+afterward by the server with no HTTP layer response body.
 
 ### `request-header-max-size`
 
@@ -70,6 +109,19 @@ This sets the port to use for _encrypted_ HTTPS traffic. If not supplied, but
 `ssl-host` is supplied, a value of 8081 will be used for the https port.  If
 neither ssl-host nor ssl-port is supplied, we won't listen for encrypted traffic
 at all.
+
+### `ssl-acceptor-threads`
+
+This sets the number of threads that the webserver will dedicate to accepting
+socket connections for _encrypted_ HTTPS traffic.  Defaults to the number of
+virtual cores on the host divided by 8, with a minimum of 1 and maximum of 4.
+
+### `ssl-selector-threads`
+
+This sets the number of threads that the webserver will dedicate to processing
+events on connected sockets for _encrypted_ HTTPS traffic.  Defaults to the
+number of virtual cores on the host divided by 2, with a minimum of 1 and
+maximum of 4.
 
 ### `ssl-cert`
 

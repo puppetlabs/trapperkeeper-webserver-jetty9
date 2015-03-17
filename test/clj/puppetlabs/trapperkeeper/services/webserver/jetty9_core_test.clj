@@ -3,21 +3,24 @@
     (org.eclipse.jetty.server.handler ContextHandlerCollection)
     (java.security KeyStore)
     (java.net SocketTimeoutException Socket)
-    (java.io InputStreamReader BufferedReader PrintWriter))
+    (java.io InputStreamReader BufferedReader PrintWriter)
+    (org.eclipse.jetty.server Server ServerConnector))
   (:require [clojure.test :refer :all]
             [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
             [puppetlabs.http.client.sync :as http-sync]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty]
             [puppetlabs.trapperkeeper.testutils.webserver
              :refer [with-test-webserver with-test-webserver-and-config]]
             [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-default-config-test
+             :refer [get-server-thread-pool-queue]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
              :refer [jetty9-service add-ring-handler]]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
-            [schema.test :as schema-test]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]))
+            [schema.test :as schema-test]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -189,125 +192,139 @@
 
 (defn get-webserver-context-for-server
   []
-  {:state (atom nil)
-   :handlers
-           (ContextHandlerCollection.)
-   :server nil})
+  {:state    (atom nil)
+   :handlers (ContextHandlerCollection.)
+   :server   nil})
 
-(defn get-http-config-for-server
-  [max-threads queue-max-size so-linger-milliseconds idle-timeout-milliseconds]
-  {:http {:port 0
-          :host "0.0.0.0"
-          :request-header-max-size 100
-          :so-linger-milliseconds so-linger-milliseconds
-          :idle-timeout-milliseconds idle-timeout-milliseconds}
-   :jmx-enable false
-   :max-threads max-threads
-   :queue-max-size queue-max-size})
+(defn munge-common-connector-config
+  [config connector-keyword]
+  (-> config
+      (update-in [connector-keyword :port] (fnil identity 0))
+      (update-in [connector-keyword :host] (fnil identity "localhost"))
+      (update-in [connector-keyword :request-header-max-size] identity)
+      (update-in [connector-keyword :acceptor-threads] identity)
+      (update-in [connector-keyword :selector-threads] identity)
+      (update-in [connector-keyword :so-linger-milliseconds] identity)
+      (update-in [connector-keyword :idle-timeout-milliseconds] identity)))
 
-(defn get-thread-pool-and-queue-for-create-server
-  [max-threads queue-max-size]
-  (let [server           (jetty/create-server
-                           (get-webserver-context-for-server)
-                           (get-http-config-for-server max-threads
-                                                       queue-max-size
-                                                       0
-                                                       nil))
-        thread-pool      (.getThreadPool server)
-        ;; Using reflection here because the .getQueue method is protected
-        ;; and I didn't see any other way to pull the queue back from
-        ;; the thread pool.
-        get-queue-method (-> thread-pool
-                             (.getClass)
-                             (.getDeclaredMethod "getQueue" nil))
-        _                (.setAccessible get-queue-method true)
-        queue            (.invoke get-queue-method thread-pool nil)]
-    {:thread-pool thread-pool
-     :queue queue}))
+(defn munge-http-connector-config
+  [config]
+  (-> config
+      (update-in [:max-threads] identity)
+      (update-in [:queue-max-size] identity)
+      (update-in [:jmx-enable] ks/parse-bool)
+      (munge-common-connector-config :http)))
 
-(deftest create-server-thread-pool-test
-  (testing "thread pool given proper values"
-    (testing "max threads passed through"
-      (dotimes [x 5]
-        (let [{:keys [thread-pool]}
-          (get-thread-pool-and-queue-for-create-server x 1)]
-          (is (= x (.getMaxThreads thread-pool))
-              "Unexpected max threads for queue"))))
+(defn munge-http-and-https-connector-config
+  [config]
+  (-> config
+      (munge-http-connector-config)
+      (munge-common-connector-config :https)
+      (update-in [:https :protocols] identity)
+      (update-in [:https :cipher-suites] identity)
+      (update-in [:https :client-auth] (fnil identity :none))
+      (update-in [:https :keystore-config]
+                 (fnil identity
+                       {:truststore (-> (KeyStore/getDefaultType)
+                                        (KeyStore/getInstance))
+                        :key-password "hello"
+                        :keystore (-> (KeyStore/getDefaultType)
+                                      (KeyStore/getInstance))}))))
 
-    (testing "default idle timeout passed through"
-      (let [{:keys [thread-pool]}
-             (get-thread-pool-and-queue-for-create-server 42 1)]
-        (is (= config/default-queue-idle-timeout
-               (.getIdleTimeout thread-pool)))))
+(defn create-server-with-config
+  [config]
+  (jetty/create-server (get-webserver-context-for-server) config))
 
-    (testing "when queue-max-size less than default-queue-min-threads"
-      (let [max-threads    23
-            queue-min-size (dec config/default-queue-min-threads)
-            {:keys [thread-pool queue]}
-              (get-thread-pool-and-queue-for-create-server max-threads
-                                                           queue-min-size)]
-        (is (= max-threads (.getMaxThreads thread-pool))
-            "Unexpected max threads for thread pool")
-        (is (= queue-min-size (.getMinThreads thread-pool))
-            "Unexpected min threads for queue")
-        (is (= queue-min-size (.getCapacity queue))
-            "Unexpected initial capacity for queue")
-        (is (= queue-min-size (.getMaxCapacity queue))
-            "Unexpected max capacity for queue")))
+(defn create-server-with-partial-http-config
+  [config]
+  (create-server-with-config (munge-http-connector-config config)))
 
-    (testing "when queue-max-size greater than default-queue-min-threads"
-      (let [max-threads    42
-            queue-min-size (inc config/default-queue-min-threads)
-            {:keys [thread-pool queue]}
-              (get-thread-pool-and-queue-for-create-server max-threads
-                                                           queue-min-size)]
-        (is (= max-threads (.getMaxThreads thread-pool))
-            "Unexpected max threads for thread pool")
-        (is (= config/default-queue-min-threads (.getMinThreads thread-pool))
-            "Unexpected min threads for queue")
-        (is (= config/default-queue-min-threads (.getCapacity queue))
-            "Unexpected initial capacity for queue")
-        (is (= queue-min-size (.getMaxCapacity queue))
-            "Unexpected max capacity for queue")))))
+(defn create-server-with-partial-http-and-https-config
+  [config]
+  (create-server-with-config (munge-http-and-https-connector-config config)))
+
+(defn get-thread-pool-for-partial-http-config
+  [config]
+  (.getThreadPool (create-server-with-partial-http-config config)))
+
+(defn get-thread-pool-for-default-server
+  []
+  (.getThreadPool (Server.)))
+
+(defn default-server-max-threads
+  []
+  (.getMaxThreads (get-thread-pool-for-default-server)))
+
+(defn get-max-threads-for-partial-http-config
+  [config]
+  (.getMaxThreads (get-thread-pool-for-partial-http-config config)))
+
+(deftest create-server-max-threads-test
+  (testing "default max threads passed through to thread pool"
+    (is (= (default-server-max-threads)
+           (get-max-threads-for-partial-http-config {:max-threads nil}))))
+  (testing "custom max threads passed through to thread pool"
+    (is (= 9042
+           (get-max-threads-for-partial-http-config
+             {:max-threads 9042, :queue-max-size nil})))))
+
+(deftest create-server-queue-max-size-test
+  (let [get-queue-for-partial-http-config (fn [config]
+                                            (get-server-thread-pool-queue
+                                              (create-server-with-config
+                                                (munge-http-connector-config
+                                                  config))))
+        default-server-min-threads        (.getMinThreads
+                                            (get-thread-pool-for-default-server))]
+    (testing "default queue max size passed through to thread pool queue"
+      (is (= (.getMaxCapacity (get-server-thread-pool-queue (Server.)))
+             (.getMaxCapacity (get-queue-for-partial-http-config
+                                {:queue-max-size nil})))))
+    (testing "custom default queue max size passed through to thread pool queue"
+      (is (= 393
+             (.getMaxCapacity (get-queue-for-partial-http-config
+                                {:queue-max-size 393})))))
+    (testing (str "default max threads passed through to thread pool when "
+                  "queue-max-size set")
+      (is (= (default-server-max-threads)
+             (get-max-threads-for-partial-http-config
+               {:max-threads nil, :queue-max-size 1}))))
+    (testing "min threads passed through to thread pool when queue-max-size set"
+      (is (= default-server-min-threads
+             (.getMinThreads (get-thread-pool-for-partial-http-config
+                               {:queue-max-size 1})))))
+    (testing "idle timeout passed through to thread pool when queue-max-size set"
+      (is (= (.getIdleTimeout (get-thread-pool-for-default-server))
+             (.getIdleTimeout (get-thread-pool-for-partial-http-config
+                                {:queue-max-size 1})))))
+    (testing (str "queue min size set on thread pool queue equal to min threads "
+                  "when queue max size greater than min threads")
+      (is (= default-server-min-threads
+             (.getCapacity (get-queue-for-partial-http-config
+                             {:queue-max-size
+                              (inc default-server-min-threads)})))))
+    (testing (str "queue min size set on thread pool queue equal to queue max "
+                  "size when queue max size less than min threads")
+      (let [queue-max-size (dec default-server-min-threads)]
+        (is (= queue-max-size
+               (.getCapacity (get-queue-for-partial-http-config
+                               {:queue-max-size queue-max-size}))))))))
 
 (deftest create-server-so-linger-test
   (testing "so-linger-time configured properly for http connector"
-    (let [server (jetty/create-server
-                   (get-webserver-context-for-server)
-                   (get-http-config-for-server 0
-                                               0
-                                               500
-                                               nil))
+    (let [server     (create-server-with-partial-http-config
+                       {:http {:so-linger-milliseconds 500}})
           connectors (.getConnectors server)]
       (is (= 1 (count connectors))
           "Unexpected number of connectors for server")
       (is (= 500 (.getSoLingerTime (first connectors)))
           "Unexpected so linger time for connector")))
   (testing "so-linger-time configured properly for multiple connectors"
-    (let [server (jetty/create-server
-                   (get-webserver-context-for-server)
-                   {:http {:port 25
-                           :host "0.0.0.0"
-                           :request-header-max-size 100
-                           :so-linger-milliseconds 41
-                           :idle-timeout-milliseconds nil}
+    (let [server (create-server-with-partial-http-and-https-config
+                   {:http  {:port 25
+                            :so-linger-milliseconds 41}
                     :https {:port 92
-                            :host "0.0.0.0"
-                            :protocols nil
-                            :cipher-suites nil
-                            :keystore-config
-                              {:truststore (-> (KeyStore/getDefaultType)
-                                               (KeyStore/getInstance))
-                               :key-password "hello"
-                               :keystore (-> (KeyStore/getDefaultType)
-                                             (KeyStore/getInstance))}
-                            :request-header-max-size 100
-                            :so-linger-milliseconds 42
-                            :idle-timeout-milliseconds nil
-                            :client-auth :want}
-                    :jmx-enable false
-                    :max-threads 100
-                    :queue-max-size 101})
+                            :so-linger-milliseconds 42}})
           connectors (.getConnectors server)]
       (is (= 2 (count connectors))
           "Unexpected number of connectors for server")
@@ -322,42 +339,19 @@
 
 (deftest create-server-idle-timeout-test
   (testing "idle-timeout configured properly for http connector"
-    (let [server (jetty/create-server
-                   (get-webserver-context-for-server)
-                   (get-http-config-for-server 0
-                                               0
-                                               0
-                                               3000))
+    (let [server (create-server-with-partial-http-config
+                   {:http {:idle-timeout-milliseconds 3000}})
           connectors (.getConnectors server)]
       (is (= 1 (count connectors))
           "Unexpected number of connectors for server")
       (is (= 3000 (.getIdleTimeout (first connectors)))
           "Unexpected idle time for connector")))
   (testing "idle-timeout configured properly for multiple connectors"
-    (let [server (jetty/create-server
-                   (get-webserver-context-for-server)
-                   {:http {:port 25
-                           :host "0.0.0.0"
-                           :request-header-max-size 100
-                           :so-linger-milliseconds 41
-                           :idle-timeout-milliseconds 9001}
-                    :https {:port 92
-                            :host "0.0.0.0"
-                            :protocols nil
-                            :cipher-suites nil
-                            :keystore-config
-                            {:truststore (-> (KeyStore/getDefaultType)
-                                             (KeyStore/getInstance))
-                             :key-password "hello"
-                             :keystore (-> (KeyStore/getDefaultType)
-                                           (KeyStore/getInstance))}
-                            :request-header-max-size 100
-                            :so-linger-milliseconds 42
-                            :idle-timeout-milliseconds 9002
-                            :client-auth :want}
-                    :jmx-enable false
-                    :max-threads 100
-                    :queue-max-size 101})
+    (let [server     (create-server-with-partial-http-and-https-config
+                       {:http  {:port 25
+                                :idle-timeout-milliseconds 9001}
+                        :https {:port 92
+                                :idle-timeout-milliseconds 9002}})
           connectors (.getConnectors server)]
       (is (= 2 (count connectors))
           "Unexpected number of connectors for server")
@@ -369,6 +363,82 @@
           "Unexpected port for second connector")
       (is (= 9002 (.getIdleTimeout (second connectors)))
           "Unexpected idle time for second connector"))))
+
+(deftest create-server-acceptor-threads-test
+  (testing "nil acceptors configured properly for http connector"
+    (let [server     (create-server-with-partial-http-config
+                       {:http {:acceptor-threads nil}})
+          connectors (.getConnectors server)]
+      (is (= 1 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= (.getAcceptors (ServerConnector. (Server.)))
+             (.getAcceptors (first connectors)))
+          "Unexpected number of acceptor threads for connector")))
+  (testing "non-nil acceptors configured properly for http connector"
+    (let [server     (create-server-with-partial-http-config
+                       {:http {:acceptor-threads 42}})
+          connectors (.getConnectors server)]
+      (is (= 1 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 42 (.getAcceptors (first connectors)))
+          "Unexpected number of acceptor threads for connector")))
+  (testing "non-nil acceptors configured properly for multiple connectors"
+    (let [server (create-server-with-partial-http-and-https-config
+                   {:http  {:port 25
+                            :acceptor-threads 91}
+                    :https {:port 92
+                            :acceptor-threads 63}})
+          connectors (.getConnectors server)]
+      (is (= 2 (count connectors))
+          "Unexpected number of connectors for server")
+      (is (= 25 (.getPort (first connectors)))
+          "Unexpected port for first connector")
+      (is (= 91 (.getAcceptors (first connectors)))
+          "Unexpected number of acceptor threads for first connector")
+      (is (= 92 (.getPort (second connectors)))
+          "Unexpected port for second connector")
+      (is (= 63 (.getAcceptors (second connectors)))
+          "Unexpected number of acceptor threads for second connector"))))
+
+(deftest create-server-selector-threads-test
+  (letfn [(selector-threads [connector]
+                              (-> connector
+                                  (.getSelectorManager)
+                                  (.getSelectorCount)))]
+    (testing "nil selectors configured properly for http connector"
+      (let [server (create-server-with-partial-http-config
+                     {:http {:selector-threads nil}})
+            connectors (.getConnectors server)]
+        (is (= 1 (count connectors))
+            "Unexpected number of connectors for server")
+        (is (= (selector-threads (ServerConnector. (Server.)))
+               (selector-threads (first connectors)))
+            "Unexpected number of selectors for connector")))
+    (testing "non-nil selectors configured properly for http connector"
+      (let [server     (create-server-with-partial-http-config
+                         {:http {:selector-threads 42}})
+            connectors (.getConnectors server)]
+        (is (= 1 (count connectors))
+            "Unexpected number of connectors for server")
+        (is (= 42 (selector-threads (first connectors)))
+            "Unexpected number of selector threads for connector")))
+    (testing "non-nil selectors configured properly for multiple connectors"
+      (let [server (create-server-with-partial-http-and-https-config
+                     {:http  {:port 25
+                              :selector-threads 91}
+                      :https {:port 92
+                              :selector-threads 63}})
+            connectors (.getConnectors server)]
+        (is (= 2 (count connectors))
+            "Unexpected number of connectors for server")
+        (is (= 25 (.getPort (first connectors)))
+            "Unexpected port for first connector")
+        (is (= 91 (selector-threads (first connectors)))
+            "Unexpected number of selector threads for first connector")
+        (is (= 92 (.getPort (second connectors)))
+            "Unexpected port for second connector")
+        (is (= 63 (selector-threads (second connectors)))
+            "Unexpected number of selector threads for second connector")))))
 
 (deftest test-idle-timeout
   (let [read-lines (fn [r]
