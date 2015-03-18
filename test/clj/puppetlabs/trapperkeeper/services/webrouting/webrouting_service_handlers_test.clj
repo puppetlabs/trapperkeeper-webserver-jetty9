@@ -1,6 +1,5 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test
-  (:import (servlet SimpleServlet)
-           (javax.servlet ServletContextListener))
+  (:import (servlet SimpleServlet))
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [puppetlabs.trapperkeeper.services :as tk-services]

@@ -38,9 +38,13 @@ and any of these implicit defaults have changed, these tests will fail.  If
 that happens, we can attempt to evaluate the impact of the change and
 react accordingly."
   (:require [clojure.test :refer :all]
-            [schema.test :as schema-test])
-  (:import (org.eclipse.jetty.server HttpConfiguration ServerConnector Server)
-           (org.eclipse.jetty.client HttpClient)))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
+            [puppetlabs.trapperkeeper.app :refer [get-service]]
+            [puppetlabs.trapperkeeper.services :refer [service-context]]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core])
+  (:import (org.eclipse.jetty.server HttpConfiguration ServerConnector Server)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -48,10 +52,28 @@ react accordingly."
   (let [http-config (HttpConfiguration.)]
     (is (= 8192 (.getRequestHeaderSize http-config)))))
 
-(deftest default-jetty-http-client-settings-test
-  (let [client (HttpClient.)]
-    (is (= 4096 (.getRequestBufferSize client)))
-    (is (= 0 (.getIdleTimeout client)))))
+(deftest default-proxy-http-client-settings-test
+  (with-app-with-config app
+    [jetty9-service]
+    {:webserver {:host "localhost" :port 8080}}
+    (let [s (get-service app :WebserverService)
+          server-context (get-in (service-context s) [:jetty9-servers :default])
+          proxy-servlet (core/proxy-servlet
+                          server-context
+                          {:host "localhost"
+                           :path "/foo"
+                           :port 8080}
+                          {})
+          _             (core/add-servlet-handler
+                          server-context
+                          proxy-servlet
+                          "/proxy"
+                          {}
+                          true)
+          client        (.createHttpClient proxy-servlet)]
+      (is (= 4096 (.getRequestBufferSize client)))
+      (is (= 30000 (.getIdleTimeout client)))
+      (.stop client))))
 
 (deftest default-connector-settings-test
   (let [connector (ServerConnector. (Server.))]

@@ -314,7 +314,7 @@ route:
 * `:idle-timeout`: optional; sets the maximum amount of time, measured in seconds, for the proxy to 
   wait for a response from the upstream server. If no response is received within the time
   specified, then an HTTP 504 error is returned. If this option is not specified then a value
-  of 0 is used, which means that the connection does not ever timeout.
+  of 30 seconds is used.
 
 Simple example:
 
