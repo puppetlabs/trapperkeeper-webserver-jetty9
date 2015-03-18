@@ -1,5 +1,6 @@
 (def tk-version "1.1.0")
 (def ks-version "1.0.0")
+(def jetty-version "9.2.10.v20150310")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.2.1-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
@@ -25,13 +26,13 @@
                  [javax.servlet/javax.servlet-api "3.1.0"]
 
                  ;; Jetty Webserver
-                 [org.eclipse.jetty/jetty-server "9.2.10.v20150310"
+                 [org.eclipse.jetty/jetty-server ~jetty-version
                   :exclusions [org.eclipse.jetty.orbit/javax.servlet]]
-                 [org.eclipse.jetty/jetty-servlet "9.2.10.v20150310"]
-                 [org.eclipse.jetty/jetty-servlets "9.2.10.v20150310"]
-                 [org.eclipse.jetty/jetty-webapp "9.2.10.v20150310"]
-                 [org.eclipse.jetty/jetty-proxy "9.2.10.v20150310"]
-                 [org.eclipse.jetty/jetty-jmx "9.2.10.v20150310"]
+                 [org.eclipse.jetty/jetty-servlet ~jetty-version]
+                 [org.eclipse.jetty/jetty-servlets ~jetty-version]
+                 [org.eclipse.jetty/jetty-webapp ~jetty-version]
+                 [org.eclipse.jetty/jetty-proxy ~jetty-version]
+                 [org.eclipse.jetty/jetty-jmx ~jetty-version]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api commons-codec]]]
 
