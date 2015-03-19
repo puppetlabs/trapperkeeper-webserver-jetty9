@@ -130,30 +130,6 @@
   {schema/Str [Endpoint]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Constants
-
-(def default-graceful-stop-timeout
-  "The default number of milliseconds that is allowed for requests active at
-  the time the server is stopped to remain running until the server shuts
-  down."
-  60000)
-
-(def default-proxy-idle-timeout
-  "The default number of milliseconds to wait before the proxy gives up on the
-  upstream server if the :idle-timeout value isn't set in the proxy config."
-  60000)
-
-(def default-queue-idle-timeout
-  "The maximum number of milliseconds that a thread in the queue can remain
-  idle before the thread may be thrown away.  A value less than or equal to 0
-  would allow a thread to remain idle indefinitely."
-  60000)
-
-(def default-queue-min-threads
-  "The minimum number of threads to create and maintain in the queue."
-  8)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
 
 (defn- remove-leading-slash
@@ -240,11 +216,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
 
+(defn- http-configuration
+  [request-header-size]
+  (let [http-config (doto (HttpConfiguration.)
+                      (.setSendDateHeader true))]
+    (if request-header-size
+      (.setRequestHeaderSize http-config request-header-size))
+    http-config))
+
 (defn- connection-factories
   [request-header-size ssl-ctxt-factory]
-  (let [http-config (doto (HttpConfiguration.)
-                      (.setSendDateHeader true)
-                      (.setRequestHeaderSize request-header-size))
+  (let [http-config (http-configuration request-header-size)
         factories   (into-array ConnectionFactory
                                 [(HttpConnectionFactory. http-config)])]
     (if ssl-ctxt-factory
@@ -266,8 +248,9 @@
                             (config/selectors-count (ks/num-cpus))
                             (connection-factories request-size ssl-ctxt-factory))
                       (.setPort (:port config))
-                      (.setHost (:host config))
-                      (.setSoLingerTime (:so-linger-milliseconds config)))]
+                      (.setHost (:host config)))]
+    (when-let [linger-millis (:so-linger-milliseconds config)]
+      (.setSoLingerTime connector linger-millis))
     (when-let [idle-timeout (:idle-timeout-milliseconds config)]
       (.setIdleTimeout connector idle-timeout))
     connector))
@@ -290,10 +273,10 @@
   queue-thread-pool :- QueuedThreadPool
   [max-threads :- schema/Int
    queue-max-size :- schema/Int]
-  (let [queue-min-size (min default-queue-min-threads queue-max-size)]
+  (let [queue-min-size (min config/default-queue-min-threads queue-max-size)]
     (QueuedThreadPool. max-threads
                        queue-min-size
-                       default-queue-idle-timeout
+                       config/default-queue-idle-timeout
                        (BlockingArrayQueue.
                          queue-min-size
                          queue-min-size
@@ -431,19 +414,19 @@
                                                    @(:state webserver-context))]
                          (HttpClient. ssl-ctxt-factory)
                          (HttpClient.)))]
-          (if request-buffer-size
-            (.setRequestBufferSize client request-buffer-size)
-            (.setRequestBufferSize client config/default-request-header-buffer-size))
+          (when request-buffer-size
+            (.setRequestBufferSize client request-buffer-size))
           client))
 
       (createHttpClient []
         (let [client (proxy-super createHttpClient)
-              timeout (if idle-timeout (* 1000 idle-timeout)
-                                       default-proxy-idle-timeout)]
+              timeout (when idle-timeout
+                        (* 1000 idle-timeout))]
           (if (:follow-redirects options)
             (.setFollowRedirects client true)
             (.setFollowRedirects client false))
-          (.setIdleTimeout client timeout)
+          (when timeout
+            (.setIdleTimeout client timeout))
           client))
 
       (customizeProxyRequest [proxy-req req]
@@ -589,7 +572,8 @@
                                  (.setHandler maybe-logged))
                                maybe-logged)]
       (.setHandler s statistics-handler)
-      (.setStopTimeout s (or shutdown-timeout default-graceful-stop-timeout))
+      (when shutdown-timeout
+        (.setStopTimeout s shutdown-timeout))
       (when-let [script (:post-config-script options)]
         (config/execute-post-config-script! s script))
       (assoc webserver-context :server s))))

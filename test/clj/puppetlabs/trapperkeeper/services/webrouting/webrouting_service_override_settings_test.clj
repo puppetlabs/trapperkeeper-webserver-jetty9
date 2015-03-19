@@ -7,7 +7,10 @@
             [puppetlabs.trapperkeeper.testutils.webrouting.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-             :refer [with-test-logging]]))
+             :refer [with-test-logging]]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (def dev-resources-dir        "./dev-resources/")
 

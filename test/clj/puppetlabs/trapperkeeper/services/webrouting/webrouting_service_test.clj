@@ -15,9 +15,12 @@
                      with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
              :refer [with-test-logging]]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [schema.test :as schema-test]))
 
-(use-fixtures :once ks-test-fixtures/with-no-jvm-shutdown-hooks)
+(use-fixtures :once
+              ks-test-fixtures/with-no-jvm-shutdown-hooks
+              schema-test/validate-schemas)
 
 (defprotocol TestService
   (hello [this]))

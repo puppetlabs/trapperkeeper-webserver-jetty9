@@ -1,7 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test
-  (:import (servlet SimpleServlet)
-           (javax.servlet ServletContextListener))
+  (:import (servlet SimpleServlet))
   (:require [clojure.test :refer :all]
+            [schema.test :as schema-test]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer :all]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
@@ -10,6 +10,8 @@
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
              :refer [with-test-logging]]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (def dev-resources-dir        "./dev-resources/")
 
