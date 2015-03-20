@@ -281,6 +281,22 @@
                         (QueuedThreadPool. max-threads)
                         (QueuedThreadPool.))]
       (if queue-max-size
+        ;; The code below is definitely not ideal, but there isn't a way to set
+        ;; the maximum capacity of the QueuedThreadPool's BlockingArrayQueue
+        ;; after construction.  We're trying to avoid hard-coding our own
+        ;; defaults for other settings that we want Jetty to control, e.g., the
+        ;; initial capacity of the queue and minimum number of threads.  By
+        ;; reconstructing the QueuedThreadPool here, we can use Jetty's defaults
+        ;; for settings unrelated to `queue-max-size`.  QueuedThreadPool and
+        ;; BlockingArrayQueue construction isn't too expensive.  It mostly
+        ;; involves some initial memory allocations.  The more expensive work -
+        ;; where threads are actually started and the queue expands to fulfill
+        ;; new requests - would only happen after the QueuedThreadPool were
+        ;; started.  That won't happen for the `thread-pool` instance from
+        ;; above, which just gets thrown away as this function falls out of
+        ;; scope without ever having been started.  Also, this function would
+        ;; likely only be called once per server startup where a
+        ;; `queue-max-size` were configured.
         (let [min-threads    (.getMinThreads thread-pool)
               queue-min-size (min queue-max-size min-threads)]
           (QueuedThreadPool. (.getMaxThreads thread-pool)
