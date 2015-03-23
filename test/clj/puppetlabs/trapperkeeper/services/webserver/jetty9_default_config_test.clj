@@ -149,6 +149,12 @@ react accordingly."
   ;; This test just exists to validate the advice we give for the bare
   ;; minimum number of threads that one should account for when setting the
   ;; 'max-threads' setting for a server instance.
+  ;;
+  ;; The tk-jetty9 server configuration allows for either one or two connectors
+  ;; to be associated with a server -- at most one plaintext port connector and
+  ;; at most one encrypted port connector.  Because of this, the test only
+  ;; validates the min-threads behavior for a server that has either one or
+  ;; two connectors.
   (letfn [(get-server [max-threads connectors]
             (let [server (Server. (QueuedThreadPool. max-threads))]
               (dotimes [_ connectors]
@@ -163,7 +169,7 @@ react accordingly."
                                " \\+ selectors="
                                (* selector-thread-count connectors)
                                " \\+ request=1\\)"))))]
-    (dotimes [x 5]
+    (dotimes [x 2]
       (let [connectors       (inc x)
             required-threads (calculate-minimum-required-threads connectors)]
         (testing (str "server with too few threads for " x " connector(s) "

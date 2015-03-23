@@ -287,24 +287,35 @@
         ;; defaults for other settings that we want Jetty to control, e.g., the
         ;; initial capacity of the queue and minimum number of threads.  By
         ;; reconstructing the QueuedThreadPool here, we can use Jetty's defaults
-        ;; for settings unrelated to `queue-max-size`.  QueuedThreadPool and
-        ;; BlockingArrayQueue construction isn't too expensive.  It mostly
-        ;; involves some initial memory allocations.  The more expensive work -
-        ;; where threads are actually started and the queue expands to fulfill
-        ;; new requests - would only happen after the QueuedThreadPool were
-        ;; started.  That won't happen for the `thread-pool` instance from
-        ;; above, which just gets thrown away as this function falls out of
-        ;; scope without ever having been started.  Also, this function would
-        ;; likely only be called once per server startup where a
-        ;; `queue-max-size` were configured.
+        ;; for settings unrelated to `queue-max-size`.
+        ;;
+        ;; QueuedThreadPool and BlockingArrayQueue construction isn't too
+        ;; expensive.  It mostly involves some initial memory allocations.  The
+        ;; more expensive work - where threads are actually started and the
+        ;; queue expands to fulfill new requests - would only happen after the
+        ;; QueuedThreadPool were started.  That won't happen for the
+        ;; `thread-pool` instance from above, which just gets thrown away as
+        ;; this function falls out of scope without ever having been started.
+        ;; Also, this function would likely only be called once per server
+        ;; startup where a `queue-max-size` were configured.
+        ;;
+        ;; The QueuedThreadPool constructor sets the `queue-capacity` and
+        ;; `queue-grow-by` based on the minimum number of threads available
+        ;; in the pool.  See https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-util/src/main/java/org/eclipse/jetty/util/thread/QueuedThreadPool.java#L92-L96.
+        ;; That algorithm is essentially duplicated here, with the only
+        ;; difference being that if `queue-max-size` is smaller than the
+        ;; minimum number of threads, the `queue-capacity` and `queue-grow-by`
+        ;; are reduced to the `queue-max-size` in order to avoid the
+        ;; BlockingArrayQueue constructor throwing an IllegalArgumentException.
         (let [min-threads    (.getMinThreads thread-pool)
-              queue-min-size (min queue-max-size min-threads)]
+              queue-capacity (min queue-max-size min-threads)
+              queue-grow-by  (min queue-max-size min-threads)]
           (QueuedThreadPool. (.getMaxThreads thread-pool)
                              min-threads
                              (.getIdleTimeout thread-pool)
                              (BlockingArrayQueue.
-                               queue-min-size
-                               queue-min-size
+                               queue-capacity
+                               queue-grow-by
                                queue-max-size)))
         thread-pool))))
 

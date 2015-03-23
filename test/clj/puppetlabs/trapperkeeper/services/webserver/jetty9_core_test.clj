@@ -247,13 +247,10 @@
   [config]
   (.getThreadPool (create-server-with-partial-http-config config)))
 
-(defn get-thread-pool-for-default-server
-  []
-  (.getThreadPool (Server.)))
+(def get-thread-pool-for-default-server (.getThreadPool (Server.)))
 
-(defn default-server-max-threads
-  []
-  (.getMaxThreads (get-thread-pool-for-default-server)))
+(def default-server-max-threads (.getMaxThreads
+                                  get-thread-pool-for-default-server))
 
 (defn get-max-threads-for-partial-http-config
   [config]
@@ -261,7 +258,7 @@
 
 (deftest create-server-max-threads-test
   (testing "default max threads passed through to thread pool"
-    (is (= (default-server-max-threads)
+    (is (= default-server-max-threads
            (get-max-threads-for-partial-http-config {:max-threads nil}))))
   (testing "custom max threads passed through to thread pool"
     (is (= 9042
@@ -275,7 +272,7 @@
                                                 (munge-http-connector-config
                                                   config))))
         default-server-min-threads        (.getMinThreads
-                                            (get-thread-pool-for-default-server))]
+                                            get-thread-pool-for-default-server)]
     (testing "default queue max size passed through to thread pool queue"
       (is (= (.getMaxCapacity (get-server-thread-pool-queue (Server.)))
              (.getMaxCapacity (get-queue-for-partial-http-config
@@ -286,7 +283,7 @@
                                 {:queue-max-size 393})))))
     (testing (str "default max threads passed through to thread pool when "
                   "queue-max-size set")
-      (is (= (default-server-max-threads)
+      (is (= default-server-max-threads
              (get-max-threads-for-partial-http-config
                {:max-threads nil, :queue-max-size 1}))))
     (testing "min threads passed through to thread pool when queue-max-size set"
@@ -294,7 +291,7 @@
              (.getMinThreads (get-thread-pool-for-partial-http-config
                                {:queue-max-size 1})))))
     (testing "idle timeout passed through to thread pool when queue-max-size set"
-      (is (= (.getIdleTimeout (get-thread-pool-for-default-server))
+      (is (= (.getIdleTimeout get-thread-pool-for-default-server)
              (.getIdleTimeout (get-thread-pool-for-partial-http-config
                                 {:queue-max-size 1})))))
     (testing (str "queue min size set on thread pool queue equal to min threads "

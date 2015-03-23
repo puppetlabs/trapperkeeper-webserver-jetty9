@@ -44,9 +44,6 @@ properly.  The minimum number is calculated as:
 1 "worker" thread
 ~~~~
 
-"1" is the minimum number of worker threads required to process incoming
-web requests.
-
 For example, if an _unencrypted_ port with 2 `acceptor-threads` and 3
 `selector-threads` and an _encrypted_ port with 4 `acceptor-threads` and 5
 `selector-threads` were configured with the webserver, the webserver would
@@ -57,9 +54,11 @@ than the minimum required value, server startup will fail with an
 "insufficient threads".
 
 Note that each web request must be processed on a "worker" thread which is
-separate from the acceptor and selector threads.  The configured `max-threads`
-value should allow for the maximum number of requests which are desired for the
-server be able to handle concurrently.
+separate from the acceptor and selector threads.  "1" is the minimum number of
+worker threads required to process incoming web requests.  The `max-threads`
+value should be large enough that the server can allocate all of the selector
+and acceptor threads that it needs and yet still have a sufficient number of
+worker threads left over for handling concurrent web requests.
 
 ### `queue-max-size`
 
