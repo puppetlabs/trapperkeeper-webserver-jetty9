@@ -1,7 +1,6 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config-test
   (:import (clojure.lang ExceptionInfo)
-           (java.util Arrays)
-           (org.eclipse.jetty.server Server))
+           (java.util Arrays))
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
             [me.raynes.fs :as fs]
@@ -34,15 +33,21 @@
   [config]
   (process-config config))
 
+(defn munge-expected-common-config
+  [expected scheme]
+  (-> expected
+      (update-in [:max-threads] identity)
+      (update-in [:queue-max-size] identity)
+      (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
+      (update-in [scheme :request-header-max-size] identity)
+      (update-in [scheme :so-linger-milliseconds] identity)
+      (update-in [scheme :idle-timeout-milliseconds] identity)
+      (update-in [scheme :acceptor-threads] identity)
+      (update-in [scheme :selector-threads] identity)))
+
 (defn munge-expected-http-config
   [expected]
-  (-> expected
-      (update-in [:max-threads] (fnil identity default-max-threads))
-      (update-in [:queue-max-size] (fnil identity default-queue-max-size))
-      (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
-      (update-in [:http :request-header-max-size] identity)
-      (update-in [:http :so-linger-milliseconds] identity)
-      (update-in [:http :idle-timeout-milliseconds] identity)))
+  (munge-expected-common-config expected :http))
 
 (defn munge-actual-https-config
   [config]
@@ -52,16 +57,10 @@
 
 (defn munge-expected-https-config
   [expected]
-  (-> expected
-      (update-in [:max-threads] (fnil identity default-max-threads))
-      (update-in [:queue-max-size] (fnil identity default-queue-max-size))
-      (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
+  (-> (munge-expected-common-config expected :https)
       (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
       (update-in [:https :protocols] (fnil identity default-protocols))
       (update-in [:https :client-auth] (fnil identity default-client-auth))
-      (update-in [:https :request-header-max-size] identity)
-      (update-in [:https :so-linger-milliseconds] identity)
-      (update-in [:https :idle-timeout-milliseconds] identity)
       (update-in [:https :ssl-crl-path] identity)))
 
 (deftest process-config-http-test
@@ -110,8 +109,23 @@
     (is (= (munge-actual-http-config
              {:port 8000 :idle-timeout-milliseconds 6000})
            (munge-expected-http-config
-             {:http {:host                      default-host :port 8000
-                     :idle-timeout-milliseconds 6000}})))))
+             {:http {:host                      default-host
+                     :port                      8000
+                     :idle-timeout-milliseconds 6000}})))
+
+    (is (= (munge-actual-http-config
+             {:port 8000 :acceptor-threads 32})
+           (munge-expected-http-config
+             {:http {:host             default-host
+                     :port             8000
+                     :acceptor-threads 32}})))
+
+    (is (= (munge-actual-http-config
+             {:port 8000 :selector-threads 52})
+           (munge-expected-http-config
+             {:http {:host      default-host
+                     :port      8000
+                     :selector-threads 52}})))))
 
 (deftest process-config-https-test
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
@@ -177,8 +191,29 @@
                      :ssl-port                  8001
                      :idle-timeout-milliseconds 4200}))
            (munge-expected-https-config
-             {:https {:host                      "foo.local" :port 8001
-                      :idle-timeout-milliseconds 4200}})))))
+             {:https {:host                      "foo.local"
+                      :port                      8001
+                      :idle-timeout-milliseconds 4200}})))
+
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host            "foo.local"
+                     :ssl-port             8001
+                     :ssl-selector-threads 4242}))
+           (munge-expected-https-config
+             {:https {:host             "foo.local"
+                      :port             8001
+                      :selector-threads 4242}})))
+
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host             "foo.local"
+                     :ssl-port             8001
+                     :ssl-acceptor-threads 9193}))
+           (munge-expected-https-config
+             {:https {:host             "foo.local"
+                      :port             8001
+                      :acceptor-threads 9193}})))))
 
 (deftest process-config-jks-test
   (testing "jks ssl config"
@@ -277,7 +312,9 @@
                       :port                      8000
                       :request-header-max-size   nil
                       :so-linger-milliseconds    nil
-                      :idle-timeout-milliseconds nil}
+                      :idle-timeout-milliseconds nil
+                      :acceptor-threads          nil
+                      :selector-threads          nil}
               :https {:host "foo.local" :port default-https-port}})))))
 
 (deftest process-config-invalid-test
@@ -372,129 +409,6 @@
       "./dev-resources/config/jetty/ssl/certs/master-with-intermediate-ca.pem"
       "./dev-resources/config/jetty/ssl/certs/ca-root.pem")))
 
-(deftest determine-max-threads-test
-  (testing "Determining the number of connectors."
-    (is (= 0 (connector-count {})))
-    (is (= 1 (connector-count {:port 8000 :host "foo.local"})))
-    (is (= 1 (connector-count (assoc valid-ssl-pem-config
-                                     :ssl-port 8001))))
-    (is (= 2 (connector-count (merge {:port 8000 :host "foo.local"}
-                                     {:ssl-port 8001}
-                                     valid-ssl-pem-config)))))
-
-  (testing "The number of threads per connector"
-    (is (= 2 (threads-per-connector 1)))
-    (is (= 2 (threads-per-connector 2)))
-    (is (= 2 (threads-per-connector 3)))
-    (is (= 3 (threads-per-connector 4)))
-    (is (= 5 (threads-per-connector 8)))
-    (is (= 6 (threads-per-connector 16)))
-    (is (= 7 (threads-per-connector 24)))
-    (is (= 8 (threads-per-connector 32)))
-    (is (= 8 (threads-per-connector 64))))
-
-  (testing "Number of acceptors per cpu"
-    (is (= 1 (acceptors-count 1)))
-    (is (= 1 (acceptors-count 2)))
-    (is (= 1 (acceptors-count 3)))
-    (is (= 1 (acceptors-count 4)))
-    (is (= 1 (acceptors-count 8)))
-    (is (= 2 (acceptors-count 16)))
-    (is (= 3 (acceptors-count 24)))
-    (is (= 4 (acceptors-count 32)))
-    (is (= 4 (acceptors-count 64))))
-
-  (testing "Number of selectors per cpu"
-    (is (= 1 (selectors-count 1)))
-    (is (= 1 (selectors-count 2)))
-    (is (= 1 (selectors-count 3)))
-    (is (= 2 (selectors-count 4)))
-    (is (= 4 (selectors-count 8)))
-    (is (= 4 (selectors-count 16)))
-    (is (= 4 (selectors-count 24)))
-    (is (= 4 (selectors-count 32)))
-    (is (= 4 (selectors-count 64))))
-
-  (testing "The default number of threads are returned."
-    (is (= default-max-threads (determine-max-threads {} 1)))
-    (is (= default-max-threads (determine-max-threads
-                                 {:port 8000 :host "foo.local"} 1))))
-
-  (testing "The max threads set in the config is used."
-    (let [max-threads 42]
-      (is (= max-threads (determine-max-threads
-                           {:max-threads max-threads} 1)))))
-
-  (testing (str "More than the default max threads are returned with a lot of "
-                "cores.")
-    (with-test-logging
-      ;; We're defining the number of selectors and acceptors based on the
-      ;; defaults that Jetty 9.2.10.v20150310 uses and those are capped at 4
-      ;; each.  For a single connector, the minimum number of threads that
-      ;; Jetty needs to start will never be larger than 9 - 4 selectors +
-      ;; 4 acceptors + 1 base thread - regardless of the number of CPU cores
-      ;; on the host.  Since the default-max-threads is '100', then, it isn't
-      ;; currently possible to have the number of needed threads exceed the
-      ;; default-max-threads for a 'real-world' configuration.  To prove that
-      ;; the thread adjustment code works, this test artificially adjusts the
-      ;; default-max-threads down to a number lower than Jetty would compute
-      ;; as the minimum needed.
-      (with-redefs [default-max-threads 1]
-        (let [config {:port 8000 :host "foo.local"}
-              num-cpus 100]
-        (is (= (calculate-required-threads config num-cpus)
-               (determine-max-threads config num-cpus))))))))
-
-(defn small-thread-pool-size-test-config
-  [raw-config]
-  (let [num-cpus   (ks/num-cpus)
-        calc-size  (calculate-required-threads raw-config num-cpus)
-        connectors (connector-count raw-config)
-        low-size   (- calc-size 1)
-        config     (assoc raw-config :max-threads low-size)
-        exp-re     (re-pattern (str "Insufficient threads: max="
-                                    low-size " < needed\\(acceptors="
-                                    (* (acceptors-count num-cpus) connectors)
-                                    " \\+ selectors="
-                                    (* (selectors-count num-cpus) connectors)
-                                    " \\+ request=1\\)"))]
-    {:config config
-     :exp-re exp-re}))
-
-(defn correct-thread-pool-size-test-config
-  [raw-config]
-  (let [calc-size (calculate-required-threads raw-config (ks/num-cpus))]
-    (assoc raw-config :max-threads calc-size)))
-
-(deftest calculated-thread-pool-size
-  (testing "Verify that our thread pool size algorithm matches Jetty's"
-    (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
-                                                :ssl-port 0, :ssl-host "0.0.0.0"})
-          config-1 (small-thread-pool-size-test-config test-1)
-          test-2   {:port 0, :host "0.0.0.0"}
-          config-2 (small-thread-pool-size-test-config test-2)]
-      (doseq [{:keys [config exp-re]} [config-1 config-2]]
-        (with-test-logging
-          (is (thrown-with-msg?
-                IllegalStateException exp-re
-                (jetty9/start-webserver! (jetty9/initialize-context) config))
-              (str "The current method that the Jetty9 service uses to calculate "
-                   "the minimum size of a thread pool has drifted from how Jetty "
-                   "itself calculates the size. This is most likely due to a "
-                   "change of the Jetty version being used. The
-                   calculate-required-threads function should be updated."))))))
-
-  (testing "Our thread pool size algo still allows Jetty to start"
-    (let [test-1   (merge valid-ssl-pem-config {:port 0, :host "0.0.0.0"
-                                                :ssl-port 0, :ssl-host "0.0.0.0"})
-          config-1 (correct-thread-pool-size-test-config test-1)
-          test-2   {:port 0, :host "0.0.0.0"}
-          config-2 (correct-thread-pool-size-test-config test-2)]
-      (doseq [config [config-1 config-2]]
-        (let [ctxt (jetty9/start-webserver! (jetty9/initialize-context) config)]
-          (is (= (type (:server ctxt)) Server))
-          (jetty9/shutdown ctxt))))))
-
 (deftest test-advanced-scripting-config
   (testing "Verify that we can use scripting to handle advanced configuration scenarios"
     (let [config {:webserver
@@ -542,4 +456,3 @@
                 (jetty9/initialize-context)
                 (merge base-config
                        {:post-config-script (str "Object x = null; x.toString();")}))))))))
-

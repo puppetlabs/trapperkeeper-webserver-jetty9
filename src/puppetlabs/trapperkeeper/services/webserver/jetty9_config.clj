@@ -81,22 +81,6 @@
 ;;; leaving them on by default.
 (def default-jmx-enable "true")
 
-
-;; TODO: these two need to be addressed in our upcoming work around
-;; acceptors/selectors.  See TK-148.
-(def default-max-threads 100)
-(def default-queue-max-size (Integer/MAX_VALUE))
-;; TODO: these need to be taken care of too; I moved them here from core
-;; just to try to get all this stuff into one spot for cleaning up in TK-148.
-(def default-queue-idle-timeout
-  "The maximum number of milliseconds that a thread in the queue can remain
-  idle before the thread may be thrown away.  A value less than or equal to 0
-  would allow a thread to remain idle indefinitely."
-  60000)
-(def default-queue-min-threads
-  "The minimum number of threads to create and maintain in the queue."
-  8)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
@@ -108,6 +92,8 @@
 (def WebserverRawConfig
   {(schema/optional-key :port)                       schema/Int
    (schema/optional-key :host)                       schema/Str
+   (schema/optional-key :acceptor-threads)           schema/Int
+   (schema/optional-key :selector-threads)           schema/Int
    (schema/optional-key :max-threads)                schema/Int
    (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
@@ -119,6 +105,8 @@
    (schema/optional-key :ssl-cert)                   schema/Str
    (schema/optional-key :ssl-cert-chain)             schema/Str
    (schema/optional-key :ssl-ca-cert)                schema/Str
+   (schema/optional-key :ssl-acceptor-threads)       schema/Int
+   (schema/optional-key :ssl-selector-threads)       schema/Int
    (schema/optional-key :keystore)                   schema/Str
    (schema/optional-key :truststore)                 schema/Str
    (schema/optional-key :key-password)               schema/Str
@@ -181,7 +169,9 @@
 (def WebserverConnector
   (merge WebserverConnectorCommon
          {:host schema/Str
-          :port schema/Int}))
+          :port schema/Int
+          :acceptor-threads (schema/maybe schema/Int)
+          :selector-threads (schema/maybe schema/Int)}))
 
 (def WebserverSslContextFactory
   {:keystore-config                    WebserverSslKeystoreConfig
@@ -205,8 +195,8 @@
     HasConnector
     {(schema/optional-key :http)  WebserverConnector
      (schema/optional-key :https) WebserverSslConnector
-     :max-threads                 schema/Int
-     :queue-max-size              schema/Int
+     :max-threads                 (schema/maybe schema/Int)
+     :queue-max-size              (schema/maybe schema/Int)
      :jmx-enable                  schema/Bool}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -387,8 +377,10 @@
   [config :- WebserverRawConfig]
   (if (contains-http-connector? config)
     (merge (common-connector-config config)
-           {:host (or (:host config) default-host)
-            :port (or (:port config) default-http-port)})))
+           {:host             (or (:host config) default-host)
+            :port             (or (:port config) default-http-port)
+            :acceptor-threads (:acceptor-threads config)
+            :selector-threads (:selector-threads config)})))
 
 (schema/defn ^:always-validate
   contains-https-connector? :- schema/Bool
@@ -402,6 +394,8 @@
     (merge (common-connector-config config)
            {:host                    (or (:ssl-host config) default-host)
             :port                    (or (:ssl-port config) default-https-port)
+            :acceptor-threads        (:ssl-acceptor-threads config)
+            :selector-threads        (:ssl-selector-threads config)
             :keystore-config         (get-keystore-config! config)
             :cipher-suites           (get-cipher-suites-config config)
             :protocols               (get-ssl-protocols-config config)
@@ -433,59 +427,6 @@
     (throw (IllegalArgumentException.
              "Error: More than one default server specified in configuration"))))
 
-(defn selectors-count
-  "The number of selector threads that should be allocated per connector per
-  core.  This algorithm duplicates the default that Jetty 9.2.10.v20150310 uses.
-  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L229"
-  [num-cpus]
-  (max 1 (min 4 (int (/ num-cpus 2)))))
-
-(defn acceptors-count
-  "The number of acceptor threads that should be allocated per connector per
-  core.  This algorithm duplicates the default that Jetty 9.2.10.v20150310 uses.
-  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L190"
-  [num-cpus]
-  (max 1 (min 4 (int (/ num-cpus 8)))))
-
-(defn threads-per-connector
-  "The total number of threads needed per attached connector."
-  [num-cpus]
-  (+ (acceptors-count num-cpus)
-     (selectors-count num-cpus)))
-
-(schema/defn ^:always-validate
-  connector-count :- schema/Int
-  "Return the number of connectors found in the config."
-  [config :- WebserverRawConfig]
-  (let [connectors [(contains-http-connector? config)
-                    (contains-https-connector? config)]]
-    (count (filter true? connectors))))
-
-(schema/defn ^:always-validate
-  calculate-required-threads :- schema/Int
-  "Calculate the number threads needed to operate based on the number of cores
-  available and the number of connectors present.  This algorithm duplicates
-  the default that Jetty 9.2.10.v20150310 uses.  See:
-  https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L334-L350"
-  [config   :- WebserverRawConfig
-   num-cpus :- schema/Int]
-  (+ 1 (* (connector-count config)
-          (threads-per-connector num-cpus))))
-
-(schema/defn ^:always-validate
-  determine-max-threads :- schema/Int
-  "Determine the size of the Jetty thread pool. If the size is specified in the
-  config then use that value, otherwise determine the minimum number of threads
-  needed to operate. If that number is larger than the default then use it,
-  otherwise use the default."
-  [config   :- WebserverRawConfig
-   num-cpus :- schema/Int]
-  (let [max-threads (or (:max-threads config)
-                        (max (calculate-required-threads config num-cpus)
-                             default-max-threads))]
-    (log/debugf "Using webserver thread pool size of %d" max-threads)
-    max-threads))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -495,9 +436,11 @@
   (let [result (-> {}
                    (maybe-add-http-connector config)
                    (maybe-add-https-connector config)
-                   (assoc :max-threads (determine-max-threads config (num-cpus)))
-                   (assoc :queue-max-size (get config :queue-max-size default-queue-max-size))
-                   (assoc :jmx-enable (parse-bool (get config :jmx-enable default-jmx-enable))))]
+                   (assoc :max-threads (:max-threads config))
+                   (assoc :queue-max-size (:queue-max-size config))
+                   (assoc :jmx-enable (parse-bool
+                                        (get config
+                                             :jmx-enable default-jmx-enable))))]
     (when-not (some #(contains? result %) [:http :https])
       (throw (IllegalArgumentException.
                "Either host, port, ssl-host, or ssl-port must be specified on the config in order for the server to be started")))

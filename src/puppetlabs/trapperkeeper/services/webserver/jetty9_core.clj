@@ -29,7 +29,6 @@
             [ring.util.codec :as codec]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [schema.core :as schema]))
 
@@ -234,6 +233,10 @@
         ssl-ctxt-factory factories)
       factories)))
 
+(defn- thread-count
+  [setting]
+  (if setting setting -1))
+
 (schema/defn ^:always-validate
   connector* :- ServerConnector
   [server :- Server
@@ -244,8 +247,8 @@
         connector   (doto (ServerConnector.
                             server
                             nil nil nil
-                            (config/acceptors-count (ks/num-cpus))
-                            (config/selectors-count (ks/num-cpus))
+                            (thread-count (:acceptor-threads config))
+                            (thread-count (:selector-threads config))
                             (connection-factories request-size ssl-ctxt-factory))
                       (.setPort (:port config))
                       (.setHost (:host config)))]
@@ -270,25 +273,61 @@
   (connector* server config nil))
 
 (schema/defn ^:always-validate
-  queue-thread-pool :- QueuedThreadPool
-  [max-threads :- schema/Int
-   queue-max-size :- schema/Int]
-  (let [queue-min-size (min config/default-queue-min-threads queue-max-size)]
-    (QueuedThreadPool. max-threads
-                       queue-min-size
-                       config/default-queue-idle-timeout
-                       (BlockingArrayQueue.
-                         queue-min-size
-                         queue-min-size
-                         queue-max-size))))
+  queue-thread-pool :- (schema/maybe QueuedThreadPool)
+  [max-threads :- (schema/maybe schema/Int)
+   queue-max-size :- (schema/maybe schema/Int)]
+  (if (or max-threads queue-max-size)
+    (let [thread-pool (if max-threads
+                        (QueuedThreadPool. max-threads)
+                        (QueuedThreadPool.))]
+      (if queue-max-size
+        ;; The code below is definitely not ideal, but there isn't a way to set
+        ;; the maximum capacity of the QueuedThreadPool's BlockingArrayQueue
+        ;; after construction.  We're trying to avoid hard-coding our own
+        ;; defaults for other settings that we want Jetty to control, e.g., the
+        ;; initial capacity of the queue and minimum number of threads.  By
+        ;; reconstructing the QueuedThreadPool here, we can use Jetty's defaults
+        ;; for settings unrelated to `queue-max-size`.
+        ;;
+        ;; QueuedThreadPool and BlockingArrayQueue construction isn't too
+        ;; expensive.  It mostly involves some initial memory allocations.  The
+        ;; more expensive work - where threads are actually started and the
+        ;; queue expands to fulfill new requests - would only happen after the
+        ;; QueuedThreadPool were started.  That won't happen for the
+        ;; `thread-pool` instance from above, which just gets thrown away as
+        ;; this function falls out of scope without ever having been started.
+        ;; Also, this function would likely only be called once per server
+        ;; startup where a `queue-max-size` were configured.
+        ;;
+        ;; The QueuedThreadPool constructor sets the `queue-capacity` and
+        ;; `queue-grow-by` based on the minimum number of threads available
+        ;; in the pool.  See https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-util/src/main/java/org/eclipse/jetty/util/thread/QueuedThreadPool.java#L92-L96.
+        ;; That algorithm is essentially duplicated here, with the only
+        ;; difference being that if `queue-max-size` is smaller than the
+        ;; minimum number of threads, the `queue-capacity` and `queue-grow-by`
+        ;; are reduced to the `queue-max-size` in order to avoid the
+        ;; BlockingArrayQueue constructor throwing an IllegalArgumentException.
+        (let [min-threads    (.getMinThreads thread-pool)
+              queue-capacity (min queue-max-size min-threads)
+              queue-grow-by  (min queue-max-size min-threads)]
+          (QueuedThreadPool. (.getMaxThreads thread-pool)
+                             min-threads
+                             (.getIdleTimeout thread-pool)
+                             (BlockingArrayQueue.
+                               queue-capacity
+                               queue-grow-by
+                               queue-max-size)))
+        thread-pool))))
 
 (schema/defn ^:always-validate
   create-server :- Server
   "Construct a Jetty Server instance."
   [webserver-context :- ServerContext
    config :- config/WebserverConfig]
-  (let [server (Server. (queue-thread-pool (:max-threads config)
-                                           (:queue-max-size config)))]
+  (let [server (if-let [pool (queue-thread-pool (:max-threads config)
+                                                (:queue-max-size config))]
+                 (Server. pool)
+                 (Server.))]
     (when (:jmx-enable config)
       (let [mb-container (MBeanContainer. (ManagementFactory/getPlatformMBeanServer))]
         (doto server
