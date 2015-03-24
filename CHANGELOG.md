@@ -1,3 +1,37 @@
+## 1.3.0
+
+This is a "feature" and security release.
+
+* [TK-178](https://tickets.puppetlabs.com/browse/TK-178) Upgraded Jetty version
+  dependency to v9.2.10.  Jetty v9.2.10 includes changes made in the Jetty
+  v9.2.9 release to address a critical security vulnerability with data
+  potentially being leaked across requests.  See https://dev.eclipse.org/mhonarc/lists/jetty-announce/msg00074.html
+  for more information.  For a rollup of changes included in the Jetty v9.2.10
+  release, see https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/VERSION.txt.
+
+* [TK-168](https://tickets.puppetlabs.com/browse/TK-168) Default values for
+  several settings will now derive from the underlying defaults that Jetty would
+  use.  This effectively changes the defaults for the following settings:
+
+  - `shutdown-timeout-seconds` in `webserver` section - 60 seconds -> 30 seconds
+
+  - `:idle-timeout` for `add-proxy-route` - 60 seconds -> 30 seconds
+
+* [TK-148](https://tickets.puppetlabs.com/browse/TK-148) Several related
+  changes:
+
+  - Default for `max-threads` in `webserver` section changed from 100 to
+    200.
+
+  - Exposed new settings for configuring the number of `acceptor-threads`
+    and `selector-threads` that a Jetty webserver will use.
+
+  - Removed work which would automatically bump the server's `max-threads` up
+    to the minimum needed for the server to boot for the case that `max-threads`
+    had not been configured but the server's minimum needed threads had
+    exceeded the default `max-threads`.  The original work which enabled the
+    automatic bump had been done in [TK-130](https://tickets.puppetlabs.com/browse/TK-130).
+
 ## 1.2.0
 
 This is a feature release.
