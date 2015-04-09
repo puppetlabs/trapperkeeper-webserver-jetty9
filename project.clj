@@ -14,7 +14,8 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.2.6"]
                  [clj-time "0.5.1"]
-                 [prismatic/schema "0.2.2"]
+                 [prismatic/schema "0.4.0"]
+                 [prismatic/plumbing "0.4.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/ssl-utils "0.8.0"]
@@ -36,7 +37,7 @@
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api commons-codec]]]
 
-  :plugins [[lein-release "1.0.5"]]
+  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
 
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
@@ -64,7 +65,7 @@
                    :dependencies [[puppetlabs/http-client "0.4.3"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
-                                  [org.clojure/tools.namespace "0.2.4"]
+                                  [org.clojure/tools.namespace "0.2.10"]
                                   [org.clojure/java.jmx "0.2.0"]
                                   [spyscope "0.1.4"]
                                   [compojure "1.1.8" :exclusions [ring/ring-core
