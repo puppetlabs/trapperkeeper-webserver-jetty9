@@ -100,7 +100,7 @@
 
 (schema/defn ^:always-validate add-context-handler!
   [context webserver-service
-   svc :- tk-services/Service
+   svc :- (schema/protocol tk-services/Service)
    base-path
    options :- ContextHandlerOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
@@ -109,7 +109,7 @@
 
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
-   svc :- tk-services/Service
+   svc :- (schema/protocol tk-services/Service)
    handler options :- RouteOption]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-ring-handler    (:add-ring-handler webserver-service)]
@@ -117,7 +117,7 @@
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context webserver-service
-   svc :- tk-services/Service
+   svc :- (schema/protocol tk-services/Service)
    servlet options :- ServletHandlerOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-servlet-handler (:add-servlet-handler webserver-service)]
@@ -125,7 +125,7 @@
 
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service
-   svc :- tk-services/Service
+   svc :- (schema/protocol tk-services/Service)
    war options :- RouteOption]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-war-handler     (:add-war-handler webserver-service)]
@@ -133,7 +133,7 @@
 
 (schema/defn ^:always-validate add-proxy-route!
   [context webserver-service
-   svc :- tk-services/Service
+   svc :- (schema/protocol tk-services/Service)
    target options :- ProxyRouteOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-proxy-route     (:add-proxy-route webserver-service)]
