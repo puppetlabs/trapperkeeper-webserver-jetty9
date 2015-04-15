@@ -1,4 +1,4 @@
-(def tk-version "1.1.0")
+(def tk-version "1.1.1")
 (def ks-version "1.0.0")
 (def jetty-version "9.2.10.v20150310")
 
@@ -62,7 +62,7 @@
                                   "examples/webrouting_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[puppetlabs/http-client "0.4.3"]
+                   :dependencies [[puppetlabs/http-client "0.4.4"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.10"]
