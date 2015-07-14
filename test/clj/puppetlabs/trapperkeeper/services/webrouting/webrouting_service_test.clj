@@ -151,4 +151,3 @@
         (is (= "/foo" (get-route svc :baz)))
         (is (= "/bar" (get-route svc :quux)))
         (is (= "/foo" (get-route svc2)))))))
-

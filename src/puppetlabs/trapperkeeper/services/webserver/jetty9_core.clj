@@ -30,6 +30,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
+            [puppetlabs.trapperkeeper.services.webserver.experimental.jetty9-websockets :as websockets]
             [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -103,6 +104,9 @@
 (def RingEndpoint
   {:type     (schema/eq :ring)})
 
+(def WebsocketEndpoint
+  {:type     (schema/eq :websocket)})
+
 (def ServletEndpoint
   {:type     (schema/eq :servlet)
    :servlet  java.lang.Class})
@@ -121,6 +125,7 @@
   (schema/conditional
     #(-> % :type (= :context)) ContextEndpoint
     #(-> % :type (= :ring)) RingEndpoint
+    #(-> % :type (= :websocket)) WebsocketEndpoint
     #(-> % :type (= :servlet)) ServletEndpoint
     #(-> % :type (= :war)) WarEndpoint
     #(-> % :type (= :proxy)) ProxyEndpoint))
@@ -668,6 +673,16 @@
     (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
 
 (schema/defn ^:always-validate
+  add-websocket-handler :- ContextHandler
+  [webserver-context :- ServerContext
+   handlers :- websockets/WebsocketHandlers
+   path :- schema/Str
+   enable-trailing-slash-redirect?]
+  (let [ctxt-handler (doto (ContextHandler. path)
+                       (.setHandler (websockets/websocket-handler handlers)))]
+    (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
+
+(schema/defn ^:always-validate
   add-servlet-handler :- ContextHandler
   [webserver-context :- ServerContext
    servlet :- Servlet
@@ -730,7 +745,7 @@
     at that endpoint. Each of these maps contains the type of the
     handler under the :type key, and may contain additional information
     as well.
-    
+
     When the value of :type is :context, the endpoint information will
     be an instance of ContextEndpoint.
 
@@ -927,6 +942,19 @@
         enable-redirect  (:redirect-if-no-trailing-slash options)]
     (register-endpoint! state endpoint-map path)
     (add-ring-handler s handler path enable-redirect)))
+
+(schema/defn ^:always-validate add-websocket-handler!
+  [context
+   handlers :- websockets/WebsocketHandlers
+   path :- schema/Str
+   options :- CommonOptions]
+  (let [server-id     (:server-id options)
+        s             (get-server-context context server-id)
+        state         (:state s)
+        endpoint-map  {:type     :websocket}
+        enable-redirect  (:redirect-if-no-trailing-slash options)]
+    (register-endpoint! state endpoint-map path)
+    (add-websocket-handler s handlers path enable-redirect)))
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context servlet path options :- ServletHandlerOptions]
