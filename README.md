@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty7.png?branch=master)](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty7)
+[![Build Status](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty9.png?branch=master)](https://travis-ci.org/puppetlabs/trapperkeeper-webserver-jetty9)
 
 ## Trapperkeeper Webserver Service
 
@@ -604,3 +604,9 @@ is preferable for use over the Webserver Service. Documentation is available for
 
 This project provides some utility code for testing. Documentation on these test utils
 is available [here](doc/test-utils.md).
+
+## Support
+
+We use the [Trapperkeeper project on JIRA](https://tickets.puppetlabs.com/browse/TK)
+for tickets on the Trapperkeeper Webserver Service, although Github issues are
+welcome too.
