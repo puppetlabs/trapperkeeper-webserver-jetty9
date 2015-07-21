@@ -735,4 +735,58 @@
       (let [response (http-get (str "http://localhost:10000/hello-proxy"))]
         (is (= 200 (:status response)))))))
 
+; Modified from proxy-ring-handler
+(defn count-ring-handler
+  "Increments counter if the endpoint is /goodbye"
+  [counter req]
+  (condp = (:uri req)
+    "/hello/" {:status 200 :body (str "Hello, World!"
+                                        ((:headers req) "x-fancy-proxy-header")
+                                        ((:headers req) "cookie"))}
+    "/goodbye/" {:status 200 :body (str "Goodbye! Count: " (swap! counter inc))}
+    {:status 404 :body "count-ring-handler couldn't find the route"}))
 
+(deftest test-path-traversal-attacks
+  (testing "proxies aren't vulnerable to basic path traversal attacks"
+    ; goodbye-counter is used to make sure that no requests to the proxy
+    ; endpoint, /hello-proxy, end up hitting /goodbye, as they should only be
+    ; able to reach /hello
+    (let [goodbye-counter (atom 0)
+          hello-goodbye-count-ring-handler (partial count-ring-handler goodbye-counter)
+          ; Should not succeed in hitting the goodbye endpoint
+          bad-proxy-requests [; Encodings of '../'
+                              "https://localhost:10001/hello-proxy/../goodbye/"
+                              "https://localhost:10001/hello-proxy/%2e%2e%2fgoodbye/"
+                              "https://localhost:10001/hello-proxy/%2e%2e/goodbye/"
+                              "https://localhost:10001/hello-proxy/..%2fgoodbye/"
+                              ; Encodings of '../../'
+                              "https://localhost:10001/hello-proxy/world/../../goodbye/"
+                              "https://localhost:10001/hello-proxy/world/%2e%2e%2f%2e%2e%2fgoodbye/"
+                              "https://localhost:10001/hello-proxy/world/%2e%2e/%2e%2e/goodbye/"
+                              "https://localhost:10001/hello-proxy/world/..%2f..%2fgoodbye/"]]
+      (with-target-and-proxy-servers
+        {:target       (merge common-ssl-config
+                         {:ssl-host "0.0.0.0"
+                          :ssl-port 9001})
+         :proxy        (merge common-ssl-config
+                         {:ssl-host "0.0.0.0"
+                          :ssl-port 10001})
+         :proxy-config {:host "localhost"
+                        :port 9001
+                        :path "/hello"}
+         :ring-handler hello-goodbye-count-ring-handler}
+        (testing "non-proxied endpoint doesn't see any traffic"
+          (doall (for [bad-request bad-proxy-requests]
+                   (let [response (http-get bad-request default-options-for-https-client)]
+                     (is (= 404 (:status response)))
+                     ; Make sure the 404 is because jetty couldn't find the page, not
+                     ; because the ring handler didn't understand the request, which
+                     ; would have a different message in the body. The request shouldn't
+                     ; get as far as the hello-goodbye-count-ring-handler
+                     (is (re-find #"Problem accessing /hello-proxy" (:body response))))))
+          ; Counter should still be at 0
+          (is (= 0 (deref goodbye-counter))))
+        (testing "counter is working correctly"
+          ; A valid request to bump the counter
+          (http-get "https://localhost:9001/goodbye/" default-options-for-https-client)
+          (is (= 1 (deref goodbye-counter))))))))
