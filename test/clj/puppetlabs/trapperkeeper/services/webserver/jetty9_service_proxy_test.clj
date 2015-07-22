@@ -740,9 +740,8 @@
   "Increments counter if the endpoint is /goodbye"
   [counter req]
   (condp = (:uri req)
-    "/hello/" {:status 200 :body (str "Hello, World!"
-                                        ((:headers req) "x-fancy-proxy-header")
-                                        ((:headers req) "cookie"))}
+    "/hello/world/" {:status 200 :body (str "Hello, World!")}
+    "/hello/" {:status 200 :body (str "Hello, You!")}
     "/goodbye/" {:status 200 :body (str "Goodbye! Count: " (swap! counter inc))}
     {:status 404 :body "count-ring-handler couldn't find the route"}))
 
@@ -775,6 +774,13 @@
                         :port 9001
                         :path "/hello"}
          :ring-handler hello-goodbye-count-ring-handler}
+        (testing "proxy is up and running"
+          (let [response (http-get "https://localhost:10001/hello-proxy/" default-options-for-https-client)]
+            (is (= 200 (:status response)))
+            (is (= "Hello, You!" (:body response))))
+          (let [response (http-get "https://localhost:10001/hello-proxy/world/" default-options-for-https-client)]
+            (is (= 200 (:status response)))
+            (is (= "Hello, World!" (:body response)))))
         (testing "non-proxied endpoint doesn't see any traffic"
           (doall (for [bad-request bad-proxy-requests]
                    (let [response (http-get bad-request default-options-for-https-client)]
