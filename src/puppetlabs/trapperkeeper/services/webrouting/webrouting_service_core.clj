@@ -123,6 +123,14 @@
         add-servlet-handler (:add-servlet-handler webserver-service)]
     (add-servlet-handler servlet path opts)))
 
+(schema/defn ^:always-validate add-websocket-handler!
+  [context webserver-service
+   svc :- (schema/protocol tk-services/Service)
+   handlers options :- RouteOption]
+  (let [{:keys [path opts]}   (compute-common-elements context svc options)
+        add-websocket-handler (:add-websocket-handler webserver-service)]
+    (add-websocket-handler handlers path opts)))
+
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service
    svc :- (schema/protocol tk-services/Service)

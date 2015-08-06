@@ -12,6 +12,7 @@
   (add-context-handler [this svc context-path] [this svc context-path options])
   (add-ring-handler [this svc handler] [this svc handler options])
   (add-servlet-handler [this svc servlet] [this svc servlet options])
+  (add-websocket-handler [this svc handlers] [this svc handlers options])
   (add-war-handler [this svc war] [this svc war options])
   (add-proxy-route [this svc target] [this svc target options])
   (override-webserver-settings! [this overrides] [this server-id overrides])
@@ -66,6 +67,16 @@
                     (core/add-servlet-handler! (service-context this)
                                                WebserverService svc
                                                servlet options))
+
+  (add-websocket-handler [this svc handlers]
+                         (core/add-websocket-handler! (service-context this)
+                                                      WebserverService svc
+                                                      handlers {}))
+
+  (add-websocket-handler [this svc handlers options]
+                         (core/add-websocket-handler! (service-context this)
+                                                    WebserverService svc
+                                                    handlers options))
 
   (add-war-handler [this svc war]
                    (core/add-war-handler! (service-context this)

@@ -1,6 +1,8 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test
   (:require [clojure.test :refer :all]
             [clojure.tools.logging :as log]
+            [gniazdo.core :as ws-client]
+            [puppetlabs.experimental.websockets.client :as ws-session]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.core :as tk-core]
@@ -48,6 +50,14 @@
   TestService2
   [[:WebroutingService add-ring-handler]])
 
+(tk-services/defservice test-websocket-service
+  [[:WebroutingService add-websocket-handler]]
+  (init [this context]
+        (log/info "setting up webrouting websockets")
+        (let [handlers {:on-connect (fn [ws] (ws-session/send! ws "heyo"))}]
+          (add-websocket-handler this handlers))
+        context))
+
 (tk-services/defservice not-real
   NotReal
   []
@@ -67,7 +77,9 @@
         :quux {:route "/bar"
                :server "foo"}}
       :puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
-       "/foo"}})
+       "/foo"
+      :puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-websocket-service
+       "/baz"}})
 
 (def no-default-config
   {:webserver {:bar {:port 8080}
@@ -87,7 +99,7 @@
   (testing "Other services can successfully use webrouting service"
     (with-app-with-config
       app
-      [jetty9-service webrouting-service test-service]
+      [jetty9-service webrouting-service test-service test-websocket-service]
       webrouting-plaintext-multiserver-multiroute-config
       (let [response (http-get "http://localhost:8080/foo/")]
         (is (= (:status response) 200))
@@ -100,7 +112,12 @@
         (is (= (:body response) "Hello World!")))
       (let [response (http-get "http://localhost:9000/bar/")]
         (is (= (:status response) 200))
-        (is (= (:body response) "Hello World!")))))
+        (is (= (:body response) "Hello World!")))
+      (let [message   (promise)
+            websocket (ws-client/connect "ws://localhost:8080/baz"
+                                         :on-receive (fn [text] (deliver message text)))]
+        (is (= @message "heyo"))
+        (ws-client/close websocket))))
 
   (testing "Error occurs when specifying service that does not exist in config file"
     (with-app-with-config

@@ -58,6 +58,7 @@ This is the protocol for the current implementation of the `:WebroutingService`:
   (add-ring-handler [this svc handler] [this svc handler options])
   (add-servlet-handler [this svc servlet] [this svc servlet options])
   (add-war-handler [this svc war] [this svc war options])
+  (add-websocket-handler [this svc handlers] [this svc handlers options])
   (add-proxy-route [this svc target] [this svc target options])
   (override-webserver-settings! [this overrides] [this server-id overrides])
   (get-registered-endpoints [this] [this server-id])
@@ -135,5 +136,3 @@ the ring handler `my-app` would be registered at endpoint `"/bar"`.
 
 For information on how to configure multiple endpoints, please see
 [Configuring the Webrouting Service](webrouting-config.md).
-
-
