@@ -18,7 +18,7 @@
                  [prismatic/plumbing "0.4.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/ssl-utils "0.8.0"]
+                 [puppetlabs/ssl-utils "0.8.1"]
 
                  [ch.qos.logback/logback-access "1.1.1"]
 
