@@ -13,7 +13,6 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.2.6"]
-                 [clj-time "0.5.1"]
                  [prismatic/schema "0.4.0"]
                  [prismatic/plumbing "0.4.2"]
                  [puppetlabs/kitchensink ~ks-version]
