@@ -55,6 +55,7 @@ This is the protocol for the current implementation of the `:WebserverService`:
 (defprotocol WebserverService
   (add-context-handler [this base-path context-path] [this base-path context-path options])
   (add-ring-handler [this handler path] [this handler path options])
+  (add-websocket-handler [this handlers path] [this handler path options])
   (add-servlet-handler [this servlet path] [this servlet path options])
   (add-war-handler [this war path] [this war path options])
   (add-proxy-route [this target path] [this target path options])
@@ -227,6 +228,57 @@ For example, to host a servlet at `/my-app`:
 ```
 
 For more information see the [example servlet app](examples/servlet_app).
+
+#### `add-websocket-handler`
+
+`add-websocket-handler` takes two arguments: `[handlers path]`.
+The `handlers` is a map of callbacks to invoke when handling a websocket session.
+The `path` is the URL prefix where this websocket servlet will be registered.
+
+The possible callbacks for the `handlers` map are:
+
+```clj
+{:on-connect (fn [ws])
+ :on-error   (fn [ws error])
+ :on-close   (fn [ws status-code reason])
+ :on-text    (fn [ws text])
+ :on-bytes   (fn [ws bytes offset len])}
+```
+
+Querying data or sending messages over the websocket is supported by
+the functions of WebSocketProtocol protocol from the
+`puppetlabs.experimental.websocket.client` namespace:
+
+```clj
+(connected? [this]
+  "Returns a boolean indicating if the session is currently connected")
+(send! [this msg]
+  "Send a message to the websocket client")
+(close! [this]
+  "Close the websocket session")
+(remote-addr [this]
+  "Find the remote address of a websocket client")
+(ssl? [this]
+  "Returns a boolean indicating if the session was established by wss://")
+(peer-certs [this]
+  "Returns an array of X509Certs presented by the ssl peer, if any"))
+```
+
+For example, to provide a simple websockets echo service as `/wsecho`:
+
+```clj
+(ns foo
+   (:require [puppetlabs.experimental.websockets.client :as ws-client]))
+
+(def echo-handlers
+  {:on-text (fn [ws text] (ws-client/send! ws text))})
+
+(defservice wsecho-webservice
+  [[:WebserverService add-websocket-handler]]
+  (init [this context]
+    (add-websocket-handler echo-handlers "/wsecho")
+    context))
+```
 
 #### `add-war-handler`
 

@@ -21,6 +21,9 @@
 (def RouteOption
   {(schema/optional-key :route-id) schema/Keyword})
 
+(def CommonOptions
+  (dissoc (merge jetty9-core/CommonOptions RouteOption) :server-id))
+
 (def ContextHandlerOptions
   (dissoc (merge jetty9-core/ContextHandlerOptions RouteOption) :server-id))
 
@@ -110,7 +113,7 @@
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
    svc :- (schema/protocol tk-services/Service)
-   handler options :- RouteOption]
+   handler options :- CommonOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-ring-handler    (:add-ring-handler webserver-service)]
     (add-ring-handler handler path opts)))
@@ -122,6 +125,14 @@
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-servlet-handler (:add-servlet-handler webserver-service)]
     (add-servlet-handler servlet path opts)))
+
+(schema/defn ^:always-validate add-websocket-handler!
+  [context webserver-service
+   svc :- (schema/protocol tk-services/Service)
+   handlers options :- CommonOptions]
+  (let [{:keys [path opts]}   (compute-common-elements context svc options)
+        add-websocket-handler (:add-websocket-handler webserver-service)]
+    (add-websocket-handler handlers path opts)))
 
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service

@@ -34,6 +34,7 @@
                  [org.eclipse.jetty/jetty-webapp ~jetty-version]
                  [org.eclipse.jetty/jetty-proxy ~jetty-version]
                  [org.eclipse.jetty/jetty-jmx ~jetty-version]
+                 [org.eclipse.jetty.websocket/websocket-server ~jetty-version]
 
                  [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api commons-codec]]]
 
@@ -70,7 +71,10 @@
                                   [spyscope "0.1.4"]
                                   [compojure "1.1.8" :exclusions [ring/ring-core
                                                                   commons-io
-                                                                  org.clojure/tools.macro]]]
+                                                                  org.clojure/tools.macro]]
+                                  [stylefruits/gniazdo "0.4.0" :exclusions [org.eclipse.jetty.websocket/websocket-api
+                                                                            org.eclipse.jetty.websocket/websocket-client
+                                                                            org.eclipse.jetty/jetty-util]]]
                     :injections [(require 'spyscope.core)]
                     ;; Enable SSLv3 for unit tests that exercise SSLv3
                     :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]}
