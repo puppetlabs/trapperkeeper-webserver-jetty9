@@ -8,8 +8,8 @@
     "Returns a boolean indicating if the session is currently connected")
   (send! [this msg]
     "Send a message to the websocket client")
-  (close! [this]
-    "Close the websocket session")
+  (close! [this] [this code reason]
+    "Close the websocket session.")
   (remote-addr [this]
     "Find the remote address of a websocket client")
   (ssl? [this]

@@ -223,7 +223,20 @@
                                    "You said: Hello websocket handler"
                                    "You said: You look dandy"]))
           (is (= @server-messages ["Hello websocket handler"
-                                   "You look dandy"])))))))
+                                   "You look dandy"]))))))
+  (testing "can close with reason"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s                     (get-service app :WebserverService)
+            add-websocket-handler (partial add-websocket-handler s)
+            path                  "/test"
+            closed                 (promise)
+            handlers               {:on-connect (fn [ws] (ws-session/close! ws 4000 "Bye"))}]
+        (add-websocket-handler handlers path)
+        (let [socket (ws-client/connect (str "ws://localhost:8080" path)
+                                        :on-close (fn [code reason] (deliver closed [code reason])))]
+          (is (= [4000 "Bye"] @closed)))))))
 
 (deftest war-test
   (testing "WAR support"
