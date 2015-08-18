@@ -13,12 +13,13 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.2.6"]
-                 [clj-time "0.5.1"]
                  [prismatic/schema "0.4.0"]
                  [prismatic/plumbing "0.4.2"]
-                 [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/ssl-utils "0.8.0"]
+
+                 ;; Let ssl-utils bring in the clj-time dependency
+                 [puppetlabs/ssl-utils "0.8.1"]
+                 [puppetlabs/kitchensink ~ks-version :exclusions [clj-time]]
+                 [puppetlabs/trapperkeeper ~tk-version :exclusions [clj-time]]
 
                  [ch.qos.logback/logback-access "1.1.1"]
 
