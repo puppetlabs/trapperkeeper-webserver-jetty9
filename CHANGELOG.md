@@ -1,3 +1,14 @@
+## 1.4.0
+
+This is a feature and maintenance release.
+
+* [TK-247](https://tickets.puppetlabs.com/TK-247) Added tests for Path
+  Traversal Attacks.
+* Add experimental support for websockets via the `add-websockets-handler`
+  function in the WebserverService and WebroutingService and corresponding
+  client protocol WebsocketProtocol.
+* Updated ssl-utils dependency to 0.8.1
+
 ## 1.3.1
 
 This is a maintenance release.
