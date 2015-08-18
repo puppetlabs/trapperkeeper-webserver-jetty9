@@ -40,6 +40,8 @@
     (-send! msg this))
   (close! [this]
     (.. this (getSession) (close)))
+  (close! [this code reason]
+    (.. this (getSession) (close code reason)))
   (remote-addr [this]
     (.. this (getSession) (getRemoteAddress)))
   (ssl? [this]
