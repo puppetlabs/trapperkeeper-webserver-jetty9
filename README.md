@@ -231,6 +231,10 @@ For more information see the [example servlet app](examples/servlet_app).
 
 #### `add-websocket-handler`
 
+NOTE: Websockets support is currently an experimental feature; the
+API for websockets support may be subject to minor changes in a
+future release.
+
 `add-websocket-handler` takes two arguments: `[handlers path]`.
 The `handlers` is a map of callbacks to invoke when handling a websocket session.
 The `path` is the URL prefix where this websocket servlet will be registered.
