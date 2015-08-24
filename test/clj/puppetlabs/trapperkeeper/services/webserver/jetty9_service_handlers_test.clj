@@ -224,6 +224,20 @@
                                    "You said: You look dandy"]))
           (is (= @server-messages ["Hello websocket handler"
                                    "You look dandy"]))))))
+  (testing "can close without supplying a reason"
+    (with-app-with-config app
+      [jetty9-service]
+      jetty-plaintext-config
+      (let [s                     (get-service app :WebserverService)
+            add-websocket-handler (partial add-websocket-handler s)
+            path                  "/test"
+            closed                 (promise)
+            handlers               {:on-connect (fn [ws] (ws-session/close! ws))}]
+        (add-websocket-handler handlers path)
+        (let [socket (ws-client/connect (str "ws://localhost:8080" path)
+                                        :on-close (fn [code reason] (deliver closed code)))]
+          ;; 1000 is for normal closure https://tools.ietf.org/html/rfc6455#section-7.4.1
+          (is (= 1000 @closed))))))
   (testing "can close with reason"
     (with-app-with-config app
       [jetty9-service]
