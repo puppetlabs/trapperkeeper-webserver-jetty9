@@ -1,3 +1,10 @@
+## 1.4.1
+
+This is a bugfix release.
+
+* [TK-270](https://tickets.puppetlabs.com/TK-270) Fix a bug that prevented
+  the use of 1-arity WebsocketProtocol/close!.
+
 ## 1.4.0
 
 This is a feature and maintenance release.
