@@ -29,6 +29,8 @@
 
 (defprotocol TestService2)
 
+(defprotocol TestService3)
+
 (defprotocol NotReal
   (dummy [this]))
 
@@ -48,6 +50,10 @@
 
 (tk-services/defservice test-service-2
   TestService2
+  [[:WebroutingService add-ring-handler]])
+
+(tk-services/defservice test-service-3
+  TestService3
   [[:WebroutingService add-ring-handler]])
 
 (tk-services/defservice test-websocket-service
@@ -78,6 +84,8 @@
                :server "foo"}}
       :puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-2
        "/foo"
+      :puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-service-3
+      {:route "/foo" :server "foo"}
       :puppetlabs.trapperkeeper.services.webrouting.webrouting-service-test/test-websocket-service
        "/baz"}})
 
@@ -167,4 +175,19 @@
         (is (= "/bar" (get-route svc :bar)))
         (is (= "/foo" (get-route svc :baz)))
         (is (= "/bar" (get-route svc :quux)))
-        (is (= "/foo" (get-route svc2)))))))
+        (is (= "/foo" (get-route svc2))))))
+
+  (testing "Can access server for a service"
+    (with-app-with-config
+     app
+     [jetty9-service webrouting-service test-service test-service-2 test-service-3]
+     webrouting-plaintext-multiserver-multiroute-config
+     (let [s          (tk-app/get-service app :WebroutingService)
+           svc        (tk-app/get-service app :TestService)
+           svc2       (tk-app/get-service app :TestService2)
+           svc3       (tk-app/get-service app :TestService3)
+           get-server (partial get-server s)]
+       (is (= "foo" (get-server svc :baz)))
+       (is (= nil (get-server svc :bar)))
+       (is (= nil (get-server svc2)))
+       (is (= "foo" (get-server svc3)))))))
