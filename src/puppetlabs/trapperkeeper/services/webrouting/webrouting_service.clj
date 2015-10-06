@@ -9,6 +9,7 @@
 
 (defprotocol WebroutingService
   (get-route [this svc] [this svc route-id])
+  (get-server [this svc] [this svc route-id])
   (add-context-handler [this svc context-path] [this svc context-path options])
   (add-ring-handler [this svc handler] [this svc handler options])
   (add-servlet-handler [this svc servlet] [this svc servlet options])
@@ -37,6 +38,12 @@
 
   (get-route [this svc route-id]
              (core/get-route (service-context this) svc route-id))
+
+  (get-server [this svc]
+              (core/get-server (service-context this) svc nil))
+
+  (get-server [this svc route-id]
+              (core/get-server (service-context this) svc route-id))
 
   (add-context-handler [this svc base-path]
                     (core/add-context-handler! (service-context this)

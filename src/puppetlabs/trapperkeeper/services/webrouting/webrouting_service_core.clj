@@ -101,6 +101,16 @@
                                                                  route-id)]
     (:route endpoint-and-server)))
 
+(schema/defn ^:always-validate get-server :- (schema/maybe schema/Str)
+  [context
+   svc :- (schema/protocol tk-services/Service)
+   route-id]
+  (let [svc-id              (keyword (tk-services/service-symbol svc))
+        endpoint-and-server (get-endpoint-and-server-from-config context
+                                                                 svc-id
+                                                                 route-id)]
+    (:server endpoint-and-server)))
+
 (schema/defn ^:always-validate add-context-handler!
   [context webserver-service
    svc :- (schema/protocol tk-services/Service)
