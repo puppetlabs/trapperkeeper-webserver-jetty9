@@ -85,8 +85,8 @@ This function allows you to get the server for a particular service
 as configured in your configuration file. The one-argument version will
 return the server configured for the current service in a single-route
 configuration. The two
-argument version will return the server configured for the current
-service with the id you specify.
+argument version will return the server configured for the web route with
+the `route-id` that you specify configured for the current service.
 
 Note that both the one and two argument versions will return nil if
 the service does not have a server value configured.
