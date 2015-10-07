@@ -54,6 +54,7 @@ This is the protocol for the current implementation of the `:WebroutingService`:
 ```clj
 (defprotocol WebroutingService
   (get-route [this svc] [this svc route-id])
+  (get-server [this svc] [this svc route-id])
   (add-context-handler [this svc context-path] [this svc context-path options])
   (add-ring-handler [this svc handler] [this svc handler options])
   (add-servlet-handler [this svc servlet] [this svc servlet options])
@@ -77,6 +78,18 @@ service with the id you specify.
 
 Note that the one argument version cannot be used with a service that
 has multiple webroutes configured.
+
+#### `get-server`
+
+This function allows you to get the server for a particular service
+as configured in your configuration file. The one-argument version will
+return the server configured for the current service in a single-route
+configuration. The two
+argument version will return the server configured for the current
+service with the id you specify.
+
+Note that both the one and two argument versions will return nil if
+the service does not have a server value configured.
 
 #### Other functions
 

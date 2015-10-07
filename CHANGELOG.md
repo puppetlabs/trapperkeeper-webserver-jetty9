@@ -1,3 +1,9 @@
+## 1.5.0
+
+This is a "feature" release.
+
+* Added new function `get-server` to web routing service.
+
 ## 1.4.1
 
 This is a bugfix release.
