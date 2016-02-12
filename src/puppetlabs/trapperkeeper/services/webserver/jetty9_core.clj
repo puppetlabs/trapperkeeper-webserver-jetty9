@@ -91,11 +91,6 @@
     (schema/optional-key :idle-timeout) (schema/both schema/Int
                                                      (schema/pred pos?))))
 
-(def ServerContext
-  {:state     Atom
-   :handlers  ContextHandlerCollection
-   :server    (schema/maybe Server)})
-
 (def ContextEndpoint
   {:type                                    (schema/eq :context)
    :base-path                               schema/Str
@@ -132,6 +127,18 @@
 
 (def RegisteredEndpoints
   {schema/Str [Endpoint]})
+
+(def ServerContextState
+  {:mbean-container (schema/maybe MBeanContainer)
+   :overrides-read-by-webserver schema/Bool
+   :overrides (schema/maybe {schema/Keyword schema/Any})
+   :endpoints RegisteredEndpoints
+   :ssl-context-factory (schema/maybe SslContextFactory)})
+
+(def ServerContext
+  {:state     (schema/atom ServerContextState)
+   :handlers  ContextHandlerCollection
+   :server    (schema/maybe Server)})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -334,10 +341,12 @@
                  (Server. pool)
                  (Server.))]
     (when (:jmx-enable config)
+      ;(log/error (IllegalStateException. "CREATING SERVER WITH JMX ENABLED"))
       (let [mb-container (MBeanContainer. (ManagementFactory/getPlatformMBeanServer))]
         (doto server
           (.addEventListener mb-container)
-          (.addBean mb-container))))
+          (.addBean mb-container))
+        (swap! (:state webserver-context) assoc :mbean-container mb-container)))
     (when (:http config)
       (let [connector (plaintext-connector server (:http config))]
         (.addConnector server connector)))
@@ -526,7 +535,11 @@
   []
   (let [^ContextHandlerCollection chc (ContextHandlerCollection.)]
     {:handlers chc
-     :state (atom {:endpoints {}})
+     :state (atom {:endpoints {}
+                   :mbean-container nil
+                   :overrides-read-by-webserver false
+                   :overrides nil
+                   :ssl-context-factory nil})
      :server nil}))
 
 ; TODO move out of public
@@ -547,6 +560,9 @@
 
 (schema/defn ^:always-validate shutdown
   [webserver-context :- ServerContext]
+  (when-let [{:keys [mbean-container]} @(:state webserver-context)]
+    (log/debug "Cleaning up JMX MBean container")
+    (.destroy mbean-container))
   (when (started? webserver-context)
     (log/info "Shutting down web server.")
     (.stop (:server webserver-context))

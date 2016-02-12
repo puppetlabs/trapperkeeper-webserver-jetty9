@@ -7,9 +7,11 @@
             [puppetlabs.trapperkeeper.services :refer [service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [ring.middleware.params :as ring-params]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
 (use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :each testutils/assert-clean-shutdown)
 
 (defn query-params-handler
   [req]

@@ -1,5 +1,8 @@
 (ns puppetlabs.trapperkeeper.testutils.webserver
-  (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]))
+  (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]
+            [clojure.test :refer [is]])
+  (:import (javax.management ObjectName)
+           (java.lang.management ManagementFactory)))
 
 (defmacro with-test-webserver-and-config
   "Constructs and starts an embedded Jetty on a random port with a custom
@@ -55,3 +58,25 @@
      ~port-var
      {}
      ~@body))
+
+(defn get-jetty-mbean-object-names
+  "TODO SPLAIN"
+  []
+  (let [mbeanserver (ManagementFactory/getPlatformMBeanServer)]
+    (.queryNames mbeanserver
+                 nil
+                 (ObjectName. "org.eclipse.jetty.jmx:type=mbeancontainer,*"))))
+
+(defn assert-clean-shutdown
+  "TODO SPLAIN"
+  [f]
+  (f)
+  ;; This sucks, because if this assertion fails, it will not give any clue as to
+  ;; which test caused it to fail beyond just the test namespace.  However, I tried
+  ;; several things (such as throwing an exception here rather than having an assertion),
+  ;; and nothing gave any better debugging info because the metadata about which
+  ;; test we're running and the call stack for the test function itself are simply
+  ;; not available from inside a fixture.  So I decided that even those these aren't
+  ;; super fun to debug, it was better than any other option in terms of enforcing
+  ;; that the tests clean up after themselves properly.
+  (is (= 0 (count (get-jetty-mbean-object-names)))))

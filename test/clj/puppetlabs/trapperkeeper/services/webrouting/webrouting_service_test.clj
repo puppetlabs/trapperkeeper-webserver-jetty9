@@ -18,11 +18,13 @@
             [puppetlabs.trapperkeeper.testutils.logging
              :refer [with-test-logging]]
             [schema.core :as schema]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
 (use-fixtures :once
               ks-test-fixtures/with-no-jvm-shutdown-hooks
               schema-test/validate-schemas)
+(use-fixtures :each testutils/assert-clean-shutdown)
 
 (defprotocol TestService
   (hello [this]))

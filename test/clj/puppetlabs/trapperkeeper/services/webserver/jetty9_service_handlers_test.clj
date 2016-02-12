@@ -13,9 +13,11 @@
             [puppetlabs.trapperkeeper.testutils.logging
              :refer [with-test-logging]]
             [schema.test :as schema-test]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
 (use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :each testutils/assert-clean-shutdown)
 
 (deftest static-content-test
   (testing "static content context"

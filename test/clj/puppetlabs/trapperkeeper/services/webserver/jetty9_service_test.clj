@@ -1,21 +1,21 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-test
-  (:import  (org.apache.http ConnectionClosedException)
-            (java.io IOException)
-            (java.security.cert CRLException)
-            (java.net BindException)
-            (java.nio.file Paths Files)
-            (java.nio.file.attribute FileAttribute)
-            (appender TestListAppender))
+  (:import (org.apache.http ConnectionClosedException)
+           (java.io IOException)
+           (java.security.cert CRLException)
+           (java.net BindException)
+           (java.nio.file Paths Files)
+           (java.nio.file.attribute FileAttribute)
+           (appender TestListAppender))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.async :as async]
             [puppetlabs.http.client.common :as http-client-common]
-            [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.core :as tk-core]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
              :refer :all]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
              :refer [with-app-with-empty-config
@@ -27,8 +27,9 @@
             [schema.test :as schema-test]))
 
 (use-fixtures :once
-              ks-test-fixtures/with-no-jvm-shutdown-hooks
-              schema-test/validate-schemas)
+  ks-test-fixtures/with-no-jvm-shutdown-hooks
+  schema-test/validate-schemas)
+(use-fixtures :each testutils/assert-clean-shutdown)
 
 (def default-server-config
   {:webserver {:foo {:port 8080}
@@ -126,16 +127,29 @@
   (testing "ring request over http succeeds with default add-ring-handler"
     (validate-ring-handler-default
       "http://localhost:8080"
-      jetty-plaintext-config)))
-
-(deftest multiserver-ring-test
+      jetty-plaintext-config))
   (testing "ring request on single server with new syntax over http succeeds"
     (validate-ring-handler
       "http://localhost:8080"
       {:webserver {:default        {:port           8080
                                     :default-server true}}}
       {:as :text}
-      :default))
+      :default)))
+
+(deftest single-server-jmx-cleanup-test
+  (testing "no jetty mbeancontainers are registered prior to starting servers"
+    (is (empty? (testutils/get-jetty-mbean-object-names))))
+  (with-app-with-config app
+    [jetty9-service]
+    jetty-plaintext-config
+    (testing "one jetty mbean container is registered per server"
+      (is (= 1 (count (testutils/get-jetty-mbean-object-names))))))
+  (testing "jetty mbean containers are unregistered after server is stopped"
+    (is (empty? (testutils/get-jetty-mbean-object-names)))))
+
+(deftest multiserver-ring-test
+  (testing "no jetty mbeancontainers are registered prior to starting servers"
+    (is (empty? (testutils/get-jetty-mbean-object-names))))
 
   (testing "ring requests on multiple servers succeed"
     (with-app-with-config app
@@ -153,7 +167,13 @@
           (is (= (:status response1) 200))
           (is (= (:status response2) 200))
           (is (= (:body response1) body))
-          (is (= (:body response2) body))))))
+          (is (= (:body response2) body)))
+
+        (testing "one jetty mbean container is registered per server"
+          (is (= 2 (count (testutils/get-jetty-mbean-object-names))))))))
+
+  (testing "jetty mbean containers are unregistered after server is stopped"
+    (is (empty? (testutils/get-jetty-mbean-object-names))))
 
   (testing "ring request succeeds with multiple servers and default add-ring-handler"
     (validate-ring-handler-default

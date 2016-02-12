@@ -10,9 +10,11 @@
              :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
              :refer [with-test-logging]]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
 (use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :each testutils/assert-clean-shutdown)
 
 (def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
