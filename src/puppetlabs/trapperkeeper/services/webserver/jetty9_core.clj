@@ -341,7 +341,6 @@
                  (Server. pool)
                  (Server.))]
     (when (:jmx-enable config)
-      ;(log/error (IllegalStateException. "CREATING SERVER WITH JMX ENABLED"))
       (let [mb-container (MBeanContainer. (ManagementFactory/getPlatformMBeanServer))]
         (doto server
           (.addEventListener mb-container)
@@ -560,7 +559,7 @@
 
 (schema/defn ^:always-validate shutdown
   [webserver-context :- ServerContext]
-  (when-let [{:keys [mbean-container]} @(:state webserver-context)]
+  (when-let [mbean-container (:mbean-container @(:state webserver-context))]
     (log/debug "Cleaning up JMX MBean container")
     (.destroy mbean-container))
   (when (started? webserver-context)

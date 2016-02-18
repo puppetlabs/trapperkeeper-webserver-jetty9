@@ -1,6 +1,7 @@
 (ns puppetlabs.trapperkeeper.testutils.webserver
   (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9]
-            [clojure.test :refer [is]])
+            [clojure.test :refer [is]]
+            [clojure.java.jmx :as jmx])
   (:import (javax.management ObjectName)
            (java.lang.management ManagementFactory)))
 
@@ -60,15 +61,16 @@
      ~@body))
 
 (defn get-jetty-mbean-object-names
-  "TODO SPLAIN"
+  "Queries the JVM MBean Registry and returns the ObjectNames of all of the
+   Jetty MBean container objects.  For the purposes of tk-j9, there should be
+   one ObjectName per Jetty Server instance, *if* the jmx-enabled setting is set
+   to 'true'."
   []
-  (let [mbeanserver (ManagementFactory/getPlatformMBeanServer)]
-    (.queryNames mbeanserver
-                 nil
-                 (ObjectName. "org.eclipse.jetty.jmx:type=mbeancontainer,*"))))
+  (jmx/mbean-names "org.eclipse.jetty.jmx:type=mbeancontainer,*"))
 
 (defn assert-clean-shutdown
-  "TODO SPLAIN"
+  "A test fixture that can be used to ensure that all of the Jetty instances have
+  been cleaned up properly by the tests in a particular test namespace."
   [f]
   (f)
   ;; This sucks, because if this assertion fails, it will not give any clue as to

@@ -11,8 +11,9 @@
             [schema.test :as schema-test]
             [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
-(use-fixtures :once schema-test/validate-schemas)
-(use-fixtures :each testutils/assert-clean-shutdown)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (def dev-resources-dir        "./dev-resources/")
 

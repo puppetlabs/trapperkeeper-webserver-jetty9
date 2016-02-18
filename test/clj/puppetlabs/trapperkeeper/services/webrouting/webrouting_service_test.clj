@@ -22,9 +22,9 @@
             [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
 (use-fixtures :once
-              ks-test-fixtures/with-no-jvm-shutdown-hooks
-              schema-test/validate-schemas)
-(use-fixtures :each testutils/assert-clean-shutdown)
+  ks-test-fixtures/with-no-jvm-shutdown-hooks
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (defprotocol TestService
   (hello [this]))

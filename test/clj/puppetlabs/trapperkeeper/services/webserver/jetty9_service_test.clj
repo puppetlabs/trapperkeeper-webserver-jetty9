@@ -28,8 +28,8 @@
 
 (use-fixtures :once
   ks-test-fixtures/with-no-jvm-shutdown-hooks
-  schema-test/validate-schemas)
-(use-fixtures :each testutils/assert-clean-shutdown)
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (def default-server-config
   {:webserver {:foo {:port 8080}
@@ -772,15 +772,16 @@
               (http-get "https://localhost:8081/hello" (merge default-options-for-https-client
                                                               {:ssl-protocols ["SSLv3"]})))))))
   (testing "SSLv3 is supported when configured"
-    (with-app-with-config
+    (with-test-logging
+     (with-app-with-config
       app
       [jetty9-service]
       (assoc-in jetty-ssl-pem-config [:webserver :ssl-protocols] ["SSLv3"])
-      (let [s                (tk-app/get-service app :WebserverService)
+      (let [s (tk-app/get-service app :WebserverService)
             add-ring-handler (partial add-ring-handler s)
-            ring-handler     (fn [_] {:status 200 :body "Hello, World!"})]
+            ring-handler (fn [_] {:status 200 :body "Hello, World!"})]
         (add-ring-handler ring-handler "/hello")
         (let [response (http-get "https://localhost:8081/hello" (merge default-options-for-https-client
                                                                        {:ssl-protocols ["SSLv3"]}))]
           (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!")))))))
+          (is (= (:body response) "Hello, World!"))))))))

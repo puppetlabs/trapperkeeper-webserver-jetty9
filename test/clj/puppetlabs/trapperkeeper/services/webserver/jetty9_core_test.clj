@@ -23,8 +23,9 @@
             [schema.test :as schema-test]
             [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
-(use-fixtures :once schema-test/validate-schemas)
-(use-fixtures :each testutils/assert-clean-shutdown)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (deftest handlers
   (testing "create-handlers should allow for handlers to be added"
@@ -120,7 +121,15 @@
 
       (testing "and should not return data when we query for something unexpected"
         (let [mbeans (jmx/mbean-names "foobarbaz:*")]
-          (is (empty? mbeans)))))))
+          (is (empty? mbeans))))))
+
+  (testing "server starts up and shuts down cleanly when jmx is disabled"
+    (let [config {:webserver {:port 9000
+                              :host "localhost"
+                              :jmx-enable "false"}}]
+      (with-app-with-config app
+        [jetty9-service]
+        config))))
 
 (deftest override-webserver-settings!-tests
   (let [default-state {:mbean-container nil
@@ -205,13 +214,9 @@
       (update-in [connector-keyword :so-linger-milliseconds] identity)
       (update-in [connector-keyword :idle-timeout-milliseconds] identity)))
 
-
-(def default-http-connector-config
-  {:jmx-enable "false"})
-
 (defn munge-http-connector-config
   [config]
-  (-> (merge default-http-connector-config config)
+  (-> config
       (update-in [:max-threads] identity)
       (update-in [:queue-max-size] identity)
       (update-in [:jmx-enable] ks/parse-bool)

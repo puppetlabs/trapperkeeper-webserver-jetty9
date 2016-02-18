@@ -49,8 +49,9 @@ react accordingly."
   (:import (org.eclipse.jetty.server HttpConfiguration ServerConnector Server)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
-(use-fixtures :once schema-test/validate-schemas)
-(use-fixtures :each testutils/assert-clean-shutdown)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (deftest default-request-header-max-size-test
   (let [http-config (HttpConfiguration.)]
