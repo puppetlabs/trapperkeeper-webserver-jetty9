@@ -1,3 +1,11 @@
+## 1.5.2
+
+This is a maintenance release.
+
+* Make `org.clojure/java.jmx` a top-level dependency so that it can be
+  pulled in automatically via a transitive dependency by consumers of the
+  testutils jar.
+
 ## 1.5.1
 
 This is a bugfix release.
