@@ -12,6 +12,7 @@
   ;; requires lein 2.2.0+.
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/java.jmx "0.2.0"]
                  [org.clojure/tools.logging "0.2.6"]
                  [prismatic/schema "1.0.4"]
                  [prismatic/plumbing "0.4.2"]
@@ -68,7 +69,6 @@
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.10"]
-                                  [org.clojure/java.jmx "0.2.0"]
                                   [spyscope "0.1.4"]
                                   [compojure "1.1.8" :exclusions [ring/ring-core
                                                                   commons-io
