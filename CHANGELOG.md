@@ -1,3 +1,11 @@
+## 1.5.1
+
+This is a bugfix release.
+
+* [TK-301](https://tickets.puppetlabs.com/TK-301) Fix a memory leak related
+  to Jetty's JMX metrics; this leak is only relevant if using the recent
+  HUP support released in Trapperkeeper 1.3.0.
+
 ## 1.5.0
 
 This is a "feature" release.
