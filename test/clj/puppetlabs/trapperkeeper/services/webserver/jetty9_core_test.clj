@@ -20,9 +20,12 @@
              :refer [jetty9-service add-ring-handler]]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
-(use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (deftest handlers
   (testing "create-handlers should allow for handlers to be added"
@@ -118,16 +121,29 @@
 
       (testing "and should not return data when we query for something unexpected"
         (let [mbeans (jmx/mbean-names "foobarbaz:*")]
-          (is (empty? mbeans)))))))
+          (is (empty? mbeans))))))
+
+  (testing "server starts up and shuts down cleanly when jmx is disabled"
+    (let [config {:webserver {:port 9000
+                              :host "localhost"
+                              :jmx-enable "false"}}]
+      (with-app-with-config app
+        [jetty9-service]
+        config))))
 
 (deftest override-webserver-settings!-tests
-  (letfn [(webserver-context [state]
-                             {:handlers (ContextHandlerCollection.)
-                              :server   nil
-                              :state    (atom state)})]
+  (let [default-state {:mbean-container nil
+                       :overrides-read-by-webserver false
+                       :overrides nil
+                       :endpoints {}
+                       :ssl-context-factory nil}
+        webserver-context (fn [state]
+                            {:handlers (ContextHandlerCollection.)
+                             :server nil
+                             :state (atom (merge default-state state))})]
     (testing "able to associate overrides when overrides not already set"
       (let [context (webserver-context
-                      {:some-other-state "some-other-value"})]
+                      {})]
         (is (= {:host     "override-value-1"
                 :ssl-host "override-value-2"}
                (jetty/override-webserver-settings!
@@ -136,15 +152,14 @@
                   :ssl-host "override-value-2"}))
             "Unexpected overrides returned from override-webserver-settings!")
         (is (= @(:state context)
-               {:some-other-state "some-other-value"
-                :overrides        {:host     "override-value-1"
-                                   :ssl-host "override-value-2"}})
+               (merge default-state
+                      {:overrides {:host "override-value-1"
+                                   :ssl-host "override-value-2"}}))
             "Unexpected config set for override-webserver-settings!")))
     (testing "unable to associate overrides when overrides already processed by
             webserver but overrides were not present"
       (let [context (webserver-context
-                      {:some-other-config-setting   "some-other-value"
-                       :overrides-read-by-webserver true})]
+                      {:overrides-read-by-webserver true})]
         (is (thrown-with-msg? java.lang.IllegalStateException
                               #"overrides cannot be set because webserver has already processed the config"
                               (jetty/override-webserver-settings!
@@ -152,15 +167,13 @@
                                 {:host     "override-value-1"
                                  :ssl-host "override-value-2"}))
             "Call to override-webserver-settings! did not fail as expected.")
-        (is (= {:some-other-config-setting   "some-other-value"
-                :overrides-read-by-webserver true}
+        (is (= (merge default-state {:overrides-read-by-webserver true})
                @(:state context))
             "Config unexpectedly changed for override-webserver-settings!")))
     (testing "unable to associate override when overrides already processed by
             webserver and overrides were previously set"
       (let [context (webserver-context
-                      {:some-other-config-setting   "some-other-value"
-                       :overrides                   {:myoverride "my-override-value"}
+                      {:overrides                   {:myoverride "my-override-value"}
                        :overrides-read-by-webserver true})]
         (is (thrown-with-msg? java.lang.IllegalStateException
                               #"overrides cannot be set because they have already been set and webserver has already processed the config"
@@ -169,32 +182,26 @@
                                 {:host     "override-value-1"
                                  :ssl-host "override-value-2"}))
             "Call to override-webserver-settings! did not fail as expected.")
-        (is (= {:some-other-config-setting   "some-other-value"
-                :overrides                   {:myoverride "my-override-value"}
-                :overrides-read-by-webserver true}
+        (is (= (merge default-state
+                      {:overrides {:myoverride "my-override-value"}
+                       :overrides-read-by-webserver true})
                @(:state context))
             "Config unexpectedly changed for override-webserver-settings!")))
     (testing "unable to associate override when overrides were previously set"
       (let [context (webserver-context
-                      {:some-other-config-setting "some-other-value"
-                       :overrides                 {:myoverride "my-override-value"}})]
+                     {:overrides {:myoverride "my-override-value"}})]
         (is (thrown-with-msg? java.lang.IllegalStateException
                               #"overrides cannot be set because they have already been set"
                               (jetty/override-webserver-settings!
-                                context
-                                {:host "override-value-1"
-                                 :ssl-host "override-value-2"}))
+                               context
+                               {:host "override-value-1"
+                                :ssl-host "override-value-2"}))
             "Call to override-webserver-settings! did not fail as expected.")
-        (is (= {:some-other-config-setting "some-other-value"
-                :overrides                 {:myoverride "my-override-value"}}
+        (is (= (merge default-state
+                      {:overrides {:myoverride "my-override-value"}})
                @(:state context))
             "config unexpectedly changed for override-webserver-settings!")))))
 
-(defn get-webserver-context-for-server
-  []
-  {:state    (atom nil)
-   :handlers (ContextHandlerCollection.)
-   :server   nil})
 
 (defn munge-common-connector-config
   [config connector-keyword]
@@ -233,7 +240,7 @@
 
 (defn create-server-with-config
   [config]
-  (jetty/create-server (get-webserver-context-for-server) config))
+  (jetty/create-server (jetty/initialize-context) config))
 
 (defn create-server-with-partial-http-config
   [config]

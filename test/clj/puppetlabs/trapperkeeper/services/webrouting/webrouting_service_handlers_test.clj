@@ -9,9 +9,12 @@
             [puppetlabs.trapperkeeper.testutils.webrouting.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
-             :refer [with-test-logging]]))
+             :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
-(use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (def dev-resources-dir        "./dev-resources/")
 

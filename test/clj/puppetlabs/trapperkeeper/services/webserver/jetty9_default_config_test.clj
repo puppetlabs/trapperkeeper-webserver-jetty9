@@ -44,11 +44,14 @@ react accordingly."
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services :refer [service-context]]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core])
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils])
   (:import (org.eclipse.jetty.server HttpConfiguration ServerConnector Server)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
-(use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (deftest default-request-header-max-size-test
   (let [http-config (HttpConfiguration.)]

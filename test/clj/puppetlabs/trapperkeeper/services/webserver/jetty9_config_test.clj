@@ -14,9 +14,12 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
-(use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (def valid-ssl-pem-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
@@ -444,15 +447,25 @@
         (is (thrown-with-msg?
               IllegalArgumentException
               #"Invalid script string in webserver 'post-config-script' configuration"
-              (jetty9/start-webserver!
-                (jetty9/initialize-context)
-                (merge base-config
-                       {:post-config-script (str "AHAHHHGHAHAHAHEASD!  OMG!")})))))
+              (let [context (jetty9/initialize-context)]
+                (with-test-logging
+                 (try
+                   (jetty9/start-webserver!
+                    context
+                    (merge base-config
+                           {:post-config-script (str "AHAHHHGHAHAHAHEASD!  OMG!")}))
+                   (finally
+                     (jetty9/shutdown context))))))))
       (testing "Throws an error if the script can't be executed."
         (is (thrown-with-msg?
               IllegalArgumentException
               #"Invalid script string in webserver 'post-config-script' configuration"
-              (jetty9/start-webserver!
-                (jetty9/initialize-context)
-                (merge base-config
-                       {:post-config-script (str "Object x = null; x.toString();")}))))))))
+              (let [context (jetty9/initialize-context)]
+                (with-test-logging
+                 (try
+                   (jetty9/start-webserver!
+                    context
+                    (merge base-config
+                           {:post-config-script (str "Object x = null; x.toString();")}))
+                   (finally
+                     (jetty9/shutdown context)))))))))))

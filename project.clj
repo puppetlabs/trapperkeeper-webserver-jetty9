@@ -1,5 +1,5 @@
-(def tk-version "1.1.1")
-(def ks-version "1.0.0")
+(def tk-version "1.3.0")
+(def ks-version "1.3.0")
 (def jetty-version "9.2.10.v20150310")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.5.1-SNAPSHOT"
@@ -13,7 +13,7 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.2.6"]
-                 [prismatic/schema "0.4.0"]
+                 [prismatic/schema "1.0.4"]
                  [prismatic/plumbing "0.4.2"]
 
                  ;; Let ssl-utils bring in the clj-time dependency
@@ -83,7 +83,8 @@
              :testutils {:source-paths ^:replace ["test/clj"]
                          :java-source-paths ^:replace ["test/java"]}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
-                       :classifiers ^:replace []}}
+                       :classifiers ^:replace []
+                       :dependencies [[org.clojure/tools.nrepl "0.2.6" :scope "test" :exclusions [[org.clojure/clojure]]]]}}
 
   :main puppetlabs.trapperkeeper.main
   )

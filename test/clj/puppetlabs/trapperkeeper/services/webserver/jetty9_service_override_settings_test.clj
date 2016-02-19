@@ -1,6 +1,5 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-override-settings-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
@@ -10,9 +9,12 @@
              :refer [with-app-with-config]]
             [puppetlabs.trapperkeeper.testutils.logging
              :refer [with-test-logging]]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
-(use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :once
+  schema-test/validate-schemas
+  testutils/assert-clean-shutdown)
 
 (def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
