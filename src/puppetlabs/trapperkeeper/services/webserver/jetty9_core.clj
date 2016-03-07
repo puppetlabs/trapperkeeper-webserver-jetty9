@@ -558,13 +558,19 @@
     (merge options overrides)))
 
 (schema/defn ^:always-validate shutdown
-  [webserver-context :- ServerContext]
+  [{:keys [server] :as webserver-context} :- ServerContext]
   (when-let [mbean-container (:mbean-container @(:state webserver-context))]
     (log/debug "Cleaning up JMX MBean container")
     (.destroy mbean-container))
   (when (started? webserver-context)
     (log/info "Shutting down web server.")
-    (.stop (:server webserver-context))
+    (try
+      (.stop server)
+      (catch TimeoutException e
+        (log/errorf e
+                    (str "Web server failed to shut down gracefully in configured "
+                         "timeout period (%s); cancelling remaining requests.")
+                    (.getStopTimeout server))))
     (log/info "Web server shutdown")))
 
 (schema/defn ^:always-validate
