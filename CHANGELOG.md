@@ -1,3 +1,13 @@
+## 1.5.3
+
+This is a bugfix release.
+
+* [TK-338](https://tickets.puppetlabs.com/browse/TK-338) Handle the
+  `TimeoutException` that Jetty throws if its `stopTimeout` is reached
+  before it can gracefully complete all of the open requests.  Ensures
+  that the server will be restarted during a HUP even if the timeout
+  occurs.
+
 ## 1.5.2
 
 This is a maintenance release.
