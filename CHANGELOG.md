@@ -1,4 +1,4 @@
-## 1.5.3
+## 1.5.4
 
 This is a bugfix release.
 
@@ -7,6 +7,11 @@ This is a bugfix release.
   before it can gracefully complete all of the open requests.  Ensures
   that the server will be restarted during a HUP even if the timeout
   occurs.
+
+## 1.5.3
+
+This version number was burned due to an error during the release/deploy
+process.
 
 ## 1.5.2
 
