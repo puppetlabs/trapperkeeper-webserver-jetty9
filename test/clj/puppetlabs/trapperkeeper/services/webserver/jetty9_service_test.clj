@@ -712,7 +712,34 @@
           (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
             @in-request-handler
             (tk-app/stop app)
-            (is (not (nil? (:error @response))))))))))
+            (is (not (nil? (:error @response)))))))))
+
+  (testing "tk app can still restart even if stop timeout expires"
+    (let [in-request-handler (promise)
+          sleepy-service (tk-core/service
+                          [[:WebserverService add-ring-handler]]
+                          (init [this context]
+                                (add-ring-handler
+                                 (fn [_]
+                                   (deliver in-request-handler true)
+                                   (Thread/sleep 2000)
+                                   {:status 200 :body hello-body})
+                                 hello-path)
+                                context))]
+      (with-test-logging
+       (with-app-with-config
+         app
+         [jetty9-service
+          sleepy-service]
+         {:webserver {:port 8080 :shutdown-timeout-seconds 1}}
+         (with-open [async-client (async/create-client {})]
+           (let [response (http-client-common/get async-client "http://localhost:8080/hi_world" {:as :text})]
+             @in-request-handler
+             (tk-app/restart app)
+             (is (not (nil? (:error @response)))))
+           (let [response (http-client-common/get async-client "http://localhost:8080/hi_world" {:as :text})]
+             (is (= 200 (:status @response)))
+             (is (= hello-body (:body @response))))))))))
 
 (deftest warn-if-sslv3-supported-test
   (letfn [(start-server [ssl-protocols]
