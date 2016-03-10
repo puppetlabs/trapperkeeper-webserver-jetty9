@@ -77,6 +77,18 @@
       (assoc :ssl-cert "./dev-resources/config/jetty/ssl/certs/unauthorized.pem")
       (assoc :ssl-key "./dev-resources/config/jetty/ssl/private_keys/unauthorized.pem")))
 
+(def hello-path "/hi_world")
+(def hello-body "Hi World")
+(defn hello-handler
+  [req]
+  {:status 200 :body hello-body})
+
+(tk-core/defservice hello-webservice
+  [[:WebserverService add-ring-handler]]
+  (init [this context]
+        (add-ring-handler hello-handler hello-path)
+        context))
+
 (defn validate-ring-handler
   ([base-url config]
     (validate-ring-handler base-url config {:as :text} :default))
@@ -84,38 +96,28 @@
    (validate-ring-handler base-url config http-get-options :default))
   ([base-url config http-get-options server-id]
     (with-app-with-config app
-      [jetty9-service]
+      [jetty9-service
+       hello-webservice]
       config
-      (let [s                   (tk-app/get-service app :WebserverService)
-            add-ring-handler    (partial add-ring-handler s)
-            body                "Hi World"
-            path                "/hi_world"
-            ring-handler        (fn [req] {:status 200 :body body})]
-        (add-ring-handler ring-handler path {:server-id server-id})
-        (let [response (http-get
-                         (format "%s%s/" base-url path)
-                         http-get-options)]
-          (is (= (:status response) 200))
-          (is (= (:body response) body)))))))
+      (let [response (http-get
+                      (format "%s%s/" base-url hello-path)
+                      http-get-options)]
+        (is (= (:status response) 200))
+        (is (= (:body response) hello-body))))))
 
 (defn validate-ring-handler-default
   ([base-url config]
    (validate-ring-handler-default base-url config {:as :text}))
   ([base-url config http-get-options]
    (with-app-with-config app
-     [jetty9-service]
+     [jetty9-service
+      hello-webservice]
      config
-     (let [s                   (tk-app/get-service app :WebserverService)
-           add-ring-handler    (partial add-ring-handler s)
-           body                "Hi World"
-           path                "/hi_world"
-           ring-handler        (fn [req] {:status 200 :body body})]
-       (add-ring-handler ring-handler path)
-       (let [response (http-get
-                         (format "%s%s/" base-url path)
-                         http-get-options)]
-         (is (= (:status response) 200))
-         (is (= (:body response) body)))))))
+     (let [response (http-get
+                     (format "%s%s/" base-url hello-path)
+                     http-get-options)]
+       (is (= (:status response) 200))
+       (is (= (:body response) hello-body))))))
 
 (deftest basic-ring-test
   (testing "ring request over http succeeds"
@@ -156,18 +158,15 @@
       [jetty9-service]
       jetty-multiserver-plaintext-config
       (let [s                (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            body             "Hi World"
-            path             "/hi_world"
-            ring-handler (fn [req] {:status 200 :body body})]
-        (add-ring-handler ring-handler path {:server-id :foo})
-        (add-ring-handler ring-handler path {:server-id :bar})
+            add-ring-handler (partial add-ring-handler s)]
+        (add-ring-handler hello-handler hello-path {:server-id :foo})
+        (add-ring-handler hello-handler hello-path {:server-id :bar})
         (let [response1 (http-get "http://localhost:8080/hi_world/" {:as :text})
               response2 (http-get "http://localhost:8085/hi_world/" {:as :text})]
           (is (= (:status response1) 200))
           (is (= (:status response2) 200))
-          (is (= (:body response1) body))
-          (is (= (:body response2) body)))
+          (is (= (:body response1) hello-body))
+          (is (= (:body response2) hello-body)))
 
         (testing "one jetty mbean container is registered per server"
           (is (= 2 (count (testutils/get-jetty-mbean-object-names))))))))
@@ -531,17 +530,12 @@
   (testing (str "request to Jetty fails with a 413 error if the request header "
                 "is too large and a larger one is not set")
     (with-app-with-config app
-      [jetty9-service]
+      [jetty9-service
+       hello-webservice]
       jetty-plaintext-config
-      (let [s                   (tk-app/get-service app :WebserverService)
-            add-ring-handler    (partial add-ring-handler s)
-            body                "Hi World"
-            path                "/hi_world"
-            ring-handler        (fn [req] {:status 200 :body body})]
-        (add-ring-handler ring-handler path)
-        (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
-                                                                   :as      :text})]
-          (is (= (:status response) 413))))))
+      (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
+                                                                 :as :text})]
+        (is (= (:status response) 413)))))
 
   (testing (str "request to Jetty succeeds with a large cookie if the request header "
                 "size is properly set")
@@ -562,17 +556,12 @@
 (deftest default-server-test
   (testing "handler added to user-specified default server if no server-id is given"
     (with-app-with-config app
-      [jetty9-service]
+      [jetty9-service
+       hello-webservice]
       default-server-config
-      (let [s                (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            body             "Hi World"
-            path             "/hi_world"
-            ring-handler     (fn [req] {:status 200 :body body})]
-        (add-ring-handler ring-handler path)
-        (let [response (http-get "http://localhost:9000/hi_world")]
-          (is (= 200 (:status response)))
-          (is (= (:body response) body))))))
+      (let [response (http-get "http://localhost:9000/hi_world")]
+        (is (= 200 (:status response)))
+        (is (= (:body response) hello-body)))))
 
   (testing (str "exception thrown if user does not specify a "
                 "default server and no server-id is given")
@@ -580,12 +569,9 @@
       [jetty9-service]
       no-default-config
       (let [s                (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            body             "Hi World"
-            path             "/hi_world"
-            ring-handler     (fn [req] {:status 200 :body body})]
+            add-ring-handler (partial add-ring-handler s)]
         (is (thrown? IllegalArgumentException
-                     (add-ring-handler ring-handler path)))))))
+                     (add-ring-handler hello-handler hello-path)))))))
 
 (deftest static-content-config-test
   (let [logback (slurp "./dev-resources/logback.xml")]
@@ -656,20 +642,17 @@
   (testing "request logging occurs when :access-log-config is configured"
     (with-app-with-config
       app
-      [jetty9-service]
+      [jetty9-service
+       hello-webservice]
       {:webserver {:port 8080
                    :access-log-config
                          "./dev-resources/puppetlabs/trapperkeeper/services/webserver/request-logging.xml"}}
-      (let [s (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            ring-handler (fn [req] {:status 200 :body "Hello, World!"})]
-        (add-ring-handler ring-handler "/hello")
-        (http-get "http://localhost:8080/hello/")
-        ; Logging is done in a separate thread from Jetty and this test. As a result,
-        ; we have to sleep the thread to avoid a race condition.
-        (Thread/sleep 10)
-        (let [list (TestListAppender/list)]
-          (is (re-find #"\"GET /hello/ HTTP/1.1\" 200 13\n" (first list))))))))
+      (http-get "http://localhost:8080/hi_world/")
+      ; Logging is done in a separate thread from Jetty and this test. As a result,
+      ; we have to sleep the thread to avoid a race condition.
+      (Thread/sleep 10)
+      (let [list (TestListAppender/list)]
+        (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8\n" (first list)))))))
 
 (deftest graceful-shutdown-test
   (testing "jetty9 webservers shut down gracefully by default"
@@ -761,27 +744,21 @@
   (testing "SSLv3 is not supported by default"
     (with-app-with-config
       app
-      [jetty9-service]
+      [jetty9-service
+       hello-webservice]
       jetty-ssl-pem-config
-      (let [s                (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            ring-handler     (fn [_] {:status 200 :body "Hello, World!"})]
-        (add-ring-handler ring-handler "/hello")
-        (is (thrown?
-              ConnectionClosedException
-              (http-get "https://localhost:8081/hello" (merge default-options-for-https-client
-                                                              {:ssl-protocols ["SSLv3"]})))))))
+      (is (thrown?
+           ConnectionClosedException
+           (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
+                                                              {:ssl-protocols ["SSLv3"]}))))))
   (testing "SSLv3 is supported when configured"
     (with-test-logging
      (with-app-with-config
       app
-      [jetty9-service]
+      [jetty9-service
+       hello-webservice]
       (assoc-in jetty-ssl-pem-config [:webserver :ssl-protocols] ["SSLv3"])
-      (let [s (tk-app/get-service app :WebserverService)
-            add-ring-handler (partial add-ring-handler s)
-            ring-handler (fn [_] {:status 200 :body "Hello, World!"})]
-        (add-ring-handler ring-handler "/hello")
-        (let [response (http-get "https://localhost:8081/hello" (merge default-options-for-https-client
-                                                                       {:ssl-protocols ["SSLv3"]}))]
-          (is (= (:status response) 200))
-          (is (= (:body response) "Hello, World!"))))))))
+       (let [response (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
+                                                                         {:ssl-protocols ["SSLv3"]}))]
+         (is (= (:status response) 200))
+         (is (= (:body response) "Hi World")))))))
