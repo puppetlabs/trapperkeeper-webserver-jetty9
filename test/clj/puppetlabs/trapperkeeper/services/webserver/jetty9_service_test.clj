@@ -715,14 +715,16 @@
             (is (not (nil? (:error @response)))))))))
 
   (testing "tk app can still restart even if stop timeout expires"
-    (let [in-request-handler (promise)
+    (let [in-request-handler? (promise)
+          unblock-request? (promise)
+
           sleepy-service (tk-core/service
                           [[:WebserverService add-ring-handler]]
                           (init [this context]
                                 (add-ring-handler
                                  (fn [_]
-                                   (deliver in-request-handler true)
-                                   (Thread/sleep 2000)
+                                   (deliver in-request-handler? true)
+                                   @unblock-request?
                                    {:status 200 :body hello-body})
                                  hello-path)
                                 context))]
@@ -734,9 +736,10 @@
          {:webserver {:port 8080 :shutdown-timeout-seconds 1}}
          (with-open [async-client (async/create-client {})]
            (let [response (http-client-common/get async-client "http://localhost:8080/hi_world" {:as :text})]
-             @in-request-handler
+             @in-request-handler?
              (tk-app/restart app)
              (is (not (nil? (:error @response)))))
+           (deliver unblock-request? true)
            (let [response (http-client-common/get async-client "http://localhost:8080/hi_world" {:as :text})]
              (is (= 200 (:status @response)))
              (is (= hello-body (:body @response))))))))))
