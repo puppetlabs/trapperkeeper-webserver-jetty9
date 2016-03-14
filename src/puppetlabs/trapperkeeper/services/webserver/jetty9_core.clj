@@ -3,18 +3,18 @@
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory AbstractConnectionFactory)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection
-                                             ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler)
+                                             ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler HandlerWrapper)
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
            (javax.servlet.http HttpServletResponse HttpServletRequest)
            (java.util.concurrent TimeoutException)
            (org.eclipse.jetty.servlets.gzip GzipHandler)
-           (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
+           (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet FilterHolder)
            (org.eclipse.jetty.webapp WebAppContext)
-           (java.util HashSet)
+           (java.util HashSet EnumSet)
            (org.eclipse.jetty.http MimeTypes HttpHeader HttpHeaderValue)
-           (javax.servlet Servlet ServletContextListener)
+           (javax.servlet Servlet ServletContextListener DispatcherType)
            (org.eclipse.jetty.proxy ProxyServlet)
            (java.net URI URLDecoder)
            (java.security Security)
@@ -23,7 +23,9 @@
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
            (org.eclipse.jetty.util URIUtil BlockingArrayQueue)
-           (java.io IOException))
+           (java.io IOException)
+           (javax.servlet Filter)
+           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils HttpServletRequestWithAlternateRequestUri))
 
   (:require [ring.util.servlet :as servlet]
             [ring.util.codec :as codec]
@@ -62,7 +64,8 @@
 
 (def CommonOptions
   {(schema/optional-key :server-id) schema/Keyword
-   (schema/optional-key :redirect-if-no-trailing-slash) schema/Bool})
+   (schema/optional-key :redirect-if-no-trailing-slash) schema/Bool
+   (schema/optional-key :normalize-request-uri) schema/Bool})
 
 (def ContextHandlerOptions
   (assoc CommonOptions (schema/optional-key :context-listeners) [ServletContextListener]
@@ -451,6 +454,43 @@
       {:normalized-request-uri (URIUtil/compactPath canonicalized-uri-path)})))
 
 (schema/defn ^:always-validate
+  normalize-uri-handler :- HandlerWrapper
+  "Create a `HandlerWrapper` which provides a normalized request URI on to
+  its downstream handler for an incoming request.  The normalized URI would
+  be returned for a 'getRequestURI' call made by the downstream handler on
+  its incoming HttpServletRequest request parameter.  Normalization is done
+  per the rules described in the `normalize-uri-path` function.  If an error
+  is encountered during request URI normalization, an HTTP 400 (Bad Request)
+  response is returned rather than the request being passed on its downstream
+  handler."
+  []
+  (proxy [HandlerWrapper] []
+    (handle [^String target ^Request base-request
+             ^HttpServletRequest request ^HttpServletResponse response]
+      (let [handler (proxy-super getHandler)
+            is-started (proxy-super isStarted)]
+        ;; It may not strictly be necessary to check if the wrapping handler
+        ;; is started in order to let a request through but that's what the
+        ;; base `HandlerWrapper` class from Jetty does, so it seemed best to
+        ;; follow the pattern:
+        ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/handler/HandlerWrapper.java#L95
+        (when (and handler is-started)
+          (let [normalized-uri-result (normalize-uri-path request)]
+            (if-let [error (:error normalized-uri-result)]
+              (do
+                (servlet/update-servlet-response response
+                                                 {:status 400 :body error})
+                (.setHandled base-request true))
+              (.handle
+               handler
+               target
+               base-request
+               (HttpServletRequestWithAlternateRequestUri.
+                request
+                (:normalized-request-uri normalized-uri-result))
+               response))))))))
+
+(schema/defn ^:always-validate
   add-handler :- ContextHandler
   [webserver-context :- ServerContext
    handler :- ContextHandler
@@ -717,6 +757,51 @@
         (throw e)))
     webserver-context))
 
+(schema/defn ^:always-validate normalized-uri-filter :- Filter
+  "Create a servlet filter which provides a normalized request URI on to its
+  downstream consumers for an incoming request.  The normalized URI would be
+  returned for a 'getRequestURI' call made by a downstream consumer its
+  incoming request parameter, assuming the request is an HttpServletRequest.
+  Normalization is done per the rules described in the `normalize-uri-path`
+  function.  If an error is encountered during request URI normalization, an
+  HTTP 400 (Bad Request) response is returned rather than the request being
+  passed on its downstream consumers."
+  []
+  (reify Filter
+    (init [_ _])
+    (doFilter [_ request response chain]
+     ;; The method signature for a servlet filter has a 'request' of the
+     ;; more generic 'ServletRequest' and 'response' of the more generic
+     ;; 'ServletResponse'.  While we practically shouldn't see anything
+     ;; but the more specific Http types for each, this code explicitly
+     ;; checks to see that the requests are Http types as the URI
+     ;; normalization would be irrelevant for other types.
+      (if (and (instance? HttpServletRequest request)
+               (instance? HttpServletResponse response))
+        (let [normalized-uri-result (normalize-uri-path request)]
+          (if-let [error (:error normalized-uri-result)]
+            (servlet/update-servlet-response response
+                                             {:status 400
+                                              :body error})
+            (.doFilter chain
+                       (HttpServletRequestWithAlternateRequestUri.
+                        request
+                        (:normalized-request-uri normalized-uri-result))
+                       response)))
+        (.doFilter chain request response)))
+    (destroy [_])))
+
+(schema/defn ^:always-validate
+  add-normalized-uri-filter-to-servlet-handler
+  "Adds a servlet filter to the servlet handler which provides a normalized
+  request URI on to its downstream consumers for an incoming request."
+  [handler :- ServletContextHandler]
+  (let [filter-holder (FilterHolder. (normalized-uri-filter))]
+    (.addFilter handler
+                filter-holder
+                "/*"
+                (EnumSet/of DispatcherType/REQUEST))))
+
 (schema/defn ^:always-validate
   add-context-handler :- ContextHandler
   "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
@@ -730,7 +815,8 @@
     options]
    (let [handler (ServletContextHandler. nil context-path ServletContextHandler/NO_SESSIONS)
          follow-links? (:follow-links? options)
-         enable-trailing-slash-redirect? (:enable-trailing-slash-redirect? options)]
+         enable-trailing-slash-redirect? (:enable-trailing-slash-redirect? options)
+         normalize-request-uri? (:normalize-request-uri? options)]
      (.setBaseResource handler (Resource/newResource base-path))
      (when follow-links?
        (.addAliasCheck handler (AllowSymLinkAliasChecker.)))
@@ -738,16 +824,35 @@
      (when-not (nil? context-listeners)
        (dorun (map #(.addEventListener handler %) context-listeners)))
      (.addServlet handler (ServletHolder. (DefaultServlet.)) "/")
+     (when normalize-request-uri?
+       (add-normalized-uri-filter-to-servlet-handler handler))
      (add-handler webserver-context handler enable-trailing-slash-redirect?))))
+
+(schema/defn ^:always-validate
+  handler-maybe-wrapped-with-normalized-uri :- AbstractHandler
+  "If the supplied `normalize-request-uri?` parameter is 'true', return a
+  handler that normalizes a request uri before passing it on downstream to
+  the supplied handler for an incoming request.  If the supplied
+  `normalize-request-uri?` is 'false', return the supplied handler."
+  [handler :- AbstractHandler
+   normalize-request-uri? :- schema/Bool]
+  (if normalize-request-uri?
+    (doto (normalize-uri-handler)
+      (.setHandler handler))
+    handler))
 
 (schema/defn ^:always-validate
   add-ring-handler :- ContextHandler
   [webserver-context :- ServerContext
    handler :- (schema/pred ifn? 'ifn?)
    path :- schema/Str
-   enable-trailing-slash-redirect?]
-  (let [ctxt-handler (doto (ContextHandler. path)
-                       (.setHandler (ring-handler handler)))]
+   enable-trailing-slash-redirect?
+   normalize-request-uri? :- schema/Bool]
+  (let [handler (handler-maybe-wrapped-with-normalized-uri
+                 (ring-handler handler)
+                 normalize-request-uri?)
+        ctxt-handler (doto (ContextHandler. path)
+                       (.setHandler handler))]
     (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
 
 (schema/defn ^:always-validate
@@ -755,9 +860,13 @@
   [webserver-context :- ServerContext
    handlers :- websockets/WebsocketHandlers
    path :- schema/Str
-   enable-trailing-slash-redirect?]
-  (let [ctxt-handler (doto (ContextHandler. path)
-                       (.setHandler (websockets/websocket-handler handlers)))]
+   enable-trailing-slash-redirect?
+   normalize-request-uri? :- schema/Bool]
+  (let [handler (handler-maybe-wrapped-with-normalized-uri
+                 (websockets/websocket-handler handlers)
+                 normalize-request-uri?)
+        ctxt-handler (doto (ContextHandler. path)
+                       (.setHandler handler))]
     (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
 
 (schema/defn ^:always-validate
@@ -766,12 +875,15 @@
    servlet :- Servlet
    path :- schema/Str
    servlet-init-params :- {schema/Any schema/Any}
-   enable-trailing-slash-redirect?]
+   enable-trailing-slash-redirect?
+   normalize-request-uri? :- schema/Bool]
   (let [holder (doto (ServletHolder. servlet)
                  (.setInitParameters servlet-init-params))
         handler (doto (ServletContextHandler. ServletContextHandler/SESSIONS)
                   (.setContextPath path)
                   (.addServlet holder "/*"))]
+    (when normalize-request-uri?
+      (add-normalized-uri-filter-to-servlet-handler handler))
     (add-handler webserver-context handler enable-trailing-slash-redirect?)))
 
 (schema/defn ^:always-validate
@@ -782,10 +894,13 @@
   [webserver-context :- ServerContext
    war :- schema/Str
    path :- schema/Str
-   disable-redirects-no-slash?]
+   disable-redirects-no-slash?
+   normalize-request-uri? :- schema/Bool]
   (let [handler (doto (WebAppContext.)
                   (.setContextPath path)
                   (.setWar war))]
+    (when normalize-request-uri?
+      (add-normalized-uri-filter-to-servlet-handler handler))
     (add-handler webserver-context handler disable-redirects-no-slash?)))
 
 (schema/defn ^:always-validate
@@ -809,11 +924,17 @@
    options :- ProxyOptions
    disable-redirects-no-slash?]
   (let [target (update-in target [:path] remove-leading-slash)]
+    ;; This call hardcodes a value of 'false' for the 'normalize-request-uri?'
+    ;; parameter because the ProxyServlet already has its own logic for
+    ;; normalizing request URIs as it proxies them through.  Applying an
+    ;; extra layer of normalization in front of the ProxyServlet might otherwise
+    ;; cause requests to be proxied to an unintended URI.
     (add-servlet-handler webserver-context
                          (proxy-servlet webserver-context target options)
                          path
                          {}
-                         disable-redirects-no-slash?)))
+                         disable-redirects-no-slash?
+                         false)))
 
 (schema/defn ^:always-validate
    get-registered-endpoints :- RegisteredEndpoints
@@ -974,12 +1095,14 @@
         endpoint-map      {:type              :context
                            :base-path         base-path
                            :context-listeners context-listeners}
-        enable-redirect  (:redirect-if-no-trailing-slash options)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)
+        normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map context-path)
     (add-context-handler s base-path context-path
                          context-listeners
                          {:follow-links?                   (:follow-links options)
-                          :enable-trailing-slash-redirect? enable-redirect})))
+                          :enable-trailing-slash-redirect? enable-redirect
+                          :normalize-request-uri? normalize-request-uri})))
 
 (schema/defn ^:always-validate init!
   [context config :- config/WebserverServiceRawConfig]
@@ -1017,9 +1140,10 @@
         state         (:state s)
         endpoint-map  {:type     :ring}
 
-        enable-redirect  (:redirect-if-no-trailing-slash options)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)
+        normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
-    (add-ring-handler s handler path enable-redirect)))
+    (add-ring-handler s handler path enable-redirect normalize-request-uri)))
 
 (schema/defn ^:always-validate add-websocket-handler!
   [context
@@ -1030,9 +1154,14 @@
         s             (get-server-context context server-id)
         state         (:state s)
         endpoint-map  {:type     :websocket}
-        enable-redirect  (:redirect-if-no-trailing-slash options)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)
+        normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
-    (add-websocket-handler s handlers path enable-redirect)))
+    (add-websocket-handler s
+                           handlers
+                           path
+                           enable-redirect
+                           normalize-request-uri)))
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context servlet path options :- ServletHandlerOptions]
@@ -1045,9 +1174,15 @@
         endpoint-map        {:type     :servlet
                              :servlet  (type servlet)}
 
-        enable-redirect  (:redirect-if-no-trailing-slash options)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)
+        normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
-    (add-servlet-handler s servlet path servlet-init-params enable-redirect)))
+    (add-servlet-handler s
+                         servlet
+                         path
+                         servlet-init-params
+                         enable-redirect
+                         normalize-request-uri)))
 
 (schema/defn ^:always-validate add-war-handler!
   [context war path options :- CommonOptions]
@@ -1057,9 +1192,10 @@
         endpoint-map  {:type     :war
                        :war-path war}
 
-        enable-redirect  (:redirect-if-no-trailing-slash options)]
+        enable-redirect  (:redirect-if-no-trailing-slash options)
+        normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
-    (add-war-handler s war path enable-redirect)))
+    (add-war-handler s war path enable-redirect normalize-request-uri)))
 
 (schema/defn ^:always-validate add-proxy-route!
   [context target path options]
