@@ -494,7 +494,7 @@
   add-handler :- ContextHandler
   [webserver-context :- ServerContext
    handler :- ContextHandler
-   enable-trailing-slash-redirect?]
+   enable-trailing-slash-redirect? :- schema/Bool]
   (.setAllowNullPathInfo handler (not enable-trailing-slash-redirect?))
   (.addHandler (:handlers webserver-context) handler)
   ;; If this handler is being added after the server has been started, we
@@ -846,7 +846,7 @@
   [webserver-context :- ServerContext
    handler :- (schema/pred ifn? 'ifn?)
    path :- schema/Str
-   enable-trailing-slash-redirect?
+   enable-trailing-slash-redirect? :- schema/Bool
    normalize-request-uri? :- schema/Bool]
   (let [handler (handler-maybe-wrapped-with-normalized-uri
                  (ring-handler handler)
@@ -860,7 +860,7 @@
   [webserver-context :- ServerContext
    handlers :- websockets/WebsocketHandlers
    path :- schema/Str
-   enable-trailing-slash-redirect?
+   enable-trailing-slash-redirect? :- schema/Bool
    normalize-request-uri? :- schema/Bool]
   (let [handler (handler-maybe-wrapped-with-normalized-uri
                  (websockets/websocket-handler handlers)
@@ -875,7 +875,7 @@
    servlet :- Servlet
    path :- schema/Str
    servlet-init-params :- {schema/Any schema/Any}
-   enable-trailing-slash-redirect?
+   enable-trailing-slash-redirect? :- schema/Bool
    normalize-request-uri? :- schema/Bool]
   (let [holder (doto (ServletHolder. servlet)
                  (.setInitParameters servlet-init-params))
@@ -894,7 +894,7 @@
   [webserver-context :- ServerContext
    war :- schema/Str
    path :- schema/Str
-   disable-redirects-no-slash?
+   disable-redirects-no-slash? :- schema/Bool
    normalize-request-uri? :- schema/Bool]
   (let [handler (doto (WebAppContext.)
                   (.setContextPath path)
@@ -922,7 +922,7 @@
    target :- ProxyTarget
    path :- schema/Str
    options :- ProxyOptions
-   disable-redirects-no-slash?]
+   disable-redirects-no-slash? :- schema/Bool]
   (let [target (update-in target [:path] remove-leading-slash)]
     ;; This call hardcodes a value of 'false' for the 'normalize-request-uri?'
     ;; parameter because the ProxyServlet already has its own logic for
@@ -1095,7 +1095,7 @@
         endpoint-map      {:type              :context
                            :base-path         base-path
                            :context-listeners context-listeners}
-        enable-redirect  (:redirect-if-no-trailing-slash options)
+        enable-redirect  (get options :redirect-if-no-trailing-slash false)
         normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map context-path)
     (add-context-handler s base-path context-path
@@ -1140,7 +1140,7 @@
         state         (:state s)
         endpoint-map  {:type     :ring}
 
-        enable-redirect  (:redirect-if-no-trailing-slash options)
+        enable-redirect  (get options :redirect-if-no-trailing-slash false)
         normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
     (add-ring-handler s handler path enable-redirect normalize-request-uri)))
@@ -1154,7 +1154,7 @@
         s             (get-server-context context server-id)
         state         (:state s)
         endpoint-map  {:type     :websocket}
-        enable-redirect  (:redirect-if-no-trailing-slash options)
+        enable-redirect  (get options :redirect-if-no-trailing-slash false)
         normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
     (add-websocket-handler s
@@ -1174,7 +1174,7 @@
         endpoint-map        {:type     :servlet
                              :servlet  (type servlet)}
 
-        enable-redirect  (:redirect-if-no-trailing-slash options)
+        enable-redirect  (get options :redirect-if-no-trailing-slash false)
         normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
     (add-servlet-handler s
@@ -1192,7 +1192,7 @@
         endpoint-map  {:type     :war
                        :war-path war}
 
-        enable-redirect  (:redirect-if-no-trailing-slash options)
+        enable-redirect  (get options :redirect-if-no-trailing-slash false)
         normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
     (add-war-handler s war path enable-redirect normalize-request-uri)))
@@ -1206,6 +1206,6 @@
                        :target-host (:host target)
                        :target-port (:port target)
                        :target-path (:path target)}
-        enable-redirect  (:redirect-if-no-trailing-slash options)]
+        enable-redirect  (get options :redirect-if-no-trailing-slash false)]
     (register-endpoint! state endpoint-map path)
     (add-proxy-route s target path options enable-redirect)))
