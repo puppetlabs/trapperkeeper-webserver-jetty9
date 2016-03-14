@@ -561,7 +561,8 @@
   [{:keys [server] :as webserver-context} :- ServerContext]
   (when-let [mbean-container (:mbean-container @(:state webserver-context))]
     (log/debug "Cleaning up JMX MBean container")
-    (.destroy mbean-container))
+    (.destroy mbean-container)
+    (swap! (:state webserver-context) assoc :mbean-container nil))
   (when (started? webserver-context)
     (log/info "Shutting down web server.")
     (try

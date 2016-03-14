@@ -45,7 +45,8 @@ react accordingly."
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services :refer [service-context]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
-            [puppetlabs.trapperkeeper.testutils.webserver :as testutils])
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]
+            [puppetlabs.trapperkeeper.testutils.logging :as tk-log-testutils])
   (:import (org.eclipse.jetty.server HttpConfiguration ServerConnector Server)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
@@ -182,7 +183,8 @@ react accordingly."
                            (get-server connectors))]
             (is (thrown-with-msg? IllegalStateException
                                   (insufficient-threads-msg server)
-                                  (.start server)))))
+                                  (tk-log-testutils/with-test-logging
+                                   (.start server))))))
         (testing (str "server with minimum required threads for " x
                       "connector(s) start(s) successfully")
           (let [server (get-server required-threads connectors)]
