@@ -757,12 +757,12 @@
                    {:webserver {:port 8080}})]
           (tk-app/stop app)
           (tk-app/stop app)))
-      ;; if we try to unregister the mbeans more than once Jetty will log a bunch
-      ;; of very loud and terrifying InstanceNotFoundExceptions
-      (let [log-event-filter #(and (= :warn (:level %))
-                                   (not (nil? (:exception %)))
-                                   (re-find #"InstanceNotFoundException"
-                                            (.getClassName (:exception %))))
+      ;; we previously had a bug where we could try to unregister mbeans multiple
+      ;; times if our tk-j9 stop lifecycle function was called more than once.
+      ;; in that case, Jetty would log tons of nasty exceptions at warning level.
+      ;; this test just validates that that is not happening.
+      (let [log-event-filter #(or (= :warn (:level %))
+                                  (= :error (:level %)))
             mbean-err-logs (->> @log-messages
                                 (map tk-log-testutils/event->map)
                                 (filter log-event-filter))]
