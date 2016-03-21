@@ -7,7 +7,7 @@
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
-           (javax.servlet.http HttpServletResponse)
+           (javax.servlet.http HttpServletResponse HttpServletRequest)
            (java.util.concurrent TimeoutException)
            (org.eclipse.jetty.servlets.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
@@ -16,7 +16,7 @@
            (org.eclipse.jetty.http MimeTypes HttpHeader HttpHeaderValue)
            (javax.servlet Servlet ServletContextListener)
            (org.eclipse.jetty.proxy ProxyServlet)
-           (java.net URI)
+           (java.net URI URLDecoder)
            (java.security Security)
            (org.eclipse.jetty.client HttpClient)
            (clojure.lang Atom)
@@ -139,6 +139,11 @@
   {:state     (schema/atom ServerContextState)
    :handlers  ContextHandlerCollection
    :server    (schema/maybe Server)})
+
+(def UriNormalizationResult
+  (schema/either
+   {:error schema/Str}
+   {:normalized-request-uri schema/Str}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -393,6 +398,57 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler Helper Functions
+
+(schema/defn ^:always-validate normalize-uri-path :- UriNormalizationResult
+  "Return a 'normalized' version of the uri path represented on the incoming
+  request.  The 'normalization' consists of three steps:
+
+  1) URL (percent) decode the path, assuming any percent-encodings represent
+     UTF-8 characters.
+
+   For example:
+
+   /foo//bar/%2E%2E/ba%7A => /foo//bar/../baz
+
+   An exception may be thrown if the request has malformed content, e.g.,
+   partially-formed percent-encoded characters like '%A%B'.
+
+  2) Check the percent-decoded path for any relative path segments ('..' or
+     '.').
+
+   A map with an :error key and corresponding error message string is
+   returned if one or more segments are found.
+
+   For example, an error would be returned for any of the following paths:
+
+   .
+   ..
+   /foo//bar/../baz
+   /foo//./bar/baz
+
+   The following paths would not be considered to contain relative paths:
+
+   /foo//bar/baz
+   /foo//bar/.../baz
+   /foo//bar/a.b/baz
+   /foo//bar/a..b/baz
+
+  3) Compact any repeated forward slash characters in a path.
+
+   For example:
+
+   /foo//bar/baz => /foo/bar/baz
+   /foo/bar////baz => /foo/bar/baz"
+  [request :- HttpServletRequest]
+  (let [raw-uri-path (.getRequestURI request)
+        percent-decoded-uri-path (URLDecoder/decode raw-uri-path "UTF-8")
+        canonicalized-uri-path (URIUtil/canonicalPath percent-decoded-uri-path)]
+    (if (or (nil? canonicalized-uri-path)
+            (not= (.length percent-decoded-uri-path)
+                  (.length canonicalized-uri-path)))
+      {:error (str "Invalid relative path (.. or .) in: "
+                   percent-decoded-uri-path)}
+      {:normalized-request-uri (URIUtil/compactPath canonicalized-uri-path)})))
 
 (schema/defn ^:always-validate
   add-handler :- ContextHandler
