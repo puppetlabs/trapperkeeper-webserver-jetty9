@@ -1,4 +1,4 @@
-(def tk-version "1.3.0")
+(def tk-version "1.3.1")
 (def ks-version "1.3.0")
 (def jetty-version "9.2.10.v20150310")
 
@@ -11,18 +11,21 @@
   ;; dependencies. Also supports :warn to simply emit warnings.
   ;; requires lein 2.2.0+.
   :pedantic? :abort
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
+
+                 ;; begin version conflict resolution dependencies
+                 [org.slf4j/slf4j-api "1.7.7"]
+                 ;; end version conflict resolution dependencies
+
                  [org.clojure/java.jmx "0.2.0"]
                  [org.clojure/tools.logging "0.2.6"]
                  [prismatic/schema "1.0.4"]
-                 [prismatic/plumbing "0.4.2"]
 
-                 ;; Let ssl-utils bring in the clj-time dependency
                  [puppetlabs/ssl-utils "0.8.1"]
-                 [puppetlabs/kitchensink ~ks-version :exclusions [clj-time]]
-                 [puppetlabs/trapperkeeper ~tk-version :exclusions [clj-time]]
+                 [puppetlabs/kitchensink ~ks-version]
+                 [puppetlabs/trapperkeeper ~tk-version]
 
-                 [ch.qos.logback/logback-access "1.1.1"]
+                 [ch.qos.logback/logback-access "1.1.3"]
 
                  [org.codehaus.janino/janino "2.7.8"]
 
