@@ -33,6 +33,8 @@
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [puppetlabs.trapperkeeper.services.webserver.experimental.jetty9-websockets :as websockets]
+            [puppetlabs.trapperkeeper.services.webserver.normalized-uri-helpers
+             :as normalized-uri-helpers]
             [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -142,11 +144,6 @@
   {:state     (schema/atom ServerContextState)
    :handlers  ContextHandlerCollection
    :server    (schema/maybe Server)})
-
-(def UriNormalizationResult
-  (schema/either
-   {:error schema/Str}
-   {:normalized-request-uri schema/Str}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility Functions
@@ -401,71 +398,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler Helper Functions
-
-(schema/defn ^:always-validate normalize-uri-path :- UriNormalizationResult
-  "Return a 'normalized' version of the uri path represented on the incoming
-  request.  The 'normalization' consists of three steps:
-
-  1) URL (percent) decode the path, assuming any percent-encodings represent
-     UTF-8 characters.
-
-   An exception may be thrown if the request has malformed content, e.g.,
-   partially-formed percent-encoded characters like '%A%B'.
-
-  2) Check the percent-decoded path for any relative path segments ('..' or
-     '.').
-
-   A map with an :error key and corresponding error message string is
-   returned if one or more segments are found.
-
-  3) Compact any repeated forward slash characters in a path."
-  [request :- HttpServletRequest]
-  (let [raw-uri-path (.getRequestURI request)
-        percent-decoded-uri-path (URLDecoder/decode raw-uri-path "UTF-8")
-        canonicalized-uri-path (URIUtil/canonicalPath percent-decoded-uri-path)]
-    (if (or (nil? canonicalized-uri-path)
-            (not= (.length percent-decoded-uri-path)
-                  (.length canonicalized-uri-path)))
-      {:error (str "Invalid relative path (.. or .) in: "
-                   percent-decoded-uri-path)}
-      {:normalized-request-uri (URIUtil/compactPath canonicalized-uri-path)})))
-
-(schema/defn ^:always-validate
-  normalize-uri-handler :- HandlerWrapper
-  "Create a `HandlerWrapper` which provides a normalized request URI on to
-  its downstream handler for an incoming request.  The normalized URI would
-  be returned for a 'getRequestURI' call made by the downstream handler on
-  its incoming HttpServletRequest request parameter.  Normalization is done
-  per the rules described in the `normalize-uri-path` function.  If an error
-  is encountered during request URI normalization, an HTTP 400 (Bad Request)
-  response is returned rather than the request being passed on its downstream
-  handler."
-  []
-  (proxy [HandlerWrapper] []
-    (handle [^String target ^Request base-request
-             ^HttpServletRequest request ^HttpServletResponse response]
-      (let [handler (proxy-super getHandler)
-            is-started (proxy-super isStarted)]
-        ;; It may not strictly be necessary to check if the wrapping handler
-        ;; is started in order to let a request through but that's what the
-        ;; base `HandlerWrapper` class from Jetty does, so it seemed best to
-        ;; follow the pattern:
-        ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/handler/HandlerWrapper.java#L95
-        (when (and handler is-started)
-          (let [normalized-uri-result (normalize-uri-path request)]
-            (if-let [error (:error normalized-uri-result)]
-              (do
-                (servlet/update-servlet-response response
-                                                 {:status 400 :body error})
-                (.setHandled base-request true))
-              (.handle
-               handler
-               target
-               base-request
-               (HttpServletRequestWithAlternateRequestUri.
-                request
-                (:normalized-request-uri normalized-uri-result))
-               response))))))))
 
 (schema/defn ^:always-validate
   add-handler :- ContextHandler
@@ -734,50 +666,6 @@
         (throw e)))
     webserver-context))
 
-(schema/defn ^:always-validate normalized-uri-filter :- Filter
-  "Create a servlet filter which provides a normalized request URI on to its
-  downstream consumers for an incoming request.  The normalized URI would be
-  returned for a 'getRequestURI' call on the HttpServletRequest parameter.
-  Normalization is done per the rules described in the `normalize-uri-path`
-  function.  If an error is encountered during request URI normalization, an
-  HTTP 400 (Bad Request) response is returned rather than the request being
-  passed on its downstream consumers."
-  []
-  (reify Filter
-    (init [_ _])
-    (doFilter [_ request response chain]
-     ;; The method signature for a servlet filter has a 'request' of the
-     ;; more generic 'ServletRequest' and 'response' of the more generic
-     ;; 'ServletResponse'.  While we practically shouldn't see anything
-     ;; but the more specific Http types for each, this code explicitly
-     ;; checks to see that the requests are Http types as the URI
-     ;; normalization would be irrelevant for other types.
-      (if (and (instance? HttpServletRequest request)
-               (instance? HttpServletResponse response))
-        (let [normalized-uri-result (normalize-uri-path request)]
-          (if-let [error (:error normalized-uri-result)]
-            (servlet/update-servlet-response response
-                                             {:status 400
-                                              :body error})
-            (.doFilter chain
-                       (HttpServletRequestWithAlternateRequestUri.
-                        request
-                        (:normalized-request-uri normalized-uri-result))
-                       response)))
-        (.doFilter chain request response)))
-    (destroy [_])))
-
-(schema/defn ^:always-validate
-  add-normalized-uri-filter-to-servlet-handler
-  "Adds a servlet filter to the servlet handler which provides a normalized
-  request URI on to its downstream consumers for an incoming request."
-  [handler :- ServletContextHandler]
-  (let [filter-holder (FilterHolder. (normalized-uri-filter))]
-    (.addFilter handler
-                filter-holder
-                "/*"
-                (EnumSet/of DispatcherType/REQUEST))))
-
 (schema/defn ^:always-validate
   add-context-handler :- ContextHandler
   "Add a static content context handler (allow for customization of the context handler through javax.servlet.ServletContextListener implementations)"
@@ -801,21 +689,9 @@
        (dorun (map #(.addEventListener handler %) context-listeners)))
      (.addServlet handler (ServletHolder. (DefaultServlet.)) "/")
      (when normalize-request-uri?
-       (add-normalized-uri-filter-to-servlet-handler handler))
+       (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler
+        handler))
      (add-handler webserver-context handler enable-trailing-slash-redirect?))))
-
-(schema/defn ^:always-validate
-  handler-maybe-wrapped-with-normalized-uri :- AbstractHandler
-  "If the supplied `normalize-request-uri?` parameter is 'true', return a
-  handler that normalizes a request uri before passing it on downstream to
-  the supplied handler for an incoming request.  If the supplied
-  `normalize-request-uri?` is 'false', return the supplied handler."
-  [handler :- AbstractHandler
-   normalize-request-uri? :- schema/Bool]
-  (if normalize-request-uri?
-    (doto (normalize-uri-handler)
-      (.setHandler handler))
-    handler))
 
 (schema/defn ^:always-validate
   add-ring-handler :- ContextHandler
@@ -824,9 +700,10 @@
    path :- schema/Str
    enable-trailing-slash-redirect? :- schema/Bool
    normalize-request-uri? :- schema/Bool]
-  (let [handler (handler-maybe-wrapped-with-normalized-uri
-                 (ring-handler handler)
-                 normalize-request-uri?)
+  (let [handler
+        (normalized-uri-helpers/handler-maybe-wrapped-with-normalized-uri
+         (ring-handler handler)
+         normalize-request-uri?)
         ctxt-handler (doto (ContextHandler. path)
                        (.setHandler handler))]
     (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
@@ -838,9 +715,10 @@
    path :- schema/Str
    enable-trailing-slash-redirect? :- schema/Bool
    normalize-request-uri? :- schema/Bool]
-  (let [handler (handler-maybe-wrapped-with-normalized-uri
-                 (websockets/websocket-handler handlers)
-                 normalize-request-uri?)
+  (let [handler
+        (normalized-uri-helpers/handler-maybe-wrapped-with-normalized-uri
+         (websockets/websocket-handler handlers)
+         normalize-request-uri?)
         ctxt-handler (doto (ContextHandler. path)
                        (.setHandler handler))]
     (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
@@ -859,7 +737,8 @@
                   (.setContextPath path)
                   (.addServlet holder "/*"))]
     (when normalize-request-uri?
-      (add-normalized-uri-filter-to-servlet-handler handler))
+      (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler
+       handler))
     (add-handler webserver-context handler enable-trailing-slash-redirect?)))
 
 (schema/defn ^:always-validate
@@ -876,7 +755,8 @@
                   (.setContextPath path)
                   (.setWar war))]
     (when normalize-request-uri?
-      (add-normalized-uri-filter-to-servlet-handler handler))
+      (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler
+       handler))
     (add-handler webserver-context handler disable-redirects-no-slash?)))
 
 (schema/defn ^:always-validate
