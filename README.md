@@ -157,11 +157,24 @@ you will need to do something like this:
 
 ##### Request URI Normalization
 
-When a `:normalize-request-uri` option with value of `true` is included in
-the options map for an add handler call, the following steps, in order, are
-performed against the raw
+The `:normalize-request-uri` setting, which can be provided in the `options`
+argument for an add handler call, controls whether or not the
 [path component](https://tools.ietf.org/html/rfc3986#section-3.3) from the HTTP
-request URI:
+request URI is normalized.  The value for the setting is expected to be a
+boolean.
+
+When set to `false` (the default value), the "raw" path component will be
+used by the webserver when evaluating a request to the handler.
+
+When set to `true`, the path component that the webserver evaluates for a
+request to the handler will have been "normalized". For a Ring request handler,
+the "normalized" value (instead of the "raw" value) will be associated with the
+`:uri` key in the Ring request map.  For a Servlet request handler, the
+"normalized" value (instead of the "raw" value) will be returned from a call
+made to the `getRequestURI` method on the `HttpServletRequest` object.
+
+The following steps, in order, are performed against the raw path component
+when the `:normalize-request-uri` setting is true:
 
 1. URL (percent) decode the path, assuming any percent-encodings represent UTF-8
    characters.
@@ -250,13 +263,10 @@ The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whe
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
 
-The value stored in `:normalize-request-uri` is a boolean.  When set to `true`,
-the URI path that the webserver evaluates for a request to the handler will have
-been "normalized".  See the [Request URI Normalization]
-(#request-uri-normalization) section for more information on the
-normalization process.  When set to `false` (the default value), the raw path
-component from the HTTP request URI will be used by the webserver when 
-evaluating a request to the handler.
+The value stored in `:normalize-request-uri` is a boolean indicating whether
+or not the request URI should be normalized before it is made available to the
+handler.  See the [Request URI Normalization](#request-uri-normalization)
+section for more information on the normalization process.
 
 The value stored in `:follow-links` is a
 boolean indicating whether or not symbolic links
@@ -299,14 +309,10 @@ The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whe
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
 
-The value stored in `:normalize-request-uri` is a boolean.  When set to
-`true`, the value that is returned for a `getRequestURI` call on the
-`HttpServletRequest` object supplied for an `HttpServlet` request will have
-been "normalized".  See the
-[Request URI Normalization](#request-uri-normalization) section for more
-information on the normalization process.  When set to `false` (the default
-value), the raw path component from the HTTP request URI will be returned for
-a call to `getRequestURI` on the `HttpServletRequest` object.
+The value stored in `:normalize-request-uri` is a boolean indicating whether
+or not the request URI should be normalized before it is made available to the
+handler.  See the [Request URI Normalization](#request-uri-normalization)
+section for more information on the normalization process.
 
 The value stored at the `:servlet-init-params` key is a map of servlet init
 parameters.
@@ -414,15 +420,10 @@ The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whe
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
 
-The value stored in `:normalize-request-uri` is a boolean.  When set to `true`,
-the value that is returned for a `getRequestURI` call on the
-`HttpServletRequest` object supplied for a request to an `HttpServlet` from
-the WAR file will have been "normalized".  See the
-[Request URI Normalization](#request-uri-normalization)
-section for more information on the normalization process.  When set to
-`false` (the default value), the raw path component from the HTTP request URI
-will be returned for a call to `getRequestURI` on the `HttpServletRequest`
-object.
+The value stored in `:normalize-request-uri` is a boolean indicating whether
+or not the request URI should be normalized before it is made available to the
+handler.  See the [Request URI Normalization](#request-uri-normalization)
+section for more information on the normalization process.
 
 #### `add-proxy-route`
 
