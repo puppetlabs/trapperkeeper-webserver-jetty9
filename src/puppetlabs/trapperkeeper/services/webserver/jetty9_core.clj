@@ -409,10 +409,6 @@
   1) URL (percent) decode the path, assuming any percent-encodings represent
      UTF-8 characters.
 
-   For example:
-
-   /foo//bar/%2E%2E/ba%7A => /foo//bar/../baz
-
    An exception may be thrown if the request has malformed content, e.g.,
    partially-formed percent-encoded characters like '%A%B'.
 
@@ -422,26 +418,7 @@
    A map with an :error key and corresponding error message string is
    returned if one or more segments are found.
 
-   For example, an error would be returned for any of the following paths:
-
-   .
-   ..
-   /foo//bar/../baz
-   /foo//./bar/baz
-
-   The following paths would not be considered to contain relative paths:
-
-   /foo//bar/baz
-   /foo//bar/.../baz
-   /foo//bar/a.b/baz
-   /foo//bar/a..b/baz
-
-  3) Compact any repeated forward slash characters in a path.
-
-   For example:
-
-   /foo//bar/baz => /foo/bar/baz
-   /foo/bar////baz => /foo/bar/baz"
+  3) Compact any repeated forward slash characters in a path."
   [request :- HttpServletRequest]
   (let [raw-uri-path (.getRequestURI request)
         percent-decoded-uri-path (URLDecoder/decode raw-uri-path "UTF-8")
@@ -760,8 +737,7 @@
 (schema/defn ^:always-validate normalized-uri-filter :- Filter
   "Create a servlet filter which provides a normalized request URI on to its
   downstream consumers for an incoming request.  The normalized URI would be
-  returned for a 'getRequestURI' call made by a downstream consumer its
-  incoming request parameter, assuming the request is an HttpServletRequest.
+  returned for a 'getRequestURI' call on the HttpServletRequest parameter.
   Normalization is done per the rules described in the `normalize-uri-path`
   function.  If an error is encountered during request URI normalization, an
   HTTP 400 (Bad Request) response is returned rather than the request being
