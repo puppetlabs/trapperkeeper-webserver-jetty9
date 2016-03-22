@@ -750,22 +750,19 @@
 
 (deftest double-stop-test
   (testing "if the stop lifecycle is called more than once, we handle that gracefully and quietly"
-    (let [log-messages (atom [])]
-      (tk-log-testutils/with-logging-to-atom tk-log/root-logger-name log-messages
-        (let [app (tk-bootstrap/bootstrap-services-with-config
-                   [jetty9-service]
-                   {:webserver {:port 8080}})]
-          (tk-app/stop app)
-          (tk-app/stop app)))
+    (tk-log-testutils/with-logged-event-maps log-events
+      (let [app (tk-bootstrap/bootstrap-services-with-config
+                 [jetty9-service]
+                 {:webserver {:port 8080}})]
+        (tk-app/stop app)
+        (tk-app/stop app))
       ;; we previously had a bug where we could try to unregister mbeans multiple
       ;; times if our tk-j9 stop lifecycle function was called more than once.
       ;; in that case, Jetty would log tons of nasty exceptions at warning level.
       ;; this test just validates that that is not happening.
       (let [log-event-filter #(or (= :warn (:level %))
                                   (= :error (:level %)))
-            mbean-err-logs (->> @log-messages
-                                (map tk-log-testutils/event->map)
-                                (filter log-event-filter))]
+            mbean-err-logs (filter log-event-filter @log-events)]
         (is (= 0 (count mbean-err-logs)))))))
 
 (deftest warn-if-sslv3-supported-test
