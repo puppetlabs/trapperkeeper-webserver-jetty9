@@ -21,7 +21,8 @@
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [schema.test :as schema-test]
-            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]
+            [puppetlabs.trapperkeeper.testutils.logging :as tk-log-testutils]))
 
 (use-fixtures :once
   schema-test/validate-schemas
@@ -379,19 +380,21 @@
              (.getAcceptors (first connectors)))
           "Unexpected number of acceptor threads for connector")))
   (testing "non-nil acceptors configured properly for http connector"
-    (let [server     (create-server-with-partial-http-config
-                       {:http {:acceptor-threads 42}})
+    (let [server (tk-log-testutils/with-test-logging
+                  (create-server-with-partial-http-config
+                   {:http {:acceptor-threads 42}}))
           connectors (.getConnectors server)]
       (is (= 1 (count connectors))
           "Unexpected number of connectors for server")
       (is (= 42 (.getAcceptors (first connectors)))
           "Unexpected number of acceptor threads for connector")))
   (testing "non-nil acceptors configured properly for multiple connectors"
-    (let [server (create-server-with-partial-http-and-https-config
-                   {:http  {:port 25
-                            :acceptor-threads 91}
+    (let [server (tk-log-testutils/with-test-logging
+                  (create-server-with-partial-http-and-https-config
+                   {:http {:port 25
+                           :acceptor-threads 91}
                     :https {:port 92
-                            :acceptor-threads 63}})
+                            :acceptor-threads 63}}))
           connectors (.getConnectors server)]
       (is (= 2 (count connectors))
           "Unexpected number of connectors for server")

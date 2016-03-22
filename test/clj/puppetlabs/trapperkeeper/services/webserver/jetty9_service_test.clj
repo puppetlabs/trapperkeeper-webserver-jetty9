@@ -19,9 +19,10 @@
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
              :refer [with-app-with-empty-config
-                     with-app-with-config]]
-            [puppetlabs.trapperkeeper.testutils.logging
-             :refer [with-test-logging with-log-output logs-matching]]
+                     with-app-with-config]
+             :as tk-bootstrap]
+            [puppetlabs.trapperkeeper.logging :as tk-log]
+            [puppetlabs.trapperkeeper.testutils.logging :as tk-log-testutils]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
             [schema.core :as schema]
             [schema.test :as schema-test]))
@@ -29,7 +30,8 @@
 (use-fixtures :once
   ks-test-fixtures/with-no-jvm-shutdown-hooks
   schema-test/validate-schemas
-  testutils/assert-clean-shutdown)
+  testutils/assert-clean-shutdown
+  (fn [f] (tk-log/reset-logging) (f)))
 
 (def default-server-config
   {:webserver {:foo {:port 8080}
@@ -185,7 +187,7 @@
     (is (thrown-with-msg?
           IllegalArgumentException
           #"Either host, port, ssl-host, or ssl-port must be specified"
-          (with-test-logging
+          (tk-log-testutils/with-test-logging
             (with-app-with-empty-config app [jetty9-service])))
       "Did not encounter expected exception when no port specified in config")))
 
@@ -345,7 +347,7 @@
 
   (testing (str "jetty throws startup exception if non-CRL PEM is specified "
                 "as ssl-crl-path")
-    (with-test-logging
+    (tk-log-testutils/with-test-logging
       (is (thrown?
             CRLException
             (with-app-with-config
@@ -358,7 +360,7 @@
 
   (testing (str "jetty throws startup exception if ssl-crl-path refers to a "
                 "non-existent file")
-    (with-test-logging
+    (tk-log-testutils/with-test-logging
       (is (thrown-with-msg?
             IllegalArgumentException
             #"Non-readable path specified for ssl-crl-path option"
@@ -395,7 +397,7 @@
 (deftest jetty-and-dependent-service-shutdown-after-service-error
   (testing (str "jetty and any dependent services are shutdown after a"
                 "service throws an error from its start function")
-    (with-test-logging
+    (tk-log-testutils/with-test-logging
      (let [shutdown-called? (atom false)
            test-service     (tk-services/service
                               [[:WebserverService]]
@@ -424,7 +426,7 @@
   (testing (str "jetty and any dependent services are shutdown after a"
                 "service throws an error from its start function"
                 "in a multi-server set-up")
-    (with-test-logging
+    (tk-log-testutils/with-test-logging
       (let [shutdown-called? (atom false)
             test-service     (tk-services/service
                                [[:WebserverService]]
@@ -460,7 +462,7 @@
   (testing (str "jetty server instance never attached to the service context "
                 "and dependent services are shutdown after a service throws "
                 "an error from its init function")
-    (with-test-logging
+    (tk-log-testutils/with-test-logging
       (let [shutdown-called? (atom false)
             test-service     (tk-services/service
                                [[:WebserverService]]
@@ -486,7 +488,7 @@
   (testing (str "attempt to launch second jetty server on same port as "
                 "already running jetty server fails with BindException without "
                 "placing second jetty server instance on app context")
-    (with-test-logging
+    (tk-log-testutils/with-test-logging
       (let [first-app (tk-core/boot-services-with-config
                         [jetty9-service]
                         jetty-plaintext-config)]
@@ -533,9 +535,10 @@
       [jetty9-service
        hello-webservice]
       jetty-plaintext-config
-      (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
-                                                                 :as :text})]
-        (is (= (:status response) 413)))))
+      (tk-log-testutils/with-test-logging
+       (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
+                                                                  :as :text})]
+         (is (= (:status response) 413))))))
 
   (testing (str "request to Jetty succeeds with a large cookie if the request header "
                 "size is properly set")
@@ -691,28 +694,29 @@
         (with-open [async-client (async/create-client {})]
           (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
             @in-request-handler
-            (with-test-logging
+            (tk-log-testutils/with-test-logging
               (tk-app/stop app))
             (is (not (nil? (:error @response)))))))))
 
   (testing "no graceful shutdown when stop timeout is set to 0"
-    (with-app-with-config
-      app
-      [jetty9-service]
-      {:webserver {:port 8080 :shutdown-timeout-seconds 0}}
-      (let [s (tk-app/get-service app :WebserverService)
-            add-ring-handler   (partial add-ring-handler s)
-            in-request-handler (promise)
-            ring-handler       (fn [_]
-                                 (deliver in-request-handler true)
-                                 (Thread/sleep 300)
-                                 {:status 200 :body "Hello, World!"})]
-        (add-ring-handler ring-handler "/hello")
-        (with-open [async-client (async/create-client {})]
-          (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
-            @in-request-handler
-            (tk-app/stop app)
-            (is (not (nil? (:error @response)))))))))
+    (tk-log-testutils/with-test-logging
+     (with-app-with-config
+       app
+       [jetty9-service]
+       {:webserver {:port 8080 :shutdown-timeout-seconds 0}}
+       (let [s (tk-app/get-service app :WebserverService)
+             add-ring-handler (partial add-ring-handler s)
+             in-request-handler (promise)
+             ring-handler (fn [_]
+                            (deliver in-request-handler true)
+                            (Thread/sleep 300)
+                            {:status 200 :body "Hello, World!"})]
+         (add-ring-handler ring-handler "/hello")
+         (with-open [async-client (async/create-client {})]
+           (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
+             @in-request-handler
+             (tk-app/stop app)
+             (is (not (nil? (:error @response))))))))))
 
   (testing "tk app can still restart even if stop timeout expires"
     (let [in-request-handler? (promise)
@@ -728,7 +732,7 @@
                                    {:status 200 :body hello-body})
                                  hello-path)
                                 context))]
-      (with-test-logging
+      (tk-log-testutils/with-test-logging
        (with-app-with-config
          app
          [jetty9-service
@@ -744,6 +748,23 @@
              (is (= 200 (:status @response)))
              (is (= hello-body (:body @response))))))))))
 
+(deftest double-stop-test
+  (testing "if the stop lifecycle is called more than once, we handle that gracefully and quietly"
+    (tk-log-testutils/with-logged-event-maps log-events
+      (let [app (tk-bootstrap/bootstrap-services-with-config
+                 [jetty9-service]
+                 {:webserver {:port 8080}})]
+        (tk-app/stop app)
+        (tk-app/stop app))
+      ;; we previously had a bug where we could try to unregister mbeans multiple
+      ;; times if our tk-j9 stop lifecycle function was called more than once.
+      ;; in that case, Jetty would log tons of nasty exceptions at warning level.
+      ;; this test just validates that that is not happening.
+      (let [log-event-filter #(or (= :warn (:level %))
+                                  (= :error (:level %)))
+            mbean-err-logs (filter log-event-filter @log-events)]
+        (is (= 0 (count mbean-err-logs)))))))
+
 (deftest warn-if-sslv3-supported-test
   (letfn [(start-server [ssl-protocols]
             (let [config (if ssl-protocols
@@ -754,21 +775,23 @@
                 [jetty9-service]
                 config)))]
     (testing "warns if SSLv3 is in the protocol list"
-      (with-test-logging
+      (tk-log-testutils/with-test-logging
         (start-server ["SSLv3" "TLSv1"])
         (is (logged? #"known vulnerabilities"))))
     (testing "warns regardless of case"
-      (with-test-logging
+      (tk-log-testutils/with-test-logging
         (start-server ["sslv3"])
         (is (logged? #"known vulnerabilities"))))
     (testing "does not warn if sslv3 is not in the protocol list"
-      (with-log-output logs
+      (tk-log-testutils/with-log-output logs
         (start-server ["TLSv1"])
-        (is (= 0 (count (logs-matching #"known vulnerabilities" @logs))))))
+        (is (= 0 (count (tk-log-testutils/logs-matching
+                         #"known vulnerabilities" @logs))))))
     (testing "does not warn with default settings"
-      (with-log-output logs
+      (tk-log-testutils/with-log-output logs
         (start-server nil)
-        (is (= 0 (count (logs-matching #"known vulnerabilities" @logs))))))))
+        (is (= 0 (count (tk-log-testutils/logs-matching
+                         #"known vulnerabilities" @logs))))))))
 
 (deftest sslv3-support-test
   (testing "SSLv3 is not supported by default"
@@ -782,7 +805,7 @@
            (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
                                                               {:ssl-protocols ["SSLv3"]}))))))
   (testing "SSLv3 is supported when configured"
-    (with-test-logging
+    (tk-log-testutils/with-test-logging
      (with-app-with-config
       app
       [jetty9-service
