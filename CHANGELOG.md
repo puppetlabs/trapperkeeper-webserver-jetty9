@@ -1,3 +1,13 @@
+## 1.5.5
+
+This is a bugfix and maintenance release.
+
+* [TK-333](https://tickets.puppetlabs.com/browse/TK-333) Tolerate multiple
+  calls to `stop` by ensuring that the server shuts down and cleans up mbeans in
+  an idempotent way.
+* Upgrade Trapperkeeper dependency to 1.3.1
+* Upgrade Clojure dependency to 1.7.0
+
 ## 1.5.4
 
 This is a bugfix release.
