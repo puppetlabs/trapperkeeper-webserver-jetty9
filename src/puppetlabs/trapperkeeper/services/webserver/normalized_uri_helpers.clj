@@ -12,12 +12,7 @@
            (java.util EnumSet)
            (org.eclipse.jetty.servlet FilterHolder ServletContextHandler)))
 
-(def UriNormalizationResult
-  (schema/either
-   {:error schema/Str}
-   {:normalized-request-uri schema/Str}))
-
-(schema/defn ^:always-validate normalize-uri-path :- UriNormalizationResult
+(schema/defn ^:always-validate normalize-uri-path :- schema/Str
   "Return a 'normalized' version of the uri path represented on the incoming
   request.  The 'normalization' consists of three steps:
 
@@ -30,8 +25,7 @@
   2) Check the percent-decoded path for any relative path segments ('..' or
      '.').
 
-   A map with an :error key and corresponding error message string is
-   returned if one or more segments are found.
+   An IllegalArgumentException is thrown if one or more segments are found.
 
   3) Compact any repeated forward slash characters in a path."
   [request :- HttpServletRequest]
@@ -41,9 +35,10 @@
     (if (or (nil? canonicalized-uri-path)
             (not= (.length percent-decoded-uri-path)
                   (.length canonicalized-uri-path)))
-      {:error (str "Invalid relative path (.. or .) in: "
-                   percent-decoded-uri-path)}
-      {:normalized-request-uri (URIUtil/compactPath canonicalized-uri-path)})))
+      (throw (IllegalArgumentException.
+              (str "Invalid relative path (.. or .) in: "
+                   percent-decoded-uri-path)))
+      (URIUtil/compactPath canonicalized-uri-path))))
 
 (schema/defn ^:always-validate
   normalize-uri-handler :- HandlerWrapper
@@ -67,20 +62,25 @@
         ;; follow the pattern:
         ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/handler/HandlerWrapper.java#L95
         (when (and handler is-started)
-          (let [normalized-uri-result (normalize-uri-path request)]
-            (if-let [error (:error normalized-uri-result)]
-              (do
-                (servlet/update-servlet-response response
-                                                 {:status 400 :body error})
-                (.setHandled base-request true))
-              (.handle
-               handler
-               target
-               base-request
-               (HttpServletRequestWithAlternateRequestUri.
-                request
-                (:normalized-request-uri normalized-uri-result))
-               response))))))))
+          (if-let [normalized-uri
+                   (try
+                     (normalize-uri-path request)
+                     (catch IllegalArgumentException ex
+                       (do
+                         (servlet/update-servlet-response
+                          response
+                          {:status 400
+                           :body (.getMessage ex)})
+                         (.setHandled base-request true))
+                       nil))]
+            (.handle
+             handler
+             target
+             base-request
+             (HttpServletRequestWithAlternateRequestUri.
+              request
+              normalized-uri)
+             response)))))))
 
 (schema/defn ^:always-validate normalized-uri-filter :- Filter
   "Create a servlet filter which provides a normalized request URI on to its
@@ -102,16 +102,20 @@
      ;; normalization would be irrelevant for other types.
       (if (and (instance? HttpServletRequest request)
                (instance? HttpServletResponse response))
-        (let [normalized-uri-result (normalize-uri-path request)]
-          (if-let [error (:error normalized-uri-result)]
-            (servlet/update-servlet-response response
-                                             {:status 400
-                                              :body error})
-            (.doFilter chain
-                       (HttpServletRequestWithAlternateRequestUri.
-                        request
-                        (:normalized-request-uri normalized-uri-result))
-                       response)))
+        (if-let [normalized-uri
+                 (try
+                   (normalize-uri-path request)
+                   (catch IllegalArgumentException ex
+                     (servlet/update-servlet-response
+                      response
+                      {:status 400
+                       :body (.getMessage ex)})
+                     nil))]
+          (.doFilter chain
+                     (HttpServletRequestWithAlternateRequestUri.
+                      request
+                      normalized-uri)
+                     response))
         (.doFilter chain request response)))
     (destroy [_])))
 
