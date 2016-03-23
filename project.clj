@@ -14,7 +14,6 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
 
                  ;; begin version conflict resolution dependencies
-                 [org.slf4j/slf4j-api "1.7.7"]
                  ;; end version conflict resolution dependencies
 
                  [org.clojure/java.jmx "0.2.0"]
@@ -68,7 +67,7 @@
                                   "examples/webrouting_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[puppetlabs/http-client "0.4.4"]
+                   :dependencies [[puppetlabs/http-client "0.5.0"]
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.10"]
