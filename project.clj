@@ -44,7 +44,6 @@
 
   :source-paths  ["src"]
   :java-source-paths  ["java"]
-  :jar-exclusions  [#".*\.java$"]
 
   :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
 
