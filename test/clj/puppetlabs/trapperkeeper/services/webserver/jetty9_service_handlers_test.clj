@@ -505,7 +505,7 @@
         (servlet-echoing-request-uri)
         "/hello"
         {:normalize-request-uri false})
-       (testing "uri with encoded characters is properly decoded"
+       (testing "uri with encoded characters is not decoded"
          (let [response (http-get "http://localhost:8080/hello%2f%2f%77o%72l%64"
                                   {:as :text})]
            (is (= (:status response) 200))

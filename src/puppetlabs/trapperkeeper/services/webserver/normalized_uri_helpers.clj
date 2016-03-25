@@ -120,7 +120,7 @@
     (destroy [_])))
 
 (schema/defn ^:always-validate
-  add-normalized-uri-filter-to-servlet-handler
+  add-normalized-uri-filter-to-servlet-handler!
   "Adds a servlet filter to the servlet handler which provides a normalized
   request URI on to its downstream consumers for an incoming request."
   [handler :- ServletContextHandler]

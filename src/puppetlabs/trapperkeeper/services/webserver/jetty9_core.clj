@@ -687,7 +687,7 @@
        (dorun (map #(.addEventListener handler %) context-listeners)))
      (.addServlet handler (ServletHolder. (DefaultServlet.)) "/")
      (when normalize-request-uri?
-       (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler
+       (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler!
         handler))
      (add-handler webserver-context handler enable-trailing-slash-redirect?))))
 
@@ -735,7 +735,7 @@
                   (.setContextPath path)
                   (.addServlet holder "/*"))]
     (when normalize-request-uri?
-      (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler
+      (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler!
        handler))
     (add-handler webserver-context handler enable-trailing-slash-redirect?)))
 
@@ -753,7 +753,7 @@
                   (.setContextPath path)
                   (.setWar war))]
     (when normalize-request-uri?
-      (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler
+      (normalized-uri-helpers/add-normalized-uri-filter-to-servlet-handler!
        handler))
     (add-handler webserver-context handler disable-redirects-no-slash?)))
 
