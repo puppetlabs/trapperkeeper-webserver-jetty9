@@ -17,12 +17,32 @@
     (is (= "/foo" (normalize-uri-path-for-string "/foo")))
     (is (= "/foo/bar" (normalize-uri-path-for-string "/foo/bar")))))
 
+(deftest normalize-uris-with-plus-signs-in-path-segments-tests
+  (testing (str "non-percent encoded plus signs in uri path segments are "
+                "preserved after normalization")
+    (is (= "/foo+bar" (normalize-uri-path-for-string "/foo+bar")))
+    (is (= "/foo/bar+baz+bim"
+           (normalize-uri-path-for-string "/foo/bar+baz+bim"))))
+  (testing (str "percent encoded plus signs in uri path segments are "
+                "properly decoded after normalization")
+    (is (= "/foo+bar" (normalize-uri-path-for-string "/foo%2Bbar")))
+    (is (= "/foo/bar+baz+bim"
+           (normalize-uri-path-for-string "/foo/bar%2Bbaz%2Bb%69m")))))
+
 (deftest normalize-uris-with-params-in-path-segments-tests
-  (testing (str "parameters in uri path segments are preserved after "
-                "normalization")
+  (testing (str "non-percent encoded parameters in uri path segments are "
+                "preserved after normalization")
     (is (= "/foo;foo=chump" (normalize-uri-path-for-string "/foo;foo=chump")))
-    (is (= "/foo/bar;bar=chocolate/baz"
-           (normalize-uri-path-for-string "/foo/bar;bar=chocolate/baz")))))
+    (is (= "/foo/bar;bar=chocolate/baz;baz=bim"
+           (normalize-uri-path-for-string
+            "/foo/bar;bar=chocolate/baz;baz=bim"))))
+  (testing (str "percent-encoded parameters in uri path segments are properly "
+                "decoded after normalization")
+    (is (= "/foo;foo=chump" (normalize-uri-path-for-string
+                               "/foo%3Bfoo=chump")))
+    (is (= "/foo/bar;bar=chocolate/baz;baz=bim"
+           (normalize-uri-path-for-string
+            "/foo/bar%3Bbar=chocolate/baz%3Bbaz=b%69m")))))
 
 (deftest normalize-uris-with-percent-encoded-characters-tests
   (testing (str "percent-encoded characters are properly decoded after "
