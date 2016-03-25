@@ -100,6 +100,26 @@
     (is (= "/foo/bar/.../baz" (normalize-uri-path-for-string
                                "/foo/bar/%2E%2E%2E/baz")))))
 
+(deftest normalize-uri-with-overlong-utf8-chars-tests
+  (testing (str "utf-8 characters with overlong encodings are substituted "
+                "with replacement characters")
+    ;; %C0%AE is an overlong (leading zero-padded, two byte) encoding of the
+    ;; full stop (period) character.  The full stop character's minimal
+    ;; encoding in UTF-8 is %2E.  These tests validate that the normalization
+    ;; process substitutes replacement characters for the original characters
+    ;; in the string - as opposed to decoding the character back to the
+    ;; same character that the minimal form would decode to.
+    ;;
+    ;; From section 3 of RFC 3629 (https://tools.ietf.org/html/rfc3629):
+    ;;> Implementations of the decoding algorithm above MUST protect against
+    ;;> decoding invalid sequences.  For instance, a naive implementation may
+    ;;> decode the overlong UTF-8 sequence C0 80 into the character U+0000,
+    ;;> or the surrogate pair ED A1 8C ED BE B4 into U+233B4.  Decoding
+    ;;> invalid sequences may have security consequences or cause other
+    ;;> problems.
+    (is (= "��" (normalize-uri-path-for-string "%C0%AE")))
+    (is (= "/foo/��/��" (normalize-uri-path-for-string "/foo/%C0%AE/%C0%AE")))))
+
 (deftest normalize-uris-with-redundant-slashes-tests
   (testing "uris with redundant slashes are removed"
     (is (= "/" (normalize-uri-path-for-string "//")))
