@@ -1,7 +1,4 @@
 (ns puppetlabs.trapperkeeper.services.webserver.normalized-uri-helpers
-  (:require [schema.core :as schema]
-            [ring.util.servlet :as servlet]
-            [clojure.string :as str])
   (:import (javax.servlet.http HttpServletRequest HttpServletResponse)
            (org.eclipse.jetty.util URIUtil)
            (org.eclipse.jetty.server Request)
@@ -10,7 +7,10 @@
             HttpServletRequestWithAlternateRequestUri)
            (javax.servlet Filter DispatcherType)
            (java.util EnumSet)
-           (org.eclipse.jetty.servlet FilterHolder ServletContextHandler)))
+           (org.eclipse.jetty.servlet FilterHolder ServletContextHandler))
+  (:require [schema.core :as schema]
+            [ring.util.servlet :as servlet]
+            [clojure.string :as str]))
 
 (schema/defn ^:always-validate normalize-uri-path :- schema/Str
   "Return a 'normalized' version of the uri path represented on the incoming
