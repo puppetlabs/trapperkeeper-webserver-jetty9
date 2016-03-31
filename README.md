@@ -185,6 +185,26 @@ when the `:normalize-request-uri` setting is true:
   /foo//bar/%2E%2E/ba%7A => /foo//bar/../baz
   ```
   
+  If a non-percent encoded semicolon character, U+003B, is found in the path
+  during the percent decoding step, that character and all following characters
+  will be removed from the resulting path.
+
+  For example:
+
+  ```
+  /foo//bar/%2E%2E/ba%7A;bim => /foo//bar/../baz
+  ```
+
+  Requests intending to include a semicolon in the path should percent-encode
+  the semicolon.  In this case, the server will preserve the semicolon after the
+  decoding step.
+
+  For example:
+
+  ```
+  /foo//bar/%2E%2E/ba%7A%3Bbim => /foo//bar/../baz;bim
+  ```
+
   If the request has malformed content, e.g., partially-formed percent-encoded
   characters like '%A%B', an HTTP 400 (Bad Request) error will be returned.
 

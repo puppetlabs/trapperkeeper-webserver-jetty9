@@ -22,6 +22,9 @@
    An exception may be thrown if the request has malformed content, e.g.,
    partially-formed percent-encoded characters like '%A%B'.
 
+   If a semicolon character, U+003B, is found during the decoding process, it
+   and any following characters will be removed from the decoded path.
+
   2) Check the percent-decoded path for any relative path segments ('..' or
      '.').
 
@@ -29,31 +32,8 @@
 
   3) Compact any repeated forward slash characters in a path."
   [request :- HttpServletRequest]
-  ;; The URIUtil/decodePath method chops off an unencoded semicolon and any
-  ;; characters which follow it in the path:
-  ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-util/src/main/java/org/eclipse/jetty/util/URIUtil.java#L289-L297
-  ;;
-  ;; RFC 1738 (https://www.ietf.org/rfc/rfc1738.txt) seems somewhat
-  ;; inconsistent about whether or not a non-encoded semicolon may be present
-  ;; in the raw HTTP URI.  From section 3.3 (HTTP), it says:
-  ;; > Within the <path> and <searchpart> components, "/", ";", "?" are
-  ;; > reserved.
-  ;;
-  ;; However, section 5 (BNF for specific URL schemes) seems to indicate that
-  ;; a semicolon is legal in a URI path:
-  ;; > ; HTTP
-  ;; > httpurl = "http://" hostport [ "/" hpath [ "?" search ]]
-  ;; > hpath = hsegment *[ "/" hsegment ]
-  ;; > hsegment = *[ uchar | ";" | ":" | "@" | "&" | "=" ]
-  ;;
-  ;; Given that some clients may construct URI paths where the semicolon is not
-  ;; encoded, the code below URI-encodes any bare semicolons in the raw URI
-  ;; string so that those characters will be percent-decoded by
-  ;; URIUtil/decodePath back to the original semicolon and the following
-  ;; characters will be decoded as appropriate.
   (let [percent-decoded-uri-path (-> request
                                      (.getRequestURI)
-                                     (str/replace #";" "%3B")
                                      (URIUtil/decodePath))
         canonicalized-uri-path (URIUtil/canonicalPath percent-decoded-uri-path)]
     (if (or (nil? canonicalized-uri-path)

@@ -31,11 +31,10 @@
 
 (deftest normalize-uris-with-params-in-path-segments-tests
   (testing (str "non-percent encoded parameters in uri path segments are "
-                "preserved after normalization")
-    (is (= "/foo;foo=chump" (normalize-uri-path-for-string "/foo;foo=chump")))
-    (is (= "/foo/bar;bar=chocolate/baz;baz=bim"
-           (normalize-uri-path-for-string
-            "/foo/bar;bar=chocolate/baz;baz=bim"))))
+                "chopped off after normalization")
+    (is (= "/foo" (normalize-uri-path-for-string "/foo;foo=chump")))
+    (is (= "/foo/bar" (normalize-uri-path-for-string
+                       "/foo/bar;bar=chocolate/baz;baz=bim"))))
   (testing (str "percent-encoded parameters in uri path segments are properly "
                 "decoded after normalization")
     (is (= "/foo;foo=chump" (normalize-uri-path-for-string
