@@ -231,6 +231,7 @@
       (update-in [:https :protocols] identity)
       (update-in [:https :cipher-suites] identity)
       (update-in [:https :client-auth] (fnil identity :none))
+      (update-in [:https :cache-session-id] (fnil identity true))
       (update-in [:https :keystore-config]
                  (fnil identity
                        {:truststore (-> (KeyStore/getDefaultType)
