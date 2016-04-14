@@ -64,8 +64,7 @@
       (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
       (update-in [:https :protocols] (fnil identity default-protocols))
       (update-in [:https :client-auth] (fnil identity default-client-auth))
-      (update-in [:https :ssl-crl-path] identity)
-      (update-in [:https :cache-session-id] (fnil identity true))))
+      (update-in [:https :ssl-crl-path] identity)))
 
 (deftest process-config-http-test
   (testing "process-config successfully builds a WebserverConfig for plaintext connector"
@@ -217,17 +216,7 @@
            (munge-expected-https-config
              {:https {:host             "foo.local"
                       :port             8001
-                      :acceptor-threads 9193}})))
-
-    (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
-                    {:ssl-host "foo.local"
-                     :ssl-port 8001
-                     :cache-session-id false}))
-           (munge-expected-https-config
-             {:https {:host "foo.local"
-                      :port 8001
-                      :cache-session-id false}})))))
+                      :acceptor-threads 9193}})))))
 
 (deftest process-config-jks-test
   (testing "jks ssl config"
