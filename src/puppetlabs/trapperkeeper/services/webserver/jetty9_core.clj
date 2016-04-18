@@ -179,7 +179,7 @@
 (schema/defn ^:always-validate
   ssl-context-factory :- SslContextFactory
   "Creates a new SslContextFactory instance from a map of SSL config options."
-  [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols cache-session-id]}
+  [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols]}
    :- config/WebserverSslContextFactory]
   (if (some #(= "sslv3" %) (map str/lower-case protocols))
     (log/warn (str "`ssl-protocols` contains SSLv3, a protocol with known "
@@ -212,7 +212,6 @@
       ; order to force Jetty to actually use the CRL when validating client
       ; certificates for a connection.
       (.setValidatePeerCerts context true))
-    (.setSessionCachingEnabled context cache-session-id)
     context))
 
 (schema/defn ^:always-validate
@@ -223,8 +222,7 @@
                            ssl-config)
                         :client-auth :none
                         :cipher-suites (or (:cipher-suites ssl-config) config/acceptable-ciphers)
-                        :protocols     (or (:protocols ssl-config) config/default-protocols)
-                        :cache-session-id (get ssl-config :cache-session-id true)}))
+                        :protocols     (or (:protocols ssl-config) config/default-protocols)}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
@@ -357,8 +355,7 @@
                                 :client-auth     (:client-auth https)
                                 :ssl-crl-path    (:ssl-crl-path https)
                                 :cipher-suites   (:cipher-suites https)
-                                :protocols       (:protocols https)
-                                :cache-session-id (:cache-session-id https)})
+                                :protocols       (:protocols https)})
             connector        (ssl-connector server ssl-ctxt-factory https)]
 
         (.addConnector server connector)

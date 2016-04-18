@@ -375,12 +375,6 @@ illustration):
 For more info on the Jetty `Server` object model, see the
 [Jetty Javadocs](http://download.eclipse.org/jetty/stable-9/apidocs/org/eclipse/jetty/server/Server.html).
 
-### `cache-session-id`
-
-Optional. This is a boolean indicating whether the server should cache SSL
-session ids so it can resume a session across multiple connections. Defaults
-to true.
-
 ## Configuring multiple webservers on isolated ports
 
 It is possible to configure multiple webservers on isolated ports within a single Jetty9

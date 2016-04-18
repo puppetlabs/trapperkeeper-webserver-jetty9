@@ -8,7 +8,6 @@
            (appender TestListAppender))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.async :as async]
-            [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client-common]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
             [puppetlabs.trapperkeeper.app :as tk-app]
@@ -816,26 +815,3 @@
                                                                          {:ssl-protocols ["SSLv3"]}))]
          (is (= (:status response) 200))
          (is (= (:body response) "Hi World")))))))
-
-(deftest session-id-caching-test
-  (testing "ssl-caching is on by default"
-    (with-app-with-config
-      app
-      [jetty9-service
-       hello-webservice]
-      jetty-ssl-pem-config
-      (let [s (tk-app/get-service app :WebserverService)
-            state @(get-in (tk-services/service-context s) [:jetty9-servers :default :state])
-            ssl-ctxt (:ssl-context-factory state)]
-        (is (.isSessionCachingEnabled ssl-ctxt)))))
-
-  (testing "ssl-caching can be disabled"
-    (with-app-with-config
-      app
-      [jetty9-service
-       hello-webservice]
-      (assoc-in jetty-ssl-pem-config [:webserver :cache-session-id] false)
-      (let [s (tk-app/get-service app :WebserverService)
-            state @(get-in (tk-services/service-context s) [:jetty9-servers :default :state])
-            ssl-ctxt (:ssl-context-factory state)]
-        (is (not (.isSessionCachingEnabled ssl-ctxt)))))))
