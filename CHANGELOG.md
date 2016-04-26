@@ -1,4 +1,4 @@
-## 1.5.5-CVE_2016_2785_1
+## 1.5.6
 
 This is a security release.
 
