@@ -1,15 +1,8 @@
-(defn deploy-info
-  [url]
-  {:url url
-   :username :env/nexus_jenkins_username
-   :password :env/nexus_jenkins_password
-   :sign-releases false})
-
 (def tk-version "1.3.1")
 (def ks-version "1.3.0")
 (def jetty-version "9.2.10.v20150310")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.5.5-CVE_2016_2785_1"
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.5.6-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
   :url "https://github.com/puppetlabs/trapperkeeper-webserver-jetty9"
   :license {:name "Apache License, Version 2.0"
@@ -57,8 +50,10 @@
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
 
-  :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
-                        ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
+  :deploy-repositories [["releases" {:url "https://clojars.org/repo"
+                                     :username :env/clojars_jenkins_username
+                                     :password :env/clojars_jenkins_password
+                                     :sign-releases false}]]
 
   ;; By declaring a classifier here and a corresponding profile below we'll get an additional jar
   ;; during `lein jar` that has all the code in the test/ directory. Downstream projects can then
