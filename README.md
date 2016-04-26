@@ -87,7 +87,9 @@ You may specify `""` as the value for `path` if you are only registering a singl
 handler and do not need to prefix the URL.
 
 There is also a three argument version of this function which takes these arguments:
-`[handler path options]`. `options` is a map containing two optional keys. The first is
+`[handler path options]`. `options` is a map containing three optional keys.
+
+The first is
 `:server-id`, which specifies which server you want to add the ring-handler to. If
 `:server-id` is specified, the ring handler will be added to the server with id
 `:server-id`. If no `:server-id` is specified, or the two argument version is called,
@@ -99,6 +101,13 @@ all requests made to the endpoint at which the ring-handler was registered will,
 no trailing slash is present, return a 302 redirect response to the same URL but with a trailing slash
 added. If the option is set to `false`, no redirect will occur, and the request will be
 routed through to the registered handler. This option defaults to `false`.
+
+The third optional argument is `:normalize-request-uri`. When set to `true`, the
+URI made available to the ring handler request map via the `:uri` key will have
+been "normalized".  See the [Request URI Normalization]
+(#request-uri-normalization) section for more information on the
+normalization process.  When set to `false` (the default value), the raw path
+component from the HTTP request URI will be the value for the `:uri` key.
 
 Here's an example of how to use the `:WebserverService`:
 
@@ -146,6 +155,100 @@ you will need to do something like this:
         svc-context))
 ```
 
+##### Request URI Normalization
+
+The `:normalize-request-uri` setting, which can be provided in the `options`
+argument for an add handler call, controls whether or not the
+[path component](https://tools.ietf.org/html/rfc3986#section-3.3) from the HTTP
+request URI is normalized.  The value for the setting is expected to be a
+boolean.
+
+When set to `false` (the default value), the "raw" path component will be
+used by the webserver when evaluating a request to the handler.
+
+When set to `true`, the path component that the webserver evaluates for a
+request to the handler will have been "normalized". For a Ring request handler,
+the "normalized" value (instead of the "raw" value) will be associated with the
+`:uri` key in the Ring request map.  For a Servlet request handler, the
+"normalized" value (instead of the "raw" value) will be returned from a call
+made to the `getRequestURI` method on the `HttpServletRequest` object.
+
+The following steps, in order, are performed against the raw path component
+when the `:normalize-request-uri` setting is true:
+
+1. URL (percent) decode the path, assuming any percent-encodings represent UTF-8
+   characters.
+
+  For example:
+
+  ```
+  /foo//bar/%2E%2E/ba%7A => /foo//bar/../baz
+  ```
+  
+  If a non-percent encoded semicolon character, U+003B, is found in the path
+  during the percent decoding step, that character and all following characters
+  will be removed from the resulting path.
+
+  For example:
+
+  ```
+  /foo//bar/%2E%2E/ba%7A;bim => /foo//bar/../baz
+  ```
+
+  Requests intending to include a semicolon in the path should percent-encode
+  the semicolon.  In this case, the server will preserve the semicolon after the
+  decoding step.
+
+  For example:
+
+  ```
+  /foo//bar/%2E%2E/ba%7A%3Bbim => /foo//bar/../baz;bim
+  ```
+
+  If the request has malformed content, e.g., partially-formed percent-encoded
+  characters like '%A%B', an HTTP 400 (Bad Request) error will be returned.
+
+2. Check the percent-decoded path for any relative path segments ('..' or
+   '.').
+
+  If one or more relative path segments are found, an HTTP 400 (Bad Request)
+  error will be returned.
+
+  For example, an error would be returned for any of the following paths:
+
+  ```
+  .
+  ..
+  /foo//bar/../baz
+  /foo//./bar/baz
+  ```
+  
+  The following paths would not be considered to contain relative paths:
+
+  ```
+  /foo//bar/baz
+  /foo//bar/.../baz
+  /foo//bar/a.b/baz
+  /foo//bar/a..b/baz
+  ```
+  
+3. Compact any repeated forward slash characters in a path.
+
+  For example:
+
+  ```
+  /foo//bar/baz => /foo/bar/baz
+  /foo/bar////baz => /foo/bar/baz
+  ```
+
+The following example shows the result after normalization of a URI request
+path which includes repeated forward slash characters which have been
+percent-encoded:
+
+```
+/foo%2F%2Fbar/ba%7A => /foo/bar/baz
+```
+
 #### `add-context-handler`
 
 `add-context-handler` takes two arguments: `[base-path context-path]`.  The `base-path`
@@ -166,18 +269,29 @@ at `/css`:
 
 There is also a three argument version of the function which takes these arguments:
 `[base-path context-path options]`, where the first two arguments are the
-same as in the two argument version and `options` is a map containing four optional keys,
-`:server-id`, `:redirect-if-no-trailing-slash`, `:follow-links`, and `:context-listeners`.
+same as in the two argument version and `options` is a map containing five optional keys,
+`:server-id`, `:redirect-if-no-trailing-slash`, `:normalize-request-uri`, 
+`:follow-links`, and `:context-listeners`.
+
 The value stored in `:server-id` specifies which server
 to add the context handler to, similar to how it is done in `add-ring-handler`. Again, like
 `add-ring-handler`, if this key is absent or the two argument version is called, the context handler
 will be added to the default server. Calling the two-argument version or leaving out `:server-id`
 will not work in a multiserver set-up if no default server is specified.
+
 The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whether or not
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
-The value stored in `:follow-links` is a boolean indicating whether or not symbolic links
+
+The value stored in `:normalize-request-uri` is a boolean indicating whether
+or not the request URI should be normalized before it is made available to the
+handler.  See the [Request URI Normalization](#request-uri-normalization)
+section for more information on the normalization process.
+
+The value stored in `:follow-links` is a
+boolean indicating whether or not symbolic links
 should be served. The service does NOT serve symbolic links by default.
+
 The value stored in `:context-listeners` is a list of objects implementing the
 [ServletContextListener] (http://docs.oracle.com/javaee/7/api/javax/servlet/ServletContextListener.html)
 interface. These listeners are registered with the context created for serving the
@@ -198,19 +312,30 @@ a container for hosting an arbitrary ruby rack application - see [here]
 
 `add-servlet-handler` takes two arguments: `[servlet path]`.  The `servlet` argument
 is a normal Java [Servlet](http://docs.oracle.com/javaee/7/api/javax/servlet/Servlet.html).
-The `path` is the URL prefix at which the servlet will be registered.  
+The `path` is the URL prefix at which the servlet will be registered.
+
 There is also a three argument version of the function which takes these arguments:
 `[servlet path options]`, where the first two arguments are the same as
-in the two argument version and options is a map containing three optional keys, `:server-id`,
-`:redirect-if-no-trailing-slash`, and
-`:servlet-init-params`. As in `add-ring-handler`, `:server-id` specifies which server to add
+in the two argument version and options is a map containing four optional keys,
+`:server-id`, `:redirect-if-no-trailing-slash`, `normalize-request-uri`, and
+`:servlet-init-params`.
+
+As in `add-ring-handler`, `:server-id` specifies which server to add
 the handler to. If `:server-id` is absent or the two-argument function is called, the servlet
 handler will be added to the default server. Calling the two-argument version or leaving out
 `:server-id` will not work in a multiserver set-up if no default server is specified.
+
 The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whether or not
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
-The value stored at the `:servlet-init-params` key is a map of servlet init parameters.
+
+The value stored in `:normalize-request-uri` is a boolean indicating whether
+or not the request URI should be normalized before it is made available to the
+handler.  See the [Request URI Normalization](#request-uri-normalization)
+section for more information on the normalization process.
+
+The value stored at the `:servlet-init-params` key is a map of servlet init
+parameters.
 
 For example, to host a servlet at `/my-app`:
 
@@ -301,15 +426,24 @@ For example, to host `resources/cas.war` WAR at `/cas`:
 ```
 
 There is also a three-argument version that takes these parameters:
-`[war path options]`. `options` is a map containing two optional
-keys, `:server-id` and `:redirect-if-no-trailing-slash`. As with `add-ring-handler`,
+`[war path options]`. `options` is a map containing three optional
+keys, `:server-id`, `:redirect-if-no-trailing-slash`, and
+`:normalize-request-uri`.
+
+As with `add-ring-handler`,
 this determines which server the handler is added to. If this key is absent or the two argument
 version is called, the handler will be added to the default server. Calling
 the two-argument version or leaving out `:server-id` will not work in a
 multiserver set-up if no default server is specified.
+
 The value stored in `:redirect-if-no-trailing-slash` is a boolean indicating whether or not
 to redirect when a request is made to this handler without a trailing slash, just like with
 `add-ring-handler`. Again, this defaults to false.
+
+The value stored in `:normalize-request-uri` is a boolean indicating whether
+or not the request URI should be normalized before it is made available to the
+handler.  See the [Request URI Normalization](#request-uri-normalization)
+section for more information on the normalization process.
 
 #### `add-proxy-route`
 

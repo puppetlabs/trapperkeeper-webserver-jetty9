@@ -1,3 +1,13 @@
+## 1.5.5-CVE_2016_2785_1
+
+This is a security release.
+
+* [TK-343](https://tickets.puppetlabs.com/browse/TK-343) Support a new
+  option for handler registrations, `normalize-request-uri`, which can be
+  used to request that the URI path component is sanitized before the
+  handler is invoked for a request and that `.getRequestURI` calls made by
+  the handler return a path that has been percent-decoded.
+
 ## 1.5.5
 
 This is a bugfix and maintenance release.
