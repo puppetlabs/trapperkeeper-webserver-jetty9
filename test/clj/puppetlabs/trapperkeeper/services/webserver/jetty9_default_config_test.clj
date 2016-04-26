@@ -77,7 +77,8 @@ react accordingly."
                           proxy-servlet
                           "/proxy"
                           {}
-                          true)
+                          true
+                          false)
           client        (.createHttpClient proxy-servlet)]
       ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-client/src/main/java/org/eclipse/jetty/client/HttpClient.java#L129
       (is (= 4096 (.getRequestBufferSize client))

@@ -2,7 +2,8 @@
   (:import (servlet SimpleServlet)
            (javax.servlet ServletContextListener)
            (java.nio.file Paths Files)
-           (java.nio.file.attribute FileAttribute))
+           (java.nio.file.attribute FileAttribute)
+           (javax.servlet.http HttpServlet HttpServletRequest HttpServletResponse))
   (:require [clojure.test :refer :all]
             [gniazdo.core :as ws-client]
             [puppetlabs.experimental.websockets.client :as ws-session]
@@ -391,3 +392,133 @@
           (is (= (:status response) 302))
           (is (= (get-in response [:headers "location"]) "http://localhost:8080/hello/"))
           (is (= (get-in response [:opts :url]) "http://localhost:8080/hello")))))))
+
+(defn ring-handler-echoing-request-uri
+  []
+  (fn [req] {:status 200 :body (:uri req)}))
+
+(deftest normalize-request-uri-enabled-for-ring-handler-test
+  (testing "when uri request normalization enabled for ring handler"
+    (with-app-with-config
+     app
+     [jetty9-service]
+     jetty-plaintext-config
+     (let [webserver-service (get-service app :WebserverService)]
+       (add-ring-handler webserver-service
+                         (ring-handler-echoing-request-uri)
+                         "/hello"
+                         {:normalize-request-uri true})
+       (testing "uri with encoded characters is properly decoded"
+         (let [response (http-get "http://localhost:8080/hello%2f%2f%77o%72l%64"
+                                  {:as :text})]
+           (is (= (:status response) 200))
+           (is (= (:body response) "/hello/world"))))
+       (testing "uri with relative path above root is rejected"
+         (let [response
+               (http-get
+                "http://localhost:8080/hello/world/%2E%2E/%2E%2E/%2E%2E/cleveland"
+                {:as :text})]
+           (is (= (:status response) 400))))
+       (testing "uri with relative path below root is rejected"
+         (let [response (http-get
+                         "http://localhost:8080/hello/world/%2E%2E/cleveland"
+                         {:as :text})]
+           (is (= (:status response) 400))))))))
+
+(deftest normalize-request-uri-disabled-for-ring-handler-test
+  (testing "when uri request normalization disabled for ring handler"
+    (with-app-with-config
+     app
+     [jetty9-service]
+     jetty-plaintext-config
+     (let [webserver-service (get-service app :WebserverService)]
+       (add-ring-handler webserver-service
+                         (ring-handler-echoing-request-uri)
+                         "/hello"
+                         {:normalize-request-uri false})
+       (testing "uri with encoded characters is properly decoded"
+         (let [response (http-get "http://localhost:8080/hello%2f%2f%77o%72l%64"
+                                  {:as :text})]
+           (is (= (:status response) 200))
+           (is (= (:body response) "/hello%2f%2f%77o%72l%64"))))
+       (testing "uri with relative path above root is rejected"
+         (let [response
+               (http-get
+                "http://localhost:8080/hello/world/%2E%2E/%2E%2E/%2E%2E/cleveland"
+                {:as :text})]
+           (is (= (:status response) 400))))
+       (testing "uri with relative path below root is resolved"
+         (let [response (http-get
+                         "http://localhost:8080/hello/world/%2E%2E/cleveland"
+                         {:as :text})]
+           (is (= (:status response) 200))
+           (is (= (:body response) "/hello/world/%2E%2E/cleveland"))))))))
+
+(defn servlet-echoing-request-uri
+  []
+  (proxy [HttpServlet] []
+    (doGet [^HttpServletRequest request
+            ^HttpServletResponse response]
+      (-> response
+          (.getWriter)
+          (.print (.getRequestURI request)))
+      (.setStatus response 200))))
+
+(deftest normalize-request-uri-enabled-for-servlet-test
+  (testing "when uri request normalization enabled for servlet"
+    (with-app-with-config
+     app
+     [jetty9-service]
+     jetty-plaintext-config
+     (let [webserver-service (get-service app :WebserverService)]
+       (add-servlet-handler
+        webserver-service
+        (servlet-echoing-request-uri)
+        "/hello"
+        {:normalize-request-uri true})
+       (testing "uri with encoded characters is properly decoded"
+         (let [response (http-get "http://localhost:8080/hello%2f%2f%77o%72l%64"
+                                  {:as :text})]
+           (is (= (:status response) 200))
+           (is (= (:body response) "/hello/world"))))
+       (testing "uri with relative path above root is rejected"
+         (let [response
+               (http-get
+                "http://localhost:8080/hello/world/%2E%2E/%2E%2E/%2E%2E/cleveland"
+                {:as :text})]
+           (is (= (:status response) 400))))
+       (testing "uri with relative path below root is rejected"
+         (let [response (http-get
+                         "http://localhost:8080/hello/world/%2E%2E/cleveland"
+                         {:as :text})]
+           (is (= (:status response) 400))))))))
+
+(deftest normalize-request-uri-disabled-for-servlet-test
+  (testing "when uri request normalization disabled for servlet"
+    (with-app-with-config
+     app
+     [jetty9-service]
+     jetty-plaintext-config
+     (let [webserver-service (get-service app :WebserverService)]
+       (add-servlet-handler
+        webserver-service
+        (servlet-echoing-request-uri)
+        "/hello"
+        {:normalize-request-uri false})
+       (testing "uri with encoded characters is not decoded"
+         (let [response (http-get "http://localhost:8080/hello%2f%2f%77o%72l%64"
+                                  {:as :text})]
+           (is (= (:status response) 200))
+           (is (= (:body response) "/hello%2f%2f%77o%72l%64"))))
+       (testing "uri with relative path above root is rejected"
+         (let [response
+               (http-get
+                "http://localhost:8080/hello/world/%2E%2E/%2E%2E/%2E%2E/cleveland"
+                {:as :text})]
+           (is (= (:status response) 400))))
+       (testing "uri with relative path below root is resolved"
+         (let [response (http-get
+                         "http://localhost:8080/hello/world/%2E%2E/cleveland"
+                         {:as :text})]
+           (is (= (:status response) 200))
+           (is (= (:body response) "/hello/world/%2E%2E/cleveland"))))))))
