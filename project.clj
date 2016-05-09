@@ -16,7 +16,7 @@
                  ;; begin version conflict resolution dependencies
                  ;; end version conflict resolution dependencies
 
-                 [org.clojure/java.jmx "0.2.0"]
+                 [org.clojure/java.jmx "0.3.1"]
                  [org.clojure/tools.logging "0.2.6"]
                  [prismatic/schema "1.0.4"]
 
