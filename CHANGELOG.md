@@ -1,3 +1,9 @@
+## 1.5.8
+
+This is a maintenance release.
+
+* Upgrade java.jmx dependency to 0.3.1
+
 ## 1.5.7
 
 This is a bugfix release.
