@@ -14,6 +14,8 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
 
                  ;; begin version conflict resolution dependencies
+                 [clj-time "0.9.0"]
+                 [org.clojure/tools.reader "1.0.0-beta1"]
                  ;; end version conflict resolution dependencies
 
                  [org.clojure/java.jmx "0.3.1"]
@@ -40,7 +42,8 @@
                  [org.eclipse.jetty/jetty-jmx ~jetty-version]
                  [org.eclipse.jetty.websocket/websocket-server ~jetty-version]
 
-                 [ring/ring-servlet "1.1.8" :exclusions [javax.servlet/servlet-api commons-codec]]]
+                 [ring/ring-servlet "1.4.0"]
+                 [ring/ring-codec "1.0.0"]]
 
   :source-paths  ["src"]
   :java-source-paths  ["java"]
@@ -80,7 +83,8 @@
                                                                   org.clojure/tools.macro]]
                                   [stylefruits/gniazdo "0.4.0" :exclusions [org.eclipse.jetty.websocket/websocket-api
                                                                             org.eclipse.jetty.websocket/websocket-client
-                                                                            org.eclipse.jetty/jetty-util]]]
+                                                                            org.eclipse.jetty/jetty-util]]
+                                  [ring/ring-core "1.4.0"]]
                     :injections [(require 'spyscope.core)]
                     ;; Enable SSLv3 for unit tests that exercise SSLv3
                     :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]}
