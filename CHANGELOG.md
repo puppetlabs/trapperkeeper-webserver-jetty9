@@ -1,3 +1,9 @@
+## 1.5.9
+
+This is a maintenance release.
+
+* Upgrade ring-servlet and related dependencies to 1.4.0
+
 ## 1.5.8
 
 This is a maintenance release.
