@@ -84,5 +84,5 @@ Also note that, because the webrouting service is built on top of the
 webserver service, the webserver service will need to be included in your
 `bootstrap.cfg` file, and the webserver service will need to be configured in
 your trapperkeeper configuration files. Please see
-[Configuring the Webserver](doc/jetty-config.md) for more details.
+[Configuring the Webserver](jetty-config.md) for more details.
 
