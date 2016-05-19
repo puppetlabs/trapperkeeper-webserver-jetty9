@@ -451,7 +451,7 @@ webserver: {
 In this case, the Jetty9 Service will simply create a single webserver and give it id `:default`,
 and will automatically make this server the default server.
 
-### `jmx-enabled`
+### `jmx-enable`
 
 Optional. When enabled this setting will register the Jetty 9 MBeans so they are visible via
 JMX. Useful for monitoring the state of your Jetty 9 instance while it is running; for monitoring and
