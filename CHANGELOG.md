@@ -1,3 +1,9 @@
+## 1.5.10
+
+This is a maintenance release.
+
+* Remove unneeded logback-access dependency
+
 ## 1.5.9
 
 This is a maintenance release.
