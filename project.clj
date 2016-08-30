@@ -26,8 +26,6 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/trapperkeeper ~tk-version]
 
-                 [ch.qos.logback/logback-access "1.1.3"]
-
                  [org.codehaus.janino/janino "2.7.8"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
