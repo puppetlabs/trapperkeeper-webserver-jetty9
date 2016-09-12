@@ -46,10 +46,7 @@
   :source-paths  ["src"]
   :java-source-paths  ["java"]
 
-  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
-
-  :lein-release {:scm         :git
-                 :deploy-via  :lein-deploy}
+  :plugins []
 
   :deploy-repositories [["releases" {:url "https://clojars.org/repo"
                                      :username :env/clojars_jenkins_username
@@ -75,7 +72,6 @@
                                   [puppetlabs/kitchensink ~ks-version :classifier "test"]
                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
                                   [org.clojure/tools.namespace "0.2.10"]
-                                  [spyscope "0.1.4"]
                                   [compojure "1.1.8" :exclusions [ring/ring-core
                                                                   commons-io
                                                                   org.clojure/tools.macro]]
@@ -83,7 +79,6 @@
                                                                             org.eclipse.jetty.websocket/websocket-client
                                                                             org.eclipse.jetty/jetty-util]]
                                   [ring/ring-core "1.4.0"]]
-                    :injections [(require 'spyscope.core)]
                     ;; Enable SSLv3 for unit tests that exercise SSLv3
                     :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]}
 
