@@ -79,10 +79,7 @@
                     :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]}
 
              :testutils {:source-paths ^:replace ["test/clj"]
-                         :java-source-paths ^:replace ["test/java"]}
-             :uberjar {:aot [puppetlabs.trapperkeeper.main]
-                       :classifiers ^:replace []
-                       :dependencies [[org.clojure/tools.nrepl nil :scope "test" :exclusions [[org.clojure/clojure]]]]}}
+                         :java-source-paths ^:replace ["test/java"]}}
 
   :main puppetlabs.trapperkeeper.main
   )
