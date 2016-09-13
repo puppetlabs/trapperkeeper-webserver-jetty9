@@ -1,4 +1,3 @@
-(def tk-version "1.5.1-SNAPSHOT")
 (def jetty-version "9.2.10.v20150310")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "1.5.11-SNAPSHOT"
@@ -34,13 +33,12 @@
                  [org.eclipse.jetty.websocket/websocket-server ~jetty-version]
 
                  [prismatic/schema]
-                 [ring/ring-servlet "1.4.0"]
-                 [ring/ring-codec "1.0.0"]
+                 [ring/ring-servlet]
+                 [ring/ring-codec]
 
-                 [puppetlabs/ssl-utils "0.8.1"]
+                 [puppetlabs/ssl-utils]
                  [puppetlabs/kitchensink]
-                 [puppetlabs/trapperkeeper ~tk-version]
-
+                 [puppetlabs/trapperkeeper]
                  ]
 
   :source-paths  ["src"]
@@ -68,17 +66,15 @@
                                   "examples/webrouting_app/src"]
                    :java-source-paths ["examples/servlet_app/src/java"
                                        "test/java"]
-                   :dependencies [[puppetlabs/http-client "0.5.0"]
+                   :dependencies [[puppetlabs/http-client]
                                   [puppetlabs/kitchensink nil :classifier "test"]
-                                  [puppetlabs/trapperkeeper ~tk-version :classifier "test"]
-                                  [org.clojure/tools.namespace "0.2.10"]
-                                  [compojure "1.1.8" :exclusions [ring/ring-core
-                                                                  commons-io
-                                                                  org.clojure/tools.macro]]
+                                  [puppetlabs/trapperkeeper nil :classifier "test"]
+                                  [org.clojure/tools.namespace]
+                                  [compojure]
                                   [stylefruits/gniazdo "0.4.0" :exclusions [org.eclipse.jetty.websocket/websocket-api
                                                                             org.eclipse.jetty.websocket/websocket-client
                                                                             org.eclipse.jetty/jetty-util]]
-                                  [ring/ring-core "1.4.0"]]
+                                  [ring/ring-core]]
                     ;; Enable SSLv3 for unit tests that exercise SSLv3
                     :jvm-opts ["-Djava.security.properties=./dev-resources/java.security"]}
 
@@ -86,7 +82,7 @@
                          :java-source-paths ^:replace ["test/java"]}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :classifiers ^:replace []
-                       :dependencies [[org.clojure/tools.nrepl "0.2.6" :scope "test" :exclusions [[org.clojure/clojure]]]]}}
+                       :dependencies [[org.clojure/tools.nrepl nil :scope "test" :exclusions [[org.clojure/clojure]]]]}}
 
   :main puppetlabs.trapperkeeper.main
   )
