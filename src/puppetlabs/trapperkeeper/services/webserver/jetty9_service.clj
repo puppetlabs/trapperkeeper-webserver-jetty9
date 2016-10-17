@@ -7,7 +7,7 @@
     [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
     [puppetlabs.trapperkeeper.services :refer [service-context]]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
-    [schema.core :as schema]))
+    [puppetlabs.i18n.core :as i18n]))
 
 ;; TODO: this should probably be moved to a separate jar that can be used as
 ;; a dependency for all webserver service implementations
@@ -28,7 +28,7 @@
   WebserverService
   [[:ConfigService get-in-config]]
   (init [this context]
-        (log/info "Initializing web server(s).")
+        (log/info (i18n/trs "Initializing web server(s)."))
         (let [config (or (get-in-config [:webserver])
                          ;; Here for backward compatibility with existing projects
                          (get-in-config [:jetty])
@@ -37,7 +37,7 @@
           (core/init! context config)))
 
   (start [this context]
-         (log/info "Starting web server(s).")
+         (log/info (i18n/trs "Starting web server(s)."))
          (let [config (or (get-in-config [:webserver])
                           ;; Here for backward compatibility with existing projects
                           (get-in-config [:jetty])
@@ -45,7 +45,7 @@
            (core/start! context config)))
 
   (stop [this context]
-        (log/info "Shutting down web server(s).")
+        (log/info (i18n/trs "Shutting down web server(s)."))
         (doseq [key (keys (:jetty9-servers context))]
           (if-let [server (key (:jetty9-servers context))]
             (core/shutdown server)))

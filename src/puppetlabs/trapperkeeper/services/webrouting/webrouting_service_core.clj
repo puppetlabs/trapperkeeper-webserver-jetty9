@@ -1,9 +1,8 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-core
-  (:import (javax.servlet ServletContextListener))
   (:require [schema.core :as schema]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9-core]
-            [puppetlabs.trapperkeeper.services :as tk-services]))
+            [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -52,15 +51,16 @@
     (cond
       no-service?     (throw
                         (IllegalArgumentException.
-                          (str "service " svc " does not appear in configuration")))
+                          (i18n/trs "service {0} does not appear in configuration" svc)))
       no-endpoint?    (throw
                         (IllegalArgumentException.
-                          (str "endpoint with id " route-id " does not appear in configuration "
-                               "for service " svc)))
+                          (i18n/trs "endpoint with id {0} does not appear in configuration for service {1}"
+                                    route-id
+                                    svc)))
       (and no-route-id? multi-route?)
                       (throw
                         (IllegalArgumentException.
-                          "no route-id specified for a service with multiple routes"))
+                          (i18n/trs "no route-id specified for a service with multiple routes")))
       no-server?      {:route endpoint :server nil}
       server?         endpoint)))
 
