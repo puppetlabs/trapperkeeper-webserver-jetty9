@@ -33,7 +33,8 @@
             [puppetlabs.trapperkeeper.services.webserver.experimental.jetty9-websockets :as websockets]
             [puppetlabs.trapperkeeper.services.webserver.normalized-uri-helpers
              :as normalized-uri-helpers]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; JDK SecurityProvider Hack
@@ -48,11 +49,11 @@
     (let [klass     (Class/forName "sun.security.pkcs11.SunPKCS11")
           blacklist (filter #(instance? klass %) (Security/getProviders))]
       (doseq [provider blacklist]
-        (log/info (str "Removing buggy security provider " provider))
+        (log/info (i18n/trs "Removing buggy security provider {0}" provider))
         (Security/removeProvider (.getName provider))))
     (catch ClassNotFoundException e)
     (catch Throwable e
-      (log/error e "Could not remove security providers; HTTPS may not work!"))))
+      (log/error e (i18n/trs "Could not remove security providers; HTTPS may not work!")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -173,7 +174,7 @@
                                      :overrides-read-by-webserver
                                      true))]
     (doseq [key (keys overrides)]
-      (log/info (str "webserver config overridden for key '" (name key) "'")))
+      (log/info (i18n/trs "webserver config overridden for key ''{0}''" (name key))))
     (merge options overrides)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -185,9 +186,7 @@
   [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols]}
    :- config/WebserverSslContextFactory]
   (if (some #(= "sslv3" %) (map str/lower-case protocols))
-    (log/warn (str "`ssl-protocols` contains SSLv3, a protocol with known "
-                  "vulnerabilities; we recommend removing it from the "
-                  "`ssl-protocols` list")))
+    (log/warn (i18n/trs "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we recommend removing it from the `ssl-protocols` list")))
 
   (let [context (doto (SslContextFactory.)
                   (.setKeyStore (:keystore keystore-config))
@@ -497,14 +496,14 @@
         (do
           (let [request-id    (.getRequestId this req)
                 async-context (.getAsyncContext req)]
-            (log/debug failure (str request-id " proxying failed"))
+            (log/debug failure (i18n/trs "{0} proxying failed" request-id))
             (if (.isCommitted resp)
               (try
                 (.sendError resp -1)
                 (.complete async-context)
                 (catch IOException _
-                  (log/debug failure (str request-id
-                                          " could not close the connection"))))
+                  (log/debug failure (i18n/trs "{0} could not close the connection"
+                                               request-id))))
               (do
                 (.resetBuffer resp)
                 (if (instance? TimeoutException failure)
@@ -557,25 +556,23 @@
                                      :overrides-read-by-webserver
                                      true))]
     (doseq [key (keys overrides)]
-      (log/info (str "webserver config overridden for key '" (name key) "'")))
+      (log/info (i18n/trs "webserver config overridden for key ''{0}''" (name key))))
     (merge options overrides)))
 
 (schema/defn ^:always-validate shutdown
   [{:keys [server] :as webserver-context} :- ServerContext]
   (when-let [mbean-container (:mbean-container @(:state webserver-context))]
-    (log/debug "Cleaning up JMX MBean container")
+    (log/debug (i18n/trs "Cleaning up JMX MBean container"))
     (.destroy mbean-container)
     (swap! (:state webserver-context) assoc :mbean-container nil))
   (when (started? webserver-context)
-    (log/info "Shutting down web server.")
+    (log/info (i18n/trs "Shutting down web server."))
     (try
       (.stop server)
       (catch TimeoutException e
-        (log/errorf e
-                    (str "Web server failed to shut down gracefully in configured "
-                         "timeout period (%s); cancelling remaining requests.")
-                    (.getStopTimeout server))))
-    (log/info "Web server shutdown")))
+        (log/error e (i18n/trs "Web server failed to shut down gracefully in configured timeout period ({0}); cancelling remaining requests."
+                               (.getStopTimeout server)))))
+    (log/info (i18n/trs "Web server shutdown"))))
 
 (schema/defn ^:always-validate
   create-webserver :- ServerContext
@@ -653,13 +650,11 @@
   [webserver-context :- ServerContext
    config :- config/WebserverRawConfig]
   (let [webserver-context (create-webserver webserver-context config)]
-    (log/info "Starting web server.")
+    (log/info (i18n/trs "Starting web server."))
     (try
       (.start (:server webserver-context))
       (catch Exception e
-        (log/error
-          e
-          "Encountered error starting web server, so shutting down")
+        (log/error e (i18n/trs "Encountered error starting web server, so shutting down"))
         (shutdown webserver-context)
         (throw e)))
     webserver-context))
@@ -878,20 +873,16 @@
                (if (nil? (:overrides %))
                  (throw
                    (IllegalStateException.
-                     (str "overrides cannot be set because webserver has "
-                          "already processed the config")))
+                     (i18n/trs "overrides cannot be set because webserver has already processed the config")))
                  (throw
                    (IllegalStateException.
-                     (str "overrides cannot be set because they have "
-                          "already been set and webserver has already "
-                          "processed the config"))))
+                     (i18n/trs "overrides cannot be set because they have already been set and webserver has already processed the config"))))
              (nil? (:overrides %))
                (assoc % :overrides overrides)
              :else
                (throw
                  (IllegalStateException.
-                   (str "overrides cannot be set because they have "
-                        "already been set")))))))
+                   (i18n/trs "overrides cannot be set because they have already been set")))))))
 
 (schema/defn ^:always-validate join
   [webserver-context :- ServerContext]
@@ -921,8 +912,7 @@
                     server-id)]
     (when-not server-id
       (throw (IllegalArgumentException.
-               (str "no server-id was specified for this operation and "
-                    "no default server was specified in the configuration"))))
+               (i18n/trs "no server-id was specified for this operation and no default server was specified in the configuration"))))
     (server-id (:jetty9-servers service-context))))
 
 (defn get-default-server-from-config

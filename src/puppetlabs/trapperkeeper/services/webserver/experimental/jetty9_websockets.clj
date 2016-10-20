@@ -9,7 +9,8 @@
 
   (:require [clojure.tools.logging :as log]
             [puppetlabs.experimental.websockets.client :refer [WebSocketProtocol]]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [puppetlabs.i18n.core :as i18n]))
 
 (def WebsocketHandlers
   {(schema/optional-key :on-connect) IFn
@@ -59,7 +60,8 @@
 
 (defn no-handler
   [event & args]
-  (log/debugf "No handler defined for websocket event '%s' with args: '%s'" event args))
+  (log/debug (i18n/trs "No handler defined for websocket event ''{0}'' with args: ''{1}''"
+                       event args)))
 
 (schema/defn ^:always-validate proxy-ws-adapter :- WebSocketAdapter
   [handlers :- WebsocketHandlers

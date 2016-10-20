@@ -10,7 +10,8 @@
            (org.eclipse.jetty.servlet FilterHolder ServletContextHandler))
   (:require [schema.core :as schema]
             [ring.util.servlet :as servlet]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [puppetlabs.i18n.core :as i18n]))
 
 (schema/defn ^:always-validate normalize-uri-path :- schema/Str
   "Return a 'normalized' version of the uri path represented on the incoming
@@ -40,8 +41,8 @@
             (not= (.length percent-decoded-uri-path)
                   (.length canonicalized-uri-path)))
       (throw (IllegalArgumentException.
-              (str "Invalid relative path (.. or .) in: "
-                   percent-decoded-uri-path)))
+               (i18n/trs "Invalid relative path (.. or .) in: {0}"
+                         percent-decoded-uri-path)))
       (URIUtil/compactPath canonicalized-uri-path))))
 
 (schema/defn ^:always-validate

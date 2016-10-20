@@ -12,7 +12,8 @@
             [me.raynes.fs :as fs]
             [schema.core :as schema]
             [puppetlabs.ssl-utils.core :as ssl]
-            [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid parse-bool]]))
+            [puppetlabs.kitchensink.core :refer [missing? num-cpus uuid parse-bool]]
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants / Defaults
@@ -213,22 +214,18 @@
           pem-config)
       0 nil
       (throw (IllegalArgumentException.
-               (format "Found SSL config options: %s; If configuring SSL from PEM files, you must provide all of the following options: %s"
-                       (keys pem-config) pem-required-keys))))))
+               (i18n/trs "Found SSL config options: {0}; If configuring SSL from PEM files, you must provide all of the following options: {1}"
+                         (keys pem-config) pem-required-keys))))))
 
 (schema/defn ^:always-validate
   get-x509s-from-ssl-cert-pem :- (schema/pred ssl/certificate-list?)
   [ssl-cert :- schema/Str
    ssl-cert-chain :- (schema/maybe schema/Str)]
   (if-not (fs/readable? ssl-cert)
-    (throw (IllegalArgumentException.
-             (format "Unable to open 'ssl-cert' file: %s"
-                     ssl-cert))))
+    (throw (IllegalArgumentException. (i18n/trs "Unable to open ''ssl-cert'' file: {0}" ssl-cert))))
   (let [certs (ssl/pem->certs ssl-cert)]
     (if (= 0 (count certs))
-      (throw (Exception.
-               (format "No certs found in 'ssl-cert' file: %s"
-                       ssl-cert))))
+      (throw (Exception. (i18n/trs "No certs found in ''ssl-cert'' file: {0}" ssl-cert))))
     (if ssl-cert-chain
       [(first certs)]
       certs)))
@@ -240,8 +237,8 @@
     (do
       (if-not (fs/readable? ssl-cert-chain)
         (throw (IllegalArgumentException.
-                 (format "Unable to open 'ssl-cert-chain' file: %s"
-                         ssl-cert-chain))))
+                 (i18n/trs "Unable to open ''ssl-cert-chain'' file: {0}"
+                           ssl-cert-chain))))
       (ssl/pem->certs ssl-cert-chain))
     []))
 
@@ -276,8 +273,8 @@
   (let [keystore-ssl-config-keys [:keystore :truststore :key-password :trust-password]
         keystore-ssl-config (select-keys config keystore-ssl-config-keys)]
     (when (pos? (count keystore-ssl-config))
-      (log/warn (format "Found settings for both keystore-based and PEM-based SSL; using PEM-based settings, ignoring %s"
-                        (keys keystore-ssl-config))))))
+      (log/warn (i18n/trs "Found settings for both keystore-based and PEM-based SSL; using PEM-based settings, ignoring {0}"
+                          (keys keystore-ssl-config))))))
 
 (schema/defn ^:always-validate
   get-jks-keystore-config! :- WebserverSslKeystoreConfig
@@ -285,9 +282,7 @@
       :- WebserverRawConfig]
   (when (some nil? [truststore keystore key-password trust-password])
     (throw (IllegalArgumentException.
-             (str "Missing some SSL configuration; must provide either :ssl-cert, "
-                  ":ssl-key, and :ssl-ca-cert, OR :truststore, :trust-password, "
-                  ":keystore, and :key-password."))))
+             (i18n/trs "Missing some SSL configuration; must provide either :ssl-cert, :ssl-key, and :ssl-ca-cert, OR :truststore, :trust-password, :keystore, and :key-password."))))
   {:keystore       (doto (ssl/keystore)
                      (.load (FileInputStream. keystore)
                             (.toCharArray key-password)))
@@ -315,9 +310,8 @@
       (contains? #{"need" "want" "none"} client-auth) (keyword client-auth)
       :else (throw
               (IllegalArgumentException.
-                (format
-                  "Unexpected value found for client auth config option: %s.  Expected need, want, or none."
-                  client-auth))))))
+                (i18n/trs "Unexpected value found for client auth config option: {0}.  Expected need, want, or none."
+                          client-auth))))))
 
 (schema/defn ^:always-validate
   get-ssl-crl-path! :- (schema/maybe schema/Str)
@@ -326,9 +320,8 @@
     (if (fs/readable? ssl-crl-path)
       ssl-crl-path
       (throw (IllegalArgumentException.
-               (format
-                 "Non-readable path specified for ssl-crl-path option: %s"
-                 ssl-crl-path))))))
+               (i18n/trs "Non-readable path specified for ssl-crl-path option: {0}"
+                         ssl-crl-path))))))
 
 (schema/defn get-or-parse-sequential-config-value :- [schema/Str]
   "Some config values can be entered as either a vector of strings or
@@ -425,7 +418,7 @@
   [config]
   (when-not (one-default? config)
     (throw (IllegalArgumentException.
-             "Error: More than one default server specified in configuration"))))
+             (i18n/trs "Error: More than one default server specified in configuration")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -443,7 +436,7 @@
                                              :jmx-enable default-jmx-enable))))]
     (when-not (some #(contains? result %) [:http :https])
       (throw (IllegalArgumentException.
-               "Either host, port, ssl-host, or ssl-port must be specified on the config in order for the server to be started")))
+               (i18n/trs "Either host, port, ssl-host, or ssl-port must be specified on the config in order for the server to be started"))))
     result))
 
 (schema/defn ^:always-validate
@@ -465,9 +458,8 @@
   execute-post-config-script!
   [s :- Server
    script :- schema/Str]
-  (log/warn (str "The 'post-config-script' setting is for advanced use cases only, "
-                 "and may be subject to minor changes when the application is upgraded."))
-  (let [script-err-msg "Invalid script string in webserver 'post-config-script' configuration"]
+  (log/warn (i18n/trs "The ''post-config-script'' setting is for advanced use cases only, and may be subject to minor changes when the application is upgraded."))
+  (let [script-err-msg (i18n/trs "Invalid script string in webserver ''post-config-script'' configuration")]
     (try
       (let [evaluator (doto (ScriptEvaluator.)
                         (.setParameters (into-array String ["server"])
