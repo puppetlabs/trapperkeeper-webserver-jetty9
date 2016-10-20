@@ -174,7 +174,7 @@
                                      :overrides-read-by-webserver
                                      true))]
     (doseq [key (keys overrides)]
-      (log/info (i18n/trs "webserver config overridden for key ''{0''" (name key))))
+      (log/info (i18n/trs "webserver config overridden for key ''{0}''" (name key))))
     (merge options overrides)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
