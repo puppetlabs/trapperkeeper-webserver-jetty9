@@ -191,11 +191,18 @@
             server-binary-messages (atom [])
             client-messages        (atom [])
             client-binary-messages (atom [])
+            client-request-path    (atom "")
+            client-remote-addr     (atom "")
+            client-is-ssl          (atom nil)
+            closed-request-path    (atom "")
             binary-client-message  (promise)
             closed                 (promise)
             handlers               {:on-connect (fn [ws]
                                                   (ws-session/send! ws "Hello client!")
-                                                  (swap! connected inc))
+                                                  (swap! connected inc)
+                                                  (reset! client-request-path (ws-session/request-path ws))
+                                                  (reset! client-remote-addr (.. (ws-session/remote-addr ws) (toString)))
+                                                  (reset! client-is-ssl (ws-session/ssl? ws)))
                                     :on-text    (fn [ws text]
                                                   (ws-session/send! ws (str "You said: " text))
                                                   (swap! server-messages conj text))
@@ -205,9 +212,10 @@
                                                     (swap! server-binary-messages conj as-vec)))
                                     :on-error   (fn [ws error]) ;; TODO - Add test for on-error behaviour
                                     :on-close   (fn [ws code reason] (swap! connected dec)
+                                                  (reset! closed-request-path (ws-session/request-path ws))
                                                   (deliver closed true))}]
         (add-websocket-handler handlers path)
-        (let [socket (ws-client/connect (str "ws://localhost:8080" path)
+        (let [socket (ws-client/connect (str "ws://localhost:8080" path "/foo")
                                         :on-receive (fn [text] (swap! client-messages conj text))
                                         :on-binary  (fn [bytes offset len]
                                                       (let [as-vec (vec bytes)]
@@ -218,8 +226,12 @@
           (ws-client/send-msg socket (byte-array [2 1 2 3 3]))
           (deref binary-client-message)
           (is (= @connected 1))
+          (is (= @client-request-path "/foo"))
+          (is (re-matches #"/127\.0\.0\.1:\d+" @client-remote-addr))
+          (is (= @client-is-ssl false))
           (ws-client/close socket)
           (deref closed)
+          (is (= @closed-request-path "/foo"))
           (is (= @connected 0))
           (is (= @server-binary-messages [[2 1 2 3 3]]))
           (is (= @client-binary-messages [[3 3 2 1 2]]))

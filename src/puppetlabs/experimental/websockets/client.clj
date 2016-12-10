@@ -15,4 +15,6 @@
   (ssl? [this]
     "Returns a boolean indicating if the session was established by wss://")
   (peer-certs [this]
-    "Returns an array of X509Certs presented by the ssl peer, if any"))
+    "Returns an array of X509Certs presented by the ssl peer, if any")
+  (request-path [this]
+    "Returns the URI path used in the websocket upgrade request to the server"))

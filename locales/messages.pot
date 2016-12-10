@@ -103,7 +103,7 @@ msgid "Could not remove security providers; HTTPS may not work!"
 msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
-msgid "webserver config overridden for key ''{0''"
+msgid "webserver config overridden for key ''{0}''"
 msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
@@ -118,10 +118,6 @@ msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
 msgid "{0} could not close the connection"
-msgstr ""
-
-#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
-msgid "webserver config overridden for key ''{0}''"
 msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
