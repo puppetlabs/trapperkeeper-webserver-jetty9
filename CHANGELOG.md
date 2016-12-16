@@ -1,3 +1,9 @@
+## 1.6.0
+
+This is a "feature" release.
+
+* Added a new function `request-path` to the WebsocketProtocol
+
 ## 1.5.10
 
 This is a maintenance release.
