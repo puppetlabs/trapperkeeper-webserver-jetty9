@@ -3,6 +3,8 @@
 This is a "feature" release.
 
 * Added a new function `request-path` to the WebsocketProtocol
+* [TK-410](https://tickets.puppetlabs.com/browse/TK-410) Add the i18n library
+as a dependency and use it to externalize strings.
 
 ## 1.5.10
 
