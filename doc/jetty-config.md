@@ -70,6 +70,15 @@ queue is full would be seen by the client as having initially connected to the
 server socket at the TCP layer but having been closed almost immediately
 afterward by the server with no HTTP layer response body.
 
+### `request-body-max-size`
+
+This sets the maximum size, in bytes, of the body for an HTTP request. The size
+of the request body is determined from the value for the request's HTTP
+Content-Length header. If the Content-Length exceeds the configured value, Jetty
+will return an HTTP 413 Error response. If this setting is not configured and/or
+the request does not provide a Content-Length header, Jetty will pass the
+request through to underlying handlers (bypassing Content-Length evaluation).
+
 ### `request-header-max-size`
 
 This sets the maximum size of an HTTP Request Header. If a header is sent

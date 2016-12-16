@@ -3,7 +3,7 @@
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory AbstractConnectionFactory)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection
-                                             ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler)
+                                             ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler HandlerWrapper)
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
@@ -525,6 +525,28 @@
                                                    [endpoint-map]
                                                    (conj % endpoint-map))))
 
+(schema/defn ^:always-validate max-request-body-size-handler*
+  [handler :- Handler
+   max-size :- schema/Int]
+  (proxy [HandlerWrapper] []
+    (handle [target ^Request base-request request response]
+      (let [request-size (.getContentLength base-request)]
+        (if (> request-size max-size)
+          (do
+            (.setStatus response HttpServletResponse/SC_REQUEST_ENTITY_TOO_LARGE)
+            (.setHandled base-request true))
+          (.handle handler target base-request request response))))))
+
+(schema/defn ^:always-validate max-request-body-size-handler
+  "Wrap a max-request-body-size handler around the supplied handler.  The
+  handler returns a 413 (request entity too large) error if the Content-Length
+  HTTP header on the incoming request exceeds the value specified as the
+  max-size parameter."
+  [handler :- Handler
+   max-size :- schema/Int]
+  (doto (max-request-body-size-handler* handler max-size)
+    (.setHandler handler)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -629,9 +651,15 @@
           maybe-zipped (if (:gzip-enable options true)
                          (gzip-handler hc)
                          hc)
+          maybe-size-restricted (if-let [max-size (:request-body-max-size
+                                                   options)]
+                                  (max-request-body-size-handler
+                                   maybe-zipped
+                                   max-size)
+                                  maybe-zipped)
           maybe-logged (if log-handler
-                         (doto log-handler (.setHandler maybe-zipped))
-                         maybe-zipped)
+                         (doto log-handler (.setHandler maybe-size-restricted))
+                         maybe-size-restricted)
           statistics-handler (if (or (nil? shutdown-timeout) (pos? shutdown-timeout))
                                (doto (StatisticsHandler.)
                                  (.setHandler maybe-logged))
