@@ -50,13 +50,16 @@
     (.. this (getSession) (getUpgradeRequest) (isSecure)))
   (peer-certs [this]
     (.. this (getCerts)))
+  (request-path [this]
+    (.. this (getRequestPath)))
   (idle-timeout! [this ms]
     (.. this (getSession) (setIdleTimeout ^long ms)))
   (connected? [this]
     (. this (isConnected))))
 
 (definterface CertGetter
-  (^Object getCerts []))
+  (^Object getCerts [])
+  (^String getRequestPath []))
 
 (defn no-handler
   [event & args]
@@ -65,7 +68,8 @@
 
 (schema/defn ^:always-validate proxy-ws-adapter :- WebSocketAdapter
   [handlers :- WebsocketHandlers
-   x509certs :- [X509Certificate]]
+   x509certs :- [X509Certificate]
+   requestPath :- String]
   (let [{:keys [on-connect on-error on-text on-close on-bytes]
          :or {on-connect (partial no-handler :on-connect)
               on-error   (partial no-handler :on-error)
@@ -93,14 +97,16 @@
         (let [^WebSocketAdapter this this]
           (proxy-super onWebSocketBinary payload offset len))
         (on-bytes this payload offset len))
-      (getCerts [] x509certs))))
+      (getCerts [] x509certs)
+      (getRequestPath [] requestPath))))
 
 (schema/defn ^:always-validate proxy-ws-creator :- WebSocketCreator
   [handlers :- WebsocketHandlers]
   (reify WebSocketCreator
     (createWebSocket [this req _]
-      (let [x509certs (vec (.. req (getCertificates)))]
-        (proxy-ws-adapter handlers x509certs)))))
+      (let [x509certs (vec (.. req (getCertificates)))
+            requestPath (.. req (getRequestPath))]
+        (proxy-ws-adapter handlers x509certs requestPath)))))
 
 (schema/defn ^:always-validate websocket-handler :- WebSocketHandler
   "Returns a Jetty WebSocketHandler implementation for the given set of Websocket handlers"
