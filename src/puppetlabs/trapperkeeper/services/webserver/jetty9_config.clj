@@ -98,6 +98,7 @@
    (schema/optional-key :max-threads)                schema/Int
    (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
+   (schema/optional-key :request-body-max-size)      schema/Int
    (schema/optional-key :so-linger-seconds)          schema/Int
    (schema/optional-key :idle-timeout-milliseconds)  schema/Int
    (schema/optional-key :ssl-port)                   schema/Int

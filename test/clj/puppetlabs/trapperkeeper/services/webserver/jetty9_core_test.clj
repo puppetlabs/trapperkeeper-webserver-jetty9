@@ -512,3 +512,42 @@
               (let [resp (read-response 750)]
                 (is (re-find #"(?is)HTTP.*200 OK.*Hi World"
                              resp))))))))))
+
+(deftest request-body-max-size
+  (let [bigger-post-data (apply str (repeat 21 "f"))
+        smaller-post-data (apply str (repeat 20 "f"))
+        no-request-body-response "no request body"
+        get-request (fn [port]
+                      (http-sync/get (format "http://localhost:%d/" port)
+                                     {:as :text}))
+        post-request (fn [port body]
+                       (http-sync/post (format "http://localhost:%d/" port)
+                                       {:headers
+                                        {"content-type" "text/plain"}
+                                        :body body
+                                        :as :text}))
+        app (fn [req]
+              (let [body (slurp (:body req))]
+                (-> (if (empty? body)
+                      no-request-body-response
+                      body)
+                    (rr/response)
+                    (rr/status 200)
+                    (rr/content-type "text/plain")
+                    (rr/charset "UTF-8"))))]
+    (with-test-webserver-and-config
+     app
+     port
+     {:request-body-max-size 20}
+     (testing "posting data larger than the configured limit fails with 413"
+       (let [response (post-request port bigger-post-data)]
+         (is (= 413 (:status response)))
+         (is (= "" (:body response)))))
+     (testing "posting data within the configured limit succeeds"
+       (let [response (post-request port smaller-post-data)]
+         (is (= 200 (:status response)))
+         (is (= smaller-post-data (:body response)))))
+     (testing "request with no content-length succeeds when limit configured"
+       (let [response (get-request port)]
+         (is (= 200 (:status response)))
+         (is (= no-request-body-response (:body response))))))))
