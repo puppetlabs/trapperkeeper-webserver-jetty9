@@ -1,3 +1,13 @@
+## 1.7.0
+
+This is a feature and bugfix release.
+
+* [SERVER-1695](https://tickets.puppetlabs.com/browse/SERVER-1695) Add an
+optional `request-body-max-size` setting for restricting the maximum
+`Content-Length` allowed for requests.
+* [TK-429](https://tickets.puppetlabs.com/browse/TK-429) Fix for the ability
+to gzip-encode response bodies when an access log is configured.
+
 ## 1.6.0
 
 This is a "feature" release.
