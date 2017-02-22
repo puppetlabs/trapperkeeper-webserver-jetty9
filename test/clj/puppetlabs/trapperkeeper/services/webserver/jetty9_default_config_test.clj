@@ -90,8 +90,11 @@ react accordingly."
 
 (def selector-thread-count
   "The number of selector threads that should be allocated per connector.  See:
-   https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L229"
-  (max 1 (min 4 (int (/ (ks/num-cpus) 2)))))
+   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L223
+   and
+   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L403-L408
+   The number of selectors is twice the number of selector threads."
+  (* 2 (max 1 (min 4 (int (/ (ks/num-cpus) 2))))))
 
 (def acceptor-thread-count
   "The number of acceptor threads that should be allocated per connector.  See:
@@ -109,7 +112,7 @@ react accordingly."
     (is (= acceptor-thread-count (.getAcceptors connector))
         "Unexpected default for 'acceptor-threads' and 'ssl-acceptor-threads'")
     (is (= selector-thread-count
-           (.getSelectorCount (.getSelectorManager connector)))
+           (* 2 (.getSelectorCount (.getSelectorManager connector))))
         "Unexpected default for 'selector-threads' and 'ssl-selector-threads'")))
 
 (defn get-max-threads-for-server
@@ -177,7 +180,7 @@ react accordingly."
     (dotimes [x 2]
       (let [connectors       (inc x)
             required-threads (calculate-minimum-required-threads connectors)]
-        (testing (str "server with too few threads for " x " connector(s) "
+        (testing (str "server with too few threads for " connectors " connector(s) "
                       "fail(s) to start with expected error")
           (let [server (-> required-threads
                            dec
@@ -186,7 +189,7 @@ react accordingly."
                                   (insufficient-threads-msg server)
                                   (tk-log-testutils/with-test-logging
                                    (.start server))))))
-        (testing (str "server with minimum required threads for " x
+        (testing (str "server with minimum required threads for " connectors
                       "connector(s) start(s) successfully")
           (let [server (get-server required-threads connectors)]
             (try

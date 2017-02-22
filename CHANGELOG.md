@@ -1,3 +1,9 @@
+## 2.0.0
+
+The is a major release
+
+* [TK-369](https://tickets.puppetlabs.com/browse/TK-369) Move Jetty dependency to 9.4.1
+
 ## 1.7.0
 
 This is a feature and bugfix release.

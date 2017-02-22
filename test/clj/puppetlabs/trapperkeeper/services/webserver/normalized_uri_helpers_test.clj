@@ -33,7 +33,7 @@
   (testing (str "non-percent encoded parameters in uri path segments are "
                 "chopped off after normalization")
     (is (= "/foo" (normalize-uri-path-for-string "/foo;foo=chump")))
-    (is (= "/foo/bar" (normalize-uri-path-for-string
+    (is (= "/foo/bar/baz" (normalize-uri-path-for-string
                        "/foo/bar;bar=chocolate/baz;baz=bim"))))
   (testing (str "percent-encoded parameters in uri path segments are properly "
                 "decoded after normalization")
@@ -116,8 +116,8 @@
     ;;> or the surrogate pair ED A1 8C ED BE B4 into U+233B4.  Decoding
     ;;> invalid sequences may have security consequences or cause other
     ;;> problems.
-    (is (= "��" (normalize-uri-path-for-string "%C0%AE")))
-    (is (= "/foo/��/��" (normalize-uri-path-for-string "/foo/%C0%AE/%C0%AE")))))
+    (is (= "-64-82" (normalize-uri-path-for-string "%C0%AE")))
+    (is (= "/foo/-64-82/-64-82" (normalize-uri-path-for-string "/foo/%C0%AE/%C0%AE")))))
 
 (deftest normalize-uris-with-redundant-slashes-tests
   (testing "uris with redundant slashes are removed"

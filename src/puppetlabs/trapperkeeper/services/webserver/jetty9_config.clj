@@ -448,6 +448,7 @@
     (.setFileName logger (:access-log-config config))
     (.setQuiet logger true)
     (.setRequestLog handler logger)
+    (.start logger)
     handler))
 
 (defn maybe-init-log-handler

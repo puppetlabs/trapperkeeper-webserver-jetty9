@@ -5,7 +5,8 @@
            (java.net BindException)
            (java.nio.file Paths Files)
            (java.nio.file.attribute FileAttribute)
-           (appender TestListAppender))
+           (appender TestListAppender)
+           (javax.net.ssl SSLException))
   (:require [clojure.test :refer :all]
             [puppetlabs.http.client.async :as async]
             [puppetlabs.http.client.common :as http-client-common]
@@ -68,6 +69,8 @@
     ~@body
     (throw (IllegalStateException. "Expected SSL Exception to be thrown!"))
     (catch ConnectionClosedException e#
+      true)
+    (catch SSLException e#
       true)
     (catch IOException e#
       (if (= "Connection reset by peer" (.getMessage e#))
@@ -529,7 +532,8 @@
       (tk-app/stop app))))
 
 (deftest large-request-test
-  (testing (str "request to Jetty fails with a 413 error if the request header "
+  ;; This changed from 413 to 431 in https://github.com/eclipse/jetty.project/commit/e53ea55f480a959a2f1f5e2dbdbfc689d61c94a6
+  (testing (str "request to Jetty fails with a 431 error if the request header "
                 "is too large and a larger one is not set")
     (with-app-with-config app
       [jetty9-service
@@ -538,7 +542,7 @@
       (tk-log-testutils/with-test-logging
        (let [response (http-get "http://localhost:8080/hi_world" {:headers {"Cookie" absurdly-large-cookie}
                                                                   :as :text})]
-         (is (= (:status response) 413))))))
+         (is (= (:status response) 431))))))
 
   (testing (str "request to Jetty succeeds with a large cookie if the request header "
                 "size is properly set")
@@ -804,7 +808,7 @@
        hello-webservice]
       jetty-ssl-pem-config
       (is (thrown?
-           ConnectionClosedException
+           SSLException
            (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
                                                               {:ssl-protocols ["SSLv3"]}))))))
   (testing "SSLv3 is supported when configured"
