@@ -59,14 +59,8 @@
   (proxy [HandlerWrapper] []
     (handle [^String target ^Request base-request
              ^HttpServletRequest request ^HttpServletResponse response]
-      (let [handler (proxy-super getHandler)
-            is-started (proxy-super isStarted)]
-        ;; It may not strictly be necessary to check if the wrapping handler
-        ;; is started in order to let a request through but that's what the
-        ;; base `HandlerWrapper` class from Jetty does, so it seemed best to
-        ;; follow the pattern:
-        ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/handler/HandlerWrapper.java#L95
-        (when (and handler is-started)
+      (let [handler (proxy-super getHandler)]
+        (when handler
           (if-let [normalized-uri
                    (try
                      (normalize-uri-path request)
