@@ -96,19 +96,19 @@
 
 (defn validate-ring-handler
   ([base-url config]
-    (validate-ring-handler base-url config {:as :text} :default))
+   (validate-ring-handler base-url config {:as :text} :default))
   ([base-url config http-get-options]
    (validate-ring-handler base-url config http-get-options :default))
   ([base-url config http-get-options server-id]
-    (with-app-with-config app
-      [jetty9-service
-       hello-webservice]
-      config
-      (let [response (http-get
-                      (format "%s%s/" base-url hello-path)
-                      http-get-options)]
-        (is (= (:status response) 200))
-        (is (= (:body response) hello-body))))))
+   (with-app-with-config app
+     [jetty9-service
+      hello-webservice]
+     config
+     (let [response (http-get
+                     (format "%s%s/" base-url hello-path)
+                     http-get-options)]
+       (is (= (:status response) 200))
+       (is (= (:body response) hello-body))))))
 
 (defn validate-ring-handler-default
   ([base-url config]
