@@ -59,8 +59,7 @@
   (proxy [HandlerWrapper] []
     (handle [^String target ^Request base-request
              ^HttpServletRequest request ^HttpServletResponse response]
-      (let [handler (proxy-super getHandler)]
-        (when handler
+      (when-let [handler (proxy-super getHandler)]
           (if-let [normalized-uri
                    (try
                      (normalize-uri-path request)
@@ -79,7 +78,7 @@
              (HttpServletRequestWithAlternateRequestUri.
               request
               normalized-uri)
-             response)))))))
+           response))))))
 
 (schema/defn ^:always-validate normalized-uri-filter :- Filter
   "Create a servlet filter which provides a normalized request URI on to its
