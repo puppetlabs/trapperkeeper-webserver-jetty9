@@ -60,24 +60,24 @@
     (handle [^String target ^Request base-request
              ^HttpServletRequest request ^HttpServletResponse response]
       (when-let [handler (proxy-super getHandler)]
-          (if-let [normalized-uri
-                   (try
-                     (normalize-uri-path request)
-                     (catch IllegalArgumentException ex
-                       (do
-                         (servlet/update-servlet-response
-                          response
-                          {:status 400
-                           :body (.getMessage ex)})
-                         (.setHandled base-request true))
-                       nil))]
-            (.handle
-             handler
-             target
-             base-request
-             (HttpServletRequestWithAlternateRequestUri.
-              request
-              normalized-uri)
+        (if-let [normalized-uri
+                 (try
+                   (normalize-uri-path request)
+                   (catch IllegalArgumentException ex
+                     (do
+                       (servlet/update-servlet-response
+                        response
+                        {:status 400
+                         :body (.getMessage ex)})
+                       (.setHandled base-request true))
+                     nil))]
+          (.handle
+           handler
+           target
+           base-request
+           (HttpServletRequestWithAlternateRequestUri.
+            request
+            normalized-uri)
            response))))))
 
 (schema/defn ^:always-validate normalized-uri-filter :- Filter
