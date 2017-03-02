@@ -723,7 +723,11 @@
            (let [response (http-client-common/get async-client "http://localhost:8080/hello" {:as :text})]
              @in-request-handler
              (tk-app/stop app)
-             (is (not (nil? (:error @response))))))))))
+             (let [resp @response]
+               (is (or
+                    (not (nil? (:error resp)))
+                    (= 404 (:status resp)))
+                   resp))))))))
 
   (testing "tk app can still restart even if stop timeout expires"
     (let [in-request-handler? (promise)
