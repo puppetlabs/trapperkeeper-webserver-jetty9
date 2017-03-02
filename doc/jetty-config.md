@@ -82,7 +82,7 @@ request through to underlying handlers (bypassing Content-Length evaluation).
 ### `request-header-max-size`
 
 This sets the maximum size of an HTTP Request Header. If a header is sent
-that exceeds this value, Jetty will return an HTTP 413 Error response. This
+that exceeds this value, Jetty will return an HTTP 431 Error response. This
 defaults to 8192 bytes, and only needs to be configured if an exceedingly large
 header is being sent in an HTTP Request.
 
@@ -129,7 +129,8 @@ virtual cores on the host divided by 8, with a minimum of 1 and maximum of 4.
 This sets the number of threads that the webserver will dedicate to processing
 events on connected sockets for _encrypted_ HTTPS traffic.  Defaults to the
 number of virtual cores on the host divided by 2, with a minimum of 1 and
-maximum of 4.
+maximum of 4. The number of selectors used by Jetty is twice the number of ssl
+selector threads.
 
 ### `ssl-cert`
 
