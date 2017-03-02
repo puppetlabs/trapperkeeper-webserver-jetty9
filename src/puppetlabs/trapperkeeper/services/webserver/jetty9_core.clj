@@ -705,7 +705,7 @@
          normalize-request-uri? (:normalize-request-uri? options)]
      (.setBaseResource handler (Resource/newResource base-path))
      (if follow-links?
-       (.addAliasCheck handler (AllowSymLinkAliasChecker.))
+       (.setAliasChecks handler [(AllowSymLinkAliasChecker.)])
        (.clearAliasChecks handler))
      ;; register servlet context listeners (if any)
      (when-not (nil? context-listeners)
