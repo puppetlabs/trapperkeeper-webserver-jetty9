@@ -7,11 +7,14 @@ This is a major release
   support Java 8 and higher. No public APIs have changed in this release.
 
 * The behavior of normalize-uri-path has changed slightly due to changes in
-  Jetty's URIUtil decodePath method. Specifically, overlong encodings change
-  their decoded value (but are still not traversable), and semicolons no longer
-  terminate URI processing, but only when ; is followed at some point by
-  another path segment beginning with /. For example, "/foo/bar;bar=chocolate/baz;baz=bim"
-  now decodes to "/foo/bar/baz" while before it decoded to "/foo/bar".
+  Jetty's URIUtil decodePath method. Specifically, overlong encodings (which
+  are considered invalid UTF-8) change their decoded value (but are still not
+  traversable), and semicolons no longer terminate URI processing, but only
+  when ; is followed at some point by another path segment beginning with /.
+  For example, "/foo/bar;bar=chocolate/baz;baz=bim" now decodes to
+  "/foo/bar/baz" while before it decoded to "/foo/bar". If the request has
+  invalid % encoded UTF-8 characters, the path will be decoded as an ISO-8859-1
+  encoded string.
   (https://github.com/eclipse/jetty.project/commit/7f62f2600b943b9aed0e4771891939bf61372c5a)
 
 ## 1.7.0

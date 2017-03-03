@@ -716,7 +716,7 @@
              in-request-handler (promise)
              ring-handler (fn [_]
                             (deliver in-request-handler true)
-                            (Thread/sleep 300)
+                            (Thread/sleep 2000)
                             {:status 200 :body "Hello, World!"})]
          (add-ring-handler ring-handler "/hello")
          (with-open [async-client (async/create-client {})]
