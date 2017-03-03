@@ -24,10 +24,13 @@ virtual cores on the host divided by 8, with a minimum of 1 and maximum of 4.
 
 ### `selector-threads`
 
-This sets the number of threads that the webserver will dedicate to processing
-events on connected sockets for _unencrypted_ HTTP traffic.  Defaults to the
-number of virtual cores on the host divided by 2, with a minimum of 1 and
-maximum of 4.
+This sets the number of selectors that the webserver will dedicate to
+processing events on connected sockets for unencrypted HTTPS traffic. Defaults
+to the number of virtual cores on the host divided by 2, with a minimum of 1
+and maximum of 4. The number of selector threads actually used by Jetty is
+twice the number of selectors requested. For example, if a value of 3 is
+specified for the `selector-threads` setting, Jetty will actually use 6
+selector threads.
 
 ### `max-threads`
 
@@ -126,10 +129,12 @@ virtual cores on the host divided by 8, with a minimum of 1 and maximum of 4.
 
 ### `ssl-selector-threads`
 
-This sets the number of threads that the webserver will dedicate to processing
-events on connected sockets for _encrypted_ HTTPS traffic.  Defaults to the
-number of virtual cores on the host divided by 2, with a minimum of 1 and
-maximum of 4. The number of selectors used by Jetty is twice the number of ssl
+This sets the number of selectors that the webserver will dedicate to
+processing events on connected sockets for encrypted HTTPS traffic. Defaults
+to the number of virtual cores on the host divided by 2, with a minimum of 1
+and maximum of 4. The number of selector threads actually used by Jetty is
+twice the number of selectors requested. For example, if a value of 3 is
+specified for the `ssl-selector-threads` setting, Jetty will actually use 6
 selector threads.
 
 ### `ssl-cert`
