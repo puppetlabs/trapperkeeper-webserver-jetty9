@@ -4,7 +4,6 @@ import ch.qos.logback.access.PatternLayout;
 import ch.qos.logback.access.PatternLayoutEncoder;
 import ch.qos.logback.access.spi.IAccessEvent;
 import ch.qos.logback.core.AppenderBase;
-import ch.qos.logback.core.Layout;
 import ch.qos.logback.core.encoder.Encoder;
 
 import java.util.ArrayList;

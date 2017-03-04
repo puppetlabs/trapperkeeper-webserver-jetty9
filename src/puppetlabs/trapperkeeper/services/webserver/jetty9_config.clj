@@ -2,11 +2,11 @@
   (:import [java.security KeyStore]
            (java.io FileInputStream)
            (org.eclipse.jetty.server.handler RequestLogHandler)
-           (ch.qos.logback.access.jetty RequestLogImpl)
            (org.eclipse.jetty.server Server)
            (org.codehaus.janino ScriptEvaluator)
            (org.codehaus.commons.compiler CompileException)
-           (java.lang.reflect InvocationTargetException))
+           (java.lang.reflect InvocationTargetException)
+           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils LifeCycleImplementingRequestLogImpl))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as str]
             [me.raynes.fs :as fs]
@@ -444,7 +444,7 @@
   init-log-handler :- RequestLogHandler
   [config :- WebserverRawConfig]
   (let [handler (RequestLogHandler.)
-        logger (RequestLogImpl.)]
+        logger (LifeCycleImplementingRequestLogImpl.)]
     (.setFileName logger (:access-log-config config))
     (.setQuiet logger true)
     (.setRequestLog handler logger)

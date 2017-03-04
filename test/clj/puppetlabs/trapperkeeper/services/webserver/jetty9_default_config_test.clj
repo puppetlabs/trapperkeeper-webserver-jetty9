@@ -56,7 +56,7 @@ react accordingly."
 
 (deftest default-request-header-max-size-test
   (let [http-config (HttpConfiguration.)]
-    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/HttpConfiguration.java#L49
+    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/HttpConfiguration.java#L55
     (is (= 8192 (.getRequestHeaderSize http-config))
         "Unexpected default for 'request-header-max-size'")))
 
@@ -80,36 +80,39 @@ react accordingly."
                           true
                           false)
           client        (.createHttpClient proxy-servlet)]
-      ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-client/src/main/java/org/eclipse/jetty/client/HttpClient.java#L129
+      ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-client/src/main/java/org/eclipse/jetty/client/HttpClient.java#L135
       (is (= 4096 (.getRequestBufferSize client))
           "Unexpected default for proxy 'request-buffer-size'")
-      ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L268-L271
+      ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L304-L307
       (is (= 30000 (.getIdleTimeout client))
           "Unexpected default for proxy 'idle-timeout'")
       (.stop client))))
 
 (def selector-thread-count
   "The number of selector threads that should be allocated per connector.  See:
-   https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L229"
-  (max 1 (min 4 (int (/ (ks/num-cpus) 2)))))
+   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L223
+   and
+   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L403-L408
+   The number of selectors is twice the number of selector threads."
+  (* 2 (max 1 (min 4 (int (/ (ks/num-cpus) 2))))))
 
 (def acceptor-thread-count
   "The number of acceptor threads that should be allocated per connector.  See:
-   https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L190"
+   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L194"
   (max 1 (min 4 (int (/ (ks/num-cpus) 8)))))
 
 (deftest default-connector-settings-test
   (let [connector (ServerConnector. (Server.))]
-    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L85
+    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L87
     (is (= -1 (.getSoLingerTime connector))
         "Unexpected default for 'so-linger-seconds'")
-    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L146
+    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L150
     (is (= 30000 (.getIdleTimeout connector))
         "Unexpected default for 'idle-timeout-milliseconds'")
     (is (= acceptor-thread-count (.getAcceptors connector))
         "Unexpected default for 'acceptor-threads' and 'ssl-acceptor-threads'")
     (is (= selector-thread-count
-           (.getSelectorCount (.getSelectorManager connector)))
+           (* 2 (.getSelectorCount (.getSelectorManager connector))))
         "Unexpected default for 'selector-threads' and 'ssl-selector-threads'")))
 
 (defn get-max-threads-for-server
@@ -129,13 +132,13 @@ react accordingly."
 
 (deftest default-server-settings-test
   (let [server (Server.)]
-    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-util/src/main/java/org/eclipse/jetty/util/component/AbstractLifeCycle.java#L48
+    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-util/src/main/java/org/eclipse/jetty/util/component/AbstractLifeCycle.java#L48
     (is (= 30000 (.getStopTimeout server))
         "Unexpected default for 'shutdown-timeout-seconds'")
-    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-util/src/main/java/org/eclipse/jetty/util/thread/QueuedThreadPool.java#L67
+    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-util/src/main/java/org/eclipse/jetty/util/thread/QueuedThreadPool.java#L71
     (is (= 200 (get-max-threads-for-server server))
         "Unexpected default for 'max-threads'")
-    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-util/src/main/java/org/eclipse/jetty/util/BlockingArrayQueue.java#L117
+    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-util/src/main/java/org/eclipse/jetty/util/BlockingArrayQueue.java#L92
     (is (= (Integer/MAX_VALUE) (.getMaxCapacity
                                  (get-server-thread-pool-queue server)))
         "Unexpected default for 'queue-max-size'")))
@@ -146,7 +149,7 @@ react accordingly."
 
 (defn calculate-minimum-required-threads
   "Calculate the minimum number threads that a single Jetty Server instance
-  needs.  See: https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L334-L350"
+  needs.  See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L384-L414"
   [connectors]
   (+ 1 (* connectors threads-per-connector)))
 
@@ -177,7 +180,7 @@ react accordingly."
     (dotimes [x 2]
       (let [connectors       (inc x)
             required-threads (calculate-minimum-required-threads connectors)]
-        (testing (str "server with too few threads for " x " connector(s) "
+        (testing (str "server with too few threads for " connectors " connector(s) "
                       "fail(s) to start with expected error")
           (let [server (-> required-threads
                            dec
@@ -186,7 +189,7 @@ react accordingly."
                                   (insufficient-threads-msg server)
                                   (tk-log-testutils/with-test-logging
                                    (.start server))))))
-        (testing (str "server with minimum required threads for " x
+        (testing (str "server with minimum required threads for " connectors
                       "connector(s) start(s) successfully")
           (let [server (get-server required-threads connectors)]
             (try

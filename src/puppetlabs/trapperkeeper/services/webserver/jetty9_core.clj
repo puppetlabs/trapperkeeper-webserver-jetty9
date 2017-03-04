@@ -3,22 +3,22 @@
                                      HttpConfiguration HttpConnectionFactory
                                      ConnectionFactory AbstractConnectionFactory)
            (org.eclipse.jetty.server.handler AbstractHandler ContextHandler HandlerCollection
-                                             ContextHandlerCollection AllowSymLinkAliasChecker StatisticsHandler HandlerWrapper)
+                                             ContextHandlerCollection AllowSymLinkAliasChecker
+                                             StatisticsHandler HandlerWrapper)
+           (org.eclipse.jetty.server.handler.gzip GzipHandler)
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
            (org.eclipse.jetty.util.ssl SslContextFactory)
            (javax.servlet.http HttpServletResponse)
            (java.util.concurrent TimeoutException)
-           (org.eclipse.jetty.servlets.gzip GzipHandler)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
            (org.eclipse.jetty.webapp WebAppContext)
-           (java.util HashSet)
            (org.eclipse.jetty.http MimeTypes HttpHeader HttpHeaderValue)
            (javax.servlet Servlet ServletContextListener)
            (org.eclipse.jetty.proxy ProxyServlet)
            (java.net URI)
            (java.security Security)
-           (org.eclipse.jetty.client HttpClient)
+           (org.eclipse.jetty.client HttpClient RedirectProtocolHandler)
            (clojure.lang Atom)
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
@@ -315,7 +315,7 @@
         ;;
         ;; The QueuedThreadPool constructor sets the `queue-capacity` and
         ;; `queue-grow-by` based on the minimum number of threads available
-        ;; in the pool.  See https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-util/src/main/java/org/eclipse/jetty/util/thread/QueuedThreadPool.java#L92-L96.
+        ;; in the pool.  See https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-util/src/main/java/org/eclipse/jetty/util/thread/QueuedThreadPool.java#L101-L105.
         ;; That algorithm is essentially duplicated here, with the only
         ;; difference being that if `queue-max-size` is smaller than the
         ;; minimum number of threads, the `queue-capacity` and `queue-grow-by`
@@ -382,7 +382,7 @@
                  (.startsWith % "video/"))
             (MimeTypes/getKnownMimeTypes))
     (conj "application/compress" "application/zip" "application/gzip" "text/event-stream")
-    (HashSet.)))
+    (into-array)))
 
 (defn- gzip-handler
   "Given a handler, wrap it with a GzipHandler that will compress the response
@@ -390,8 +390,7 @@
   [handler]
   (doto (GzipHandler.)
     (.setHandler handler)
-    (.setMimeTypes (gzip-excluded-mime-types))
-    (.setExcludeMimeTypes true)))
+    (.setExcludedMimeTypes (gzip-excluded-mime-types))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler Helper Functions
@@ -437,7 +436,7 @@
                                     (:ssl-config options)))
         {:keys [request-buffer-size idle-timeout]} options]
     (proxy [ProxyServlet] []
-      (rewriteURI [req]
+      (rewriteTarget [req]
         (let [query (.getQueryString req)
               scheme (let [target-scheme (:scheme options)]
                        (condp = target-scheme
@@ -458,8 +457,8 @@
                                  (codec/url-decode (str query))
                                  nil)]
             (if-let [rewrite-uri-callback-fn (:rewrite-uri-callback-fn options)]
-              (rewrite-uri-callback-fn target-uri req)
-              target-uri))))
+              (str (rewrite-uri-callback-fn target-uri req))
+              (str target-uri)))))
 
       (newHttpClient []
         (let [client (if custom-ssl-ctxt-factory
@@ -477,22 +476,25 @@
               timeout (when idle-timeout
                         (* 1000 idle-timeout))]
           (if (:follow-redirects options)
-            (.setFollowRedirects client true)
+            (do
+              (.setFollowRedirects client true)
+              (.put (.getProtocolHandlers client) (RedirectProtocolHandler. client)))
             (.setFollowRedirects client false))
           (when timeout
             (.setIdleTimeout client timeout))
           client))
 
-      (customizeProxyRequest [proxy-req req]
+      (sendProxyRequest [req resp proxy-req]
         (if-let [callback-fn (:callback-fn options)]
-         (callback-fn proxy-req req)))
+         (callback-fn proxy-req req))
+       (proxy-super sendProxyRequest req resp proxy-req))
 
       ;; The implementation of onResponseFailure is duplicated heavily from:
-      ;; https://github.com/eclipse/jetty.project/blob/jetty-9.2.10.v20150310/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L576-L607
+      ;; https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L624-L658
       ;; The only significant difference is that a 'failure-callback-fn', if
       ;; defined in options, is invoked just prior to completing the async
       ;; context for cases that the response was not already committed upstream.
-      (onResponseFailure [req resp proxy-resp failure]
+      (onProxyResponseFailure [req resp proxy-resp failure]
         (do
           (let [request-id    (.getRequestId this req)
                 async-context (.getAsyncContext req)]
@@ -702,8 +704,9 @@
          enable-trailing-slash-redirect? (:enable-trailing-slash-redirect? options)
          normalize-request-uri? (:normalize-request-uri? options)]
      (.setBaseResource handler (Resource/newResource base-path))
-     (when follow-links?
-       (.addAliasCheck handler (AllowSymLinkAliasChecker.)))
+     (if follow-links?
+       (.setAliasChecks handler [(AllowSymLinkAliasChecker.)])
+       (.clearAliasChecks handler))
      ;; register servlet context listeners (if any)
      (when-not (nil? context-listeners)
        (dorun (map #(.addEventListener handler %) context-listeners)))
