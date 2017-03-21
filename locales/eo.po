@@ -1,0 +1,184 @@
+# Esperanto translations for puppetlabs.trapperkeeper_webserver_jetty9 package.
+# Copyright (C) 2017 Puppet <docs@puppet.com>
+# This file is distributed under the same license as the puppetlabs.trapperkeeper_webserver_jetty9 package.
+# Automatically generated, 2017.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: puppetlabs.trapperkeeper_webserver_jetty9 \n"
+"Report-Msgid-Bugs-To: docs@puppet.com\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: eo\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/puppetlabs/trapperkeeper/services/webrouting/webrouting_service_core.clj
+msgid "service {0} does not appear in configuration"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webrouting/webrouting_service_core.clj
+msgid "endpoint with id {0} does not appear in configuration for service {1}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webrouting/webrouting_service_core.clj
+msgid "no route-id specified for a service with multiple routes"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/experimental/jetty9_websockets.clj
+msgid "No handler defined for websocket event ''{0}'' with args: ''{1}''"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid ""
+"Found SSL config options: {0}; If configuring SSL from PEM files, you must "
+"provide all of the following options: {1}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid "Unable to open ''ssl-cert'' file: {0}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid "No certs found in ''ssl-cert'' file: {0}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid "Unable to open ''ssl-cert-chain'' file: {0}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid ""
+"Found settings for both keystore-based and PEM-based SSL; using PEM-based "
+"settings, ignoring {0}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid ""
+"Missing some SSL configuration; must provide either :ssl-cert, :ssl-key, "
+"and :ssl-ca-cert, OR :truststore, :trust-password, :keystore, and :key-"
+"password."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid ""
+"Unexpected value found for client auth config option: {0}.  Expected need, "
+"want, or none."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid "Non-readable path specified for ssl-crl-path option: {0}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid "Error: More than one default server specified in configuration"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid ""
+"Either host, port, ssl-host, or ssl-port must be specified on the config in "
+"order for the server to be started"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid ""
+"The ''post-config-script'' setting is for advanced use cases only, and may "
+"be subject to minor changes when the application is upgraded."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid "Invalid script string in webserver ''post-config-script'' configuration"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "Removing buggy security provider {0}"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "Could not remove security providers; HTTPS may not work!"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "webserver config overridden for key ''{0}''"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid ""
+"`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we "
+"recommend removing it from the `ssl-protocols` list"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "{0} proxying failed"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "{0} could not close the connection"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "Cleaning up JMX MBean container"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "Shutting down web server."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid ""
+"Web server failed to shut down gracefully in configured timeout period "
+"({0}); cancelling remaining requests."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "Web server shutdown"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "Starting web server."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "Encountered error starting web server, so shutting down"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid ""
+"overrides cannot be set because webserver has already processed the config"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid ""
+"overrides cannot be set because they have already been set and webserver has "
+"already processed the config"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "overrides cannot be set because they have already been set"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid ""
+"no server-id was specified for this operation and no default server was "
+"specified in the configuration"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_service.clj
+msgid "Initializing web server(s)."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_service.clj
+msgid "Starting web server(s)."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_service.clj
+msgid "Shutting down web server(s)."
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/normalized_uri_helpers.clj
+msgid "Invalid relative path (.. or .) in: {0}"
+msgstr ""
