@@ -753,7 +753,7 @@
         ;; isn't closed down even though the server otherwise appears to have
         ;; been stopped properly - leaving the server-side of the connection in
         ;; an indefinite CLOSE_WAIT state.
-        (let [resp @@response
+        (let [resp (deref (deref response))
               error (:error resp)]
           (is (or
                (instance? ConnectionClosedException error)
