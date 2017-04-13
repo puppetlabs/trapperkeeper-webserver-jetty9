@@ -52,23 +52,22 @@
 ;;; their implicit defaults reflect the security issue.  The latter is far more
 ;;; risky for our downstream apps, thus it was decided that it makes sense to
 ;;; keep these overrides.
-;;;
-;;; Also note that w/rt the default list of acceptable ciphers, we're deliberately
-;;; excluding all diffie-helman ciphers due to some old JDK bugs:
-;;;
-;;; http://bugs.java.com/bugdatabase/view_bug.do?bug_id=8014618
-;;; https://github.com/puppetlabs/puppetdb/commit/03e020dc85b83d6c83c9992ca6bd14f57e8fc91a
-;;;
-;;; These have been fixed in recent versions of the JDK, and it would be nice
-;;; to be able to add the DH ciphers back in at some point, but we can't do that
-;;; until we're certain that our minimum supported JDK versions for all of our
-;;; supported distros will contain the relevant fixes.
-;;;
 (def acceptable-ciphers
-  ["TLS_RSA_WITH_AES_256_CBC_SHA256"
+  ["TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA256"
+   "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA"
+   "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
+   "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"
+
+   "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256"
+   "TLS_DHE_RSA_WITH_AES_256_CBC_SHA"
+   "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
+   "TLS_DHE_RSA_WITH_AES_128_CBC_SHA"
+
+   "TLS_RSA_WITH_AES_256_CBC_SHA256"
    "TLS_RSA_WITH_AES_256_CBC_SHA"
    "TLS_RSA_WITH_AES_128_CBC_SHA256"
    "TLS_RSA_WITH_AES_128_CBC_SHA"
+
    "SSL_RSA_WITH_RC4_128_SHA"
    "SSL_RSA_WITH_3DES_EDE_CBC_SHA"
    "SSL_RSA_WITH_RC4_128_MD5"])
