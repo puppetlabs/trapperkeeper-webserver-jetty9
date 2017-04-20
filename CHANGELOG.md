@@ -2,7 +2,7 @@
 
 This is a major release
 
-* [TK-369](https://tickets.puppetlabs.com/browse/TK-369) Move Jetty dependency to 9.4.1
+* [TK-369](https://tickets.puppetlabs.com/browse/TK-369) Move Jetty dependency to 9.4.4.
   Notably, this change drops Java 7 support as Jetty 9.3 and higher only
   support Java 8 and higher. No public APIs have changed in this release.
 
@@ -16,6 +16,12 @@ This is a major release
   invalid % encoded UTF-8 characters, the path will be decoded as an ISO-8859-1
   encoded string.
   (https://github.com/eclipse/jetty.project/commit/7f62f2600b943b9aed0e4771891939bf61372c5a)
+
+* [TK-373](https://tickets.puppetlabs.com/browse/TK-373) Enable Diffie Hellman
+  cipher suites.  DHE cipher suites were previously disabled due to bugs with
+  DH ciphers on Oracle JDK 7.
+
+* [TK-374](https://tickets.puppetlabs.com/browse/TK-374) Remove obsolete SSL ciphers.
 
 ## 1.7.0
 
