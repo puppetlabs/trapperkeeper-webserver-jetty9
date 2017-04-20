@@ -8,7 +8,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.3.3"]
+  :parent-project {:coords [puppetlabs/clj-parent "0.6.1"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -46,7 +46,7 @@
   :java-source-paths  ["java"]
 
   :plugins [[lein-parent "0.3.1"]
-            [puppetlabs/i18n "0.6.0"]]
+            [puppetlabs/i18n "0.8.0"]]
 
   :deploy-repositories [["releases" {:url "https://clojars.org/repo"
                                      :username :env/clojars_jenkins_username
