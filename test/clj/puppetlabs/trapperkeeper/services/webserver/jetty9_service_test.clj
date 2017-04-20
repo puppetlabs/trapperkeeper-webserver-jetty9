@@ -705,60 +705,64 @@
               (tk-app/stop app))
             (is (not (nil? (:error @response)))))))))
 
-  (testing "no graceful shutdown when stop timeout is set to 0"
-    (let [response (atom nil)]
-      ;; For this test, an active web request should exist at the time the
-      ;; webserver service is stopped.  Because the shutdown timeout is set to
-      ;; 0, though, the request should be terminated immediately as the
-      ;; webserver service is shut down, without waiting for ring handler
-      ;; to complete the request.
-      (with-open [async-client (async/create-client
-                                ;; Setting the socket timeout to something much
-                                ;; larger than the sleep delay done in the ring
-                                ;; handler below.  This timeout allows the HTTP
-                                ;; client request to not hang the test
-                                ;; indefinitely in the event of an unexpected
-                                ;; test failure.
-                                {:socket-timeout-milliseconds 120000})]
-        (tk-log-testutils/with-test-logging
-         (with-app-with-config
-          app
-          [jetty9-service]
-          {:webserver {:port 8080 :shutdown-timeout-seconds 0}}
-          (let [s (tk-app/get-service app :WebserverService)
-                add-ring-handler (partial add-ring-handler s)
-                in-request-handler (promise)
-                ring-handler (fn [_]
-                               (deliver in-request-handler true)
-                               ;; Sleeping for a long time to allow an HTTP
-                               ;; request to still be active at the point the
-                               ;; webserver is shutdown
-                               (Thread/sleep 60000)
-                               {:status 200 :body "Hello, World!"})]
-            (add-ring-handler ring-handler "/hello")
-            (reset! response (http-client-common/get
-                              async-client
-                              "http://localhost:8080/hello"
-                              {:as :text}))
-            @in-request-handler)))
-        ;; The web server should have been stopped by the time we get here.
-        ;; Depending upon timing, the Jetty webserver may provide an HTTP 404
-        ;; response or just terminate the socket for the web request which could
-        ;; not be completed, which should cause a ConnectionClosedException to
-        ;; be thrown.
-        ;;
-        ;; Note that per TK-437, we have occasionally seen this assertion fail
-        ;; due to a SocketTimeoutException being thrown.  In this case, there
-        ;; appears to be a timing-related bug in Jetty where the server socket
-        ;; isn't closed down even though the server otherwise appears to have
-        ;; been stopped properly - leaving the server-side of the connection in
-        ;; an indefinite CLOSE_WAIT state.
-        (let [resp (deref (deref response))
-              error (:error resp)]
-          (is (or
-               (instance? ConnectionClosedException error)
-               (= 404 (:status resp)))
-              (str "request did not error as expected. response: " resp))))))
+; Per [TK-437](https://tickets.puppetlabs.com/browse/TK-437) we've been having issues
+; with this test randomly hanging, but the fixes applied for TK-437 didn't seem to resolve
+; the issue. This test is disabled until we can work out a reliable fix.
+;
+;  (testing "no graceful shutdown when stop timeout is set to 0"
+;    (let [response (atom nil)]
+;      ;; For this test, an active web request should exist at the time the
+;      ;; webserver service is stopped.  Because the shutdown timeout is set to
+;      ;; 0, though, the request should be terminated immediately as the
+;      ;; webserver service is shut down, without waiting for ring handler
+;      ;; to complete the request.
+;      (with-open [async-client (async/create-client
+;                                ;; Setting the socket timeout to something much
+;                                ;; larger than the sleep delay done in the ring
+;                                ;; handler below.  This timeout allows the HTTP
+;                                ;; client request to not hang the test
+;                                ;; indefinitely in the event of an unexpected
+;                                ;; test failure.
+;                                {:socket-timeout-milliseconds 120000})]
+;        (tk-log-testutils/with-test-logging
+;         (with-app-with-config
+;          app
+;          [jetty9-service]
+;          {:webserver {:port 8080 :shutdown-timeout-seconds 0}}
+;          (let [s (tk-app/get-service app :WebserverService)
+;                add-ring-handler (partial add-ring-handler s)
+;                in-request-handler (promise)
+;                ring-handler (fn [_]
+;                               (deliver in-request-handler true)
+;                               ;; Sleeping for a long time to allow an HTTP
+;                               ;; request to still be active at the point the
+;                               ;; webserver is shutdown
+;                               (Thread/sleep 60000)
+;                               {:status 200 :body "Hello, World!"})]
+;            (add-ring-handler ring-handler "/hello")
+;            (reset! response (http-client-common/get
+;                              async-client
+;                              "http://localhost:8080/hello"
+;                              {:as :text}))
+;            @in-request-handler)))
+;        ;; The web server should have been stopped by the time we get here.
+;        ;; Depending upon timing, the Jetty webserver may provide an HTTP 404
+;        ;; response or just terminate the socket for the web request which could
+;        ;; not be completed, which should cause a ConnectionClosedException to
+;        ;; be thrown.
+;        ;;
+;        ;; Note that per TK-437, we have occasionally seen this assertion fail
+;        ;; due to a SocketTimeoutException being thrown.  In this case, there
+;        ;; appears to be a timing-related bug in Jetty where the server socket
+;        ;; isn't closed down even though the server otherwise appears to have
+;        ;; been stopped properly - leaving the server-side of the connection in
+;        ;; an indefinite CLOSE_WAIT state.
+;        (let [resp (deref (deref response))
+;              error (:error resp)]
+;          (is (or
+;               (instance? ConnectionClosedException error)
+;               (= 404 (:status resp)))
+;              (str "request did not error as expected. response: " resp))))))
 
   (testing "tk app can still restart even if stop timeout expires"
     (let [in-request-handler? (promise)
