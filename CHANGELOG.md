@@ -1,3 +1,9 @@
+## 2.0.1
+
+The 2.0.0 release was mistakenly for a Java 7 runtime even though the
+underlying Jetty libraries were built for Java 8 runtime.  The code
+for this release is built for a Java 8 runtime instead.
+
 ## 2.0.0
 
 This is a major release
