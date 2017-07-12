@@ -1,13 +1,20 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service
-  (:import (org.eclipse.jetty.jmx MBeanContainer))
+  (:import (org.eclipse.jetty.jmx MBeanContainer)
+           (java.io File))
   (:require
     [clojure.tools.logging :as log]
 
     [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
-    [puppetlabs.trapperkeeper.services :refer [service-context]]
+    [puppetlabs.trapperkeeper.services.protocols.filesystem-watch-service
+     :as watch-protocol]
+    [puppetlabs.trapperkeeper.services :refer [get-service
+                                               maybe-get-service
+                                               service-context]]
+    [puppetlabs.trapperkeeper.config :as tk-config]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
-    [puppetlabs.i18n.core :as i18n]))
+    [puppetlabs.i18n.core :as i18n]
+    [me.raynes.fs :as fs]))
 
 ;; TODO: this should probably be moved to a separate jar that can be used as
 ;; a dependency for all webserver service implementations
@@ -26,23 +33,38 @@
 (defservice jetty9-service
   "Provides a Jetty 9 web server as a service"
   WebserverService
-  [[:ConfigService get-in-config]]
+  {:required [ConfigService]
+   :optional [FilesystemWatchService]}
   (init [this context]
         (log/info (i18n/trs "Initializing web server(s)."))
-        (let [config (or (get-in-config [:webserver])
+        (let [config-service (get-service this :ConfigService)
+              config (or (tk-config/get-in-config config-service [:webserver])
                          ;; Here for backward compatibility with existing projects
-                         (get-in-config [:jetty])
+                         (tk-config/get-in-config config-service [:jetty])
                          {})]
           (config/validate-config config)
           (core/init! context config)))
 
   (start [this context]
          (log/info (i18n/trs "Starting web server(s)."))
-         (let [config (or (get-in-config [:webserver])
+         (let [config-service (get-service this :ConfigService)
+               config (or (tk-config/get-in-config config-service [:webserver])
                           ;; Here for backward compatibility with existing projects
-                          (get-in-config [:jetty])
-                          {})]
-           (core/start! context config)))
+                          (tk-config/get-in-config config-service [:jetty])
+                          {})
+               started-context (core/start! context config)]
+           (if-let [filesystem-watcher-service
+                    (maybe-get-service this :FilesystemWatchService)]
+             (let [watcher (watch-protocol/create-watcher filesystem-watcher-service)]
+               (doseq [server (:jetty9-servers started-context)]
+                 (when-let [ssl-context-factory (-> server
+                                                    second
+                                                    :state
+                                                    deref
+                                                    :ssl-context-factory)]
+                   (core/reload-crl-on-change! ssl-context-factory watcher)))
+               (assoc started-context :watcher watcher))
+             started-context)))
 
   (stop [this context]
         (log/info (i18n/trs "Shutting down web server(s)."))

@@ -16,6 +16,8 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
              :refer :all]
+            [puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service
+             :as filesystem-watch-service]
             [puppetlabs.trapperkeeper.testutils.webserver :as testutils]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
             [puppetlabs.trapperkeeper.testutils.bootstrap
@@ -26,7 +28,9 @@
             [puppetlabs.trapperkeeper.testutils.logging :as tk-log-testutils]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
             [schema.core :as schema]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.kitchensink.core :as ks]
+            [me.raynes.fs :as fs]))
 
 (use-fixtures :once
   ks-test-fixtures/with-no-jvm-shutdown-hooks
@@ -374,6 +378,55 @@
                 jetty-ssl-client-need-config
                 [:webserver :ssl-crl-path]
                 "./dev-resources/config/jetty/ssl/crls/crls_bogus.pem")))))))
+
+(deftest crl-reloaded-without-server-restart-test
+  (let [tmp-dir (ks/temp-dir)
+        tmp-file (fs/file tmp-dir "mycrl.pem")
+        get-request #(http-get
+                      (str "https://localhost:8081" hello-path)
+                      default-options-for-https-client)]
+    (fs/copy "./dev-resources/config/jetty/ssl/crls/crls_none_revoked.pem"
+             tmp-file)
+    (with-app-with-config
+     app
+     [jetty9-service
+      hello-webservice
+      filesystem-watch-service/filesystem-watch-service]
+
+     (assoc-in
+      jetty-ssl-client-need-config
+      [:webserver :ssl-crl-path]
+      (str tmp-file))
+
+     (testing "request to jetty successful before cert revoked"
+       (let [response (get-request)]
+         (is (= (:status response) 200))
+         (is (= (:body response) hello-body))))
+
+     (testing "request fails after cert revoked"
+       ;; Sleep a bit to wait for the file watcher to be ready to poll/notify
+       ;; for change events on the CRL. Ideally wouldn't have to do this but
+       ;; seems like the initial event notification doesn't propagate if the
+       ;; file is changed too soon after initialization.
+       (Thread/sleep 1000)
+       (fs/copy "./dev-resources/config/jetty/ssl/crls/crls_localhost_revoked.pem"
+                tmp-file)
+       (loop [times 30]
+         (cond
+           (try
+             (ssl-exception-thrown? (get-request))
+             (catch IllegalStateException _
+               false))
+           (is true)
+
+           (zero? times)
+           (is (ssl-exception-thrown? (get-request))
+               "localhost cert was not revoked")
+
+           :else
+           (do
+             (Thread/sleep 500)
+             (recur (dec times)))))))))
 
 (defn boot-service-and-jetty-with-default-config
   [service]
