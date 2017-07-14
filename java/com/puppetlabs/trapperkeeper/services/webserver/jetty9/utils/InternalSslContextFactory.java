@@ -117,45 +117,43 @@ public class InternalSslContextFactory extends SslContextFactory {
 
     public void reload() throws Exception {
         synchronized (this) {
-            Exception reloadEx;
+            Exception reloadEx = null;
             int tries = maxTries;
             String crlPath = getCrlPath();
-            File crlPathAsFile = null;
-            long crlLastModified = 0;
 
             if (crlPath != null) {
-                crlPathAsFile = new File(crlPath);
-                crlLastModified = crlPathAsFile.lastModified();
+                File crlPathAsFile = new File(crlPath);
+                long crlLastModified = crlPathAsFile.lastModified();
+
+                // Try to parse CRLs from the crlPath until it is successful
+                // or a hard-coded number of failed attempts have been made.
+                do {
+                    reloadEx = null;
+                    try {
+                        _crls = CertificateUtils.loadCRL(crlPath);
+                    } catch (Exception e) {
+                        reloadEx = e;
+
+                        // If the CRL file has been updated since the last reload
+                        // attempt, reset the retry counter.
+                        if (crlPathAsFile != null &&
+                                crlLastModified != crlPathAsFile.lastModified()) {
+                            crlLastModified = crlPathAsFile.lastModified();
+                            tries = maxTries;
+                        } else {
+                            tries--;
+                        }
+
+                        if (tries == 0) {
+                            LOG.warn("Failed ssl context reload after " +
+                                    maxTries + " tries.  CRL file is: " +
+                                    crlPath, reloadEx);
+                        } else {
+                            Thread.sleep(sleepInMillisecondsBetweenTries);
+                        }
+                    }
+                } while (reloadEx != null && tries > 0);
             }
-
-            // Try to parse CRLs from the crlPath until it is successful
-            // or a hard-coded number of failed attempts have been made.
-            do {
-                reloadEx = null;
-                try {
-                    _crls = CertificateUtils.loadCRL(crlPath);
-                } catch (Exception e) {
-                    reloadEx = e;
-
-                    // If the CRL file has been updated since the last reload
-                    // attempt, reset the retry counter.
-                    if (crlPathAsFile != null &&
-                            crlLastModified != crlPathAsFile.lastModified()) {
-                        crlLastModified = crlPathAsFile.lastModified();
-                        tries = maxTries;
-                    } else {
-                        tries--;
-                    }
-
-                    if (tries == 0) {
-                        LOG.warn("Failed ssl context reload after " +
-                                maxTries + " tries.  CRL file is: " +
-                                crlPath, reloadEx);
-                    } else {
-                        Thread.sleep(sleepInMillisecondsBetweenTries);
-                    }
-                }
-            } while (reloadEx != null && tries > 0);
 
             if (reloadEx == null) {
                 unload();
