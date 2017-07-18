@@ -23,7 +23,8 @@
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
            (org.eclipse.jetty.util URIUtil BlockingArrayQueue)
-           (java.io IOException))
+           (java.io IOException File)
+           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils InternalSslContextFactory))
 
   (:require [ring.util.servlet :as servlet]
             [ring.util.codec :as codec]
@@ -33,8 +34,11 @@
             [puppetlabs.trapperkeeper.services.webserver.experimental.jetty9-websockets :as websockets]
             [puppetlabs.trapperkeeper.services.webserver.normalized-uri-helpers
              :as normalized-uri-helpers]
+            [puppetlabs.trapperkeeper.services.protocols.filesystem-watch-service
+             :as watch-protocol]
             [schema.core :as schema]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [me.raynes.fs :as fs]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; JDK SecurityProvider Hack
@@ -137,7 +141,7 @@
    :overrides-read-by-webserver schema/Bool
    :overrides (schema/maybe {schema/Keyword schema/Any})
    :endpoints RegisteredEndpoints
-   :ssl-context-factory (schema/maybe SslContextFactory)})
+   :ssl-context-factory (schema/maybe InternalSslContextFactory)})
 
 (def ServerContext
   {:state     (schema/atom ServerContextState)
@@ -188,7 +192,7 @@
   (if (some #(= "sslv3" %) (map str/lower-case protocols))
     (log/warn (i18n/trs "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we recommend removing it from the `ssl-protocols` list")))
 
-  (let [context (doto (SslContextFactory.)
+  (let [context (doto (InternalSslContextFactory.)
                   (.setKeyStore (:keystore keystore-config))
                   (.setKeyStorePassword (:key-password keystore-config))
                   (.setTrustStore (:truststore keystore-config))
@@ -951,6 +955,25 @@
   (assoc context :jetty9-servers (into {} (for [[server-id] config]
                                             [server-id (initialize-context)]))
                  :default-server (get-default-server-from-config config)))
+
+(schema/defn ^:always-validate reload-crl-on-change!
+  "Reload the CRL file used by the supplied ssl-context-factory whenever any
+  changes to the file occur."
+  [ssl-context-factory :- InternalSslContextFactory
+   watcher :- (schema/protocol watch-protocol/Watcher)]
+  (when-let [crl-path (.getCrlPath ssl-context-factory)]
+    (let [normalized-crl-path (.getCanonicalPath (fs/file crl-path))]
+      (watch-protocol/add-watch-dir! watcher (fs/parent crl-path)
+                                     {:recursive true})
+      (watch-protocol/add-callback!
+       watcher
+       (fn [events]
+         (when (some #(and
+                       (:changed-path %)
+                       (= (.getCanonicalPath (:changed-path %))
+                          normalized-crl-path))
+                     events)
+           (.reload ssl-context-factory)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Service Function Implementations
