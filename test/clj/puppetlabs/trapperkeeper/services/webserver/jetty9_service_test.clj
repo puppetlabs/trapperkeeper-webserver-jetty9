@@ -408,22 +408,22 @@
        (Thread/sleep 1000)
        (fs/copy "./dev-resources/config/jetty/ssl/crls/crls_localhost_revoked.pem"
                 tmp-file)
-       (loop [times 30]
-         (cond
-           (try
-             (ssl-exception-thrown? (get-request))
-             (catch IllegalStateException _
-               false))
-           (is true)
+       (is
+        (loop [times 30]
+          (cond
+            (try
+              (ssl-exception-thrown? (get-request))
+              (catch IllegalStateException _
+                false))
+            true
 
-           (zero? times)
-           (is (ssl-exception-thrown? (get-request))
-               "localhost cert was not revoked")
+            (zero? times)
+            (ssl-exception-thrown? (get-request))
 
-           :else
-           (do
-             (Thread/sleep 500)
-             (recur (dec times)))))))))
+            :else
+            (do
+              (Thread/sleep 500)
+              (recur (dec times))))))))))
 
 (defn boot-service-and-jetty-with-default-config
   [service]
