@@ -12,8 +12,8 @@ import java.util.function.Consumer;
 
 public class InternalSslContextFactory extends SslContextFactory {
 
-    private static int maxTries = 5;
-    private static int sleepInMillisecondsBetweenTries = 1000;
+    private static int maxTries = 25;
+    private static int sleepInMillisecondsBetweenTries = 100;
     private static final Logger LOG =
             Log.getLogger(InternalSslContextFactory.class);
     private static Consumer<SslContextFactory> consumer = sslContextFactory
