@@ -234,7 +234,6 @@ you'll need to use the all-caps cipher suite name.
 
 If not supplied, trapperkeeper uses this list of cipher suites:
 
-- `TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA256`
 - `TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA`
 - `TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256`
 - `TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA`
