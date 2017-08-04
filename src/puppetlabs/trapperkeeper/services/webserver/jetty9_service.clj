@@ -55,7 +55,7 @@
                started-context (core/start! context config)]
            (if-let [filesystem-watcher-service
                     (maybe-get-service this :FilesystemWatchService)]
-             (let [watcher (watch-protocol/create-watcher filesystem-watcher-service)]
+             (let [watcher (watch-protocol/create-watcher filesystem-watcher-service {:recursive false})]
                (doseq [server (:jetty9-servers started-context)]
                  (when-let [ssl-context-factory (-> server
                                                     second

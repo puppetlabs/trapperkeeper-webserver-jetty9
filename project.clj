@@ -40,7 +40,7 @@
                  [puppetlabs/kitchensink]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/i18n]
-                 [puppetlabs/trapperkeeper-filesystem-watcher]
+                 [puppetlabs/trapperkeeper-filesystem-watcher "1.1.0"]
                  ]
 
   :source-paths  ["src"]
