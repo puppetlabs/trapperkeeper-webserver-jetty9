@@ -1,3 +1,11 @@
+## 1.8.1
+
+This is a bugfix release.
+
+* [TK-448](https:/tickets.puppet.com/browse/TK-448) Switch to using
+  non-recursive directory watching for automatic CRL reloading to avoid failure
+  due to unreadable/inaccessible directories in the SSL dir.
+
 ## 1.8.0
 
 This is a feature release.
