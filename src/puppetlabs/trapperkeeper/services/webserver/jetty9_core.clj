@@ -963,8 +963,7 @@
    watcher :- (schema/protocol watch-protocol/Watcher)]
   (when-let [crl-path (.getCrlPath ssl-context-factory)]
     (let [normalized-crl-path (.getCanonicalPath (fs/file crl-path))]
-      (watch-protocol/add-watch-dir! watcher (fs/parent crl-path)
-                                     {:recursive true})
+      (watch-protocol/add-watch-dir! watcher (fs/parent crl-path))
       (watch-protocol/add-callback!
        watcher
        (fn [events]
