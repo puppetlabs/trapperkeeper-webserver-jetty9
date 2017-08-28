@@ -1,6 +1,5 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service
-  (:import (org.eclipse.jetty.jmx MBeanContainer)
-           (java.io File))
+  (:import (org.eclipse.jetty.jmx MBeanContainer))
   (:require
     [clojure.tools.logging :as log]
 

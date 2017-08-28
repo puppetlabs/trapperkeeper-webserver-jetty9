@@ -23,7 +23,7 @@
            (java.lang.management ManagementFactory)
            (org.eclipse.jetty.jmx MBeanContainer)
            (org.eclipse.jetty.util URIUtil BlockingArrayQueue)
-           (java.io IOException File)
+           (java.io IOException)
            (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils InternalSslContextFactory))
 
   (:require [ring.util.servlet :as servlet]

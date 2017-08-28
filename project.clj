@@ -8,7 +8,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.6.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "1.4.0"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -40,7 +40,7 @@
                  [puppetlabs/kitchensink]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/i18n]
-                 [puppetlabs/trapperkeeper-filesystem-watcher "1.1.0"]
+                 [puppetlabs/trapperkeeper-filesystem-watcher]
                  ]
 
   :source-paths  ["src"]
