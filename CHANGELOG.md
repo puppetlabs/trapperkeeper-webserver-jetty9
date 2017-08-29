@@ -1,3 +1,11 @@
+## 2.1.0
+
+This is a feature release.
+
+* [TK-451](https://tickets.puppetlabs.com/browse/TK-451) Support runtime refresh
+  of Jetty CRL via puppetlabs/trapperkeeper-filesystem-watcher. Changes to CRL
+  will result in Jetty reloading the CRL without a server reload or restart.
+
 ## 2.0.1
 
 The 2.0.0 release was mistakenly for a Java 7 runtime even though the
