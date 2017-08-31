@@ -2,7 +2,7 @@
 
 This example demonstrates how to create a simple set of web services which both depend upon a hit counter service for
 generating content. When run, this code will attach two endpoints, `/bert` and `/ernie` which will generate a simple
-block of HTML that displays seperate hit counters for each service.
+block of HTML that displays separate hit counters for each service.
 
 All code needed to execute this example is located in `examples/ring_app`. The Clojure code is
 contained in the `example_services.clj` file.
