@@ -64,6 +64,7 @@
       (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
       (update-in [:https :protocols] (fnil identity default-protocols))
       (update-in [:https :client-auth] (fnil identity default-client-auth))
+      (update-in [:https :allow-renegotiation] (fnil identity default-allow-renegotiation))
       (update-in [:https :ssl-crl-path] identity)))
 
 (deftest process-config-http-test
@@ -136,19 +137,22 @@
              (merge valid-ssl-pem-config
                     {:ssl-host "foo.local"}))
            (munge-expected-https-config
-             {:https {:host "foo.local" :port default-https-port}})))
+             {:https {:host "foo.local"
+                      :port default-https-port}})))
 
     (is (= (munge-actual-https-config
              (merge valid-ssl-pem-config
                     {:ssl-port 8001}))
            (munge-expected-https-config
-             {:https {:host default-host :port 8001}})))
+             {:https {:host default-host
+                      :port 8001}}))) 
 
     (is (= (munge-actual-https-config
              (merge valid-ssl-pem-config
                     {:ssl-host "foo.local" :ssl-port 8001}))
            (munge-expected-https-config
-             {:https {:host "foo.local" :port 8001}})))
+             {:https {:host "foo.local"
+                      :port 8001}})))
 
     (is (= (munge-actual-https-config
              (merge valid-ssl-pem-config
@@ -176,7 +180,8 @@
                      :ssl-port    8001
                      :max-threads 93}))
            (munge-expected-https-config
-             {:https       {:host "foo.local" :port 8001}
+             {:https       {:host "foo.local"
+                            :port 8001}
               :max-threads 93})))
 
     (is (= (munge-actual-https-config
@@ -185,7 +190,8 @@
                      :ssl-port       8001
                      :queue-max-size 99}))
            (munge-expected-https-config
-             {:https          {:host "foo.local" :port 8001}
+             {:https          {:host "foo.local"
+                               :port 8001}
               :queue-max-size 99})))
 
     (is (= (munge-actual-https-config
@@ -212,11 +218,32 @@
              (merge valid-ssl-pem-config
                     {:ssl-host             "foo.local"
                      :ssl-port             8001
+                     :allow-renegotiation true}))
+           (munge-expected-https-config
+             {:https {:host             "foo.local"
+                      :port             8001
+                      :allow-renegotiation true}})))
+
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host             "foo.local"
+                     :ssl-port             8001
+                     :allow-renegotiation false}))
+           (munge-expected-https-config
+             {:https {:host             "foo.local"
+                      :port             8001
+                      :allow-renegotiation false}})))
+
+    (is (= (munge-actual-https-config
+             (merge valid-ssl-pem-config
+                    {:ssl-host             "foo.local"
+                     :ssl-port             8001
                      :ssl-acceptor-threads 9193}))
            (munge-expected-https-config
              {:https {:host             "foo.local"
                       :port             8001
                       :acceptor-threads 9193}})))))
+
 
 (deftest process-config-jks-test
   (testing "jks ssl config"
@@ -224,7 +251,8 @@
              (merge valid-ssl-keystore-config
                     {:ssl-port 8001}))
            (munge-expected-https-config
-             {:https {:host default-host :port 8001}})))))
+             {:https {:host default-host
+                      :port 8001}})))))
 
 (deftest process-config-ciphers-test
   (testing "cipher suites"
@@ -318,7 +346,8 @@
                       :idle-timeout-milliseconds nil
                       :acceptor-threads          nil
                       :selector-threads          nil}
-              :https {:host "foo.local" :port default-https-port}})))))
+              :https {:host "foo.local"
+                      :port default-https-port}})))))
 
 (deftest process-config-invalid-test
   (testing "process-config fails for invalid server config"

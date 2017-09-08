@@ -82,7 +82,8 @@
 (def ProxySslConfig
   (merge config/WebserverSslPemConfig
          {(schema/optional-key :cipher-suites) [schema/Str]
-          (schema/optional-key :protocols)     (schema/maybe [schema/Str])}))
+          (schema/optional-key :protocols)     (schema/maybe [schema/Str])
+          (schema/optional-key :allow-renegotiations)     (schema/maybe [schema/Bool])}))
 
 (def ProxyOptions
   (assoc CommonOptions
@@ -187,7 +188,7 @@
 (schema/defn ^:always-validate
   ssl-context-factory :- SslContextFactory
   "Creates a new SslContextFactory instance from a map of SSL config options."
-  [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols]}
+  [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols allow-renegotiation]}
    :- config/WebserverSslContextFactory]
   (if (some #(= "sslv3" %) (map str/lower-case protocols))
     (log/warn (i18n/trs "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we recommend removing it from the `ssl-protocols` list")))
@@ -212,6 +213,9 @@
       :need (.setNeedClientAuth context true)
       :want (.setWantClientAuth context true)
       nil)
+    (if allow-renegotiation
+      (.setRenegotiationAllowed context true)
+      (.setRenegotiationAllowed context false))
     (when ssl-crl-path
       (.setCrlPath context ssl-crl-path)
       ; .setValidatePeerCerts needs to be called with a value of 'true' in
@@ -228,7 +232,9 @@
                            ssl-config)
                         :client-auth :none
                         :cipher-suites (or (:cipher-suites ssl-config) config/acceptable-ciphers)
-                        :protocols     (or (:protocols ssl-config) config/default-protocols)}))
+                        :protocols     (or (:protocols ssl-config) config/default-protocols)
+                        :allow-renegotiation  (or (:allow-renegotiation ssl-config)
+                                                  config/default-allow-renegotiation)}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Jetty Server / Connector Functions
@@ -357,11 +363,11 @@
         (.addConnector server connector)))
     (when-let [https (:https config)]
       (let [ssl-ctxt-factory (ssl-context-factory
-                               {:keystore-config (:keystore-config https)
-                                :client-auth     (:client-auth https)
-                                :ssl-crl-path    (:ssl-crl-path https)
-                                :cipher-suites   (:cipher-suites https)
-                                :protocols       (:protocols https)})
+                               (select-keys https
+                                            [:keystore-config :client-auth
+                                             :ssl-crl-path :cipher-suites
+                                             :allow-renegotiation
+                                             :protocols]))
             connector        (ssl-connector server ssl-ctxt-factory https)]
 
         (.addConnector server connector)
