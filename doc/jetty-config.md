@@ -291,6 +291,13 @@ Optional. This describes a path to a Certificate Revocation List file. Incoming
 SSL connections will be rejected if the client certificate matches a
 revocation entry in the file.
 
+### `allow-renegotiation`
+
+Optional. This controls whether the web server will allow client initiated SSL/TLS
+renegotiations. By default this will be disabled since allowing client to renegotiate
+is a vulnerability causing denial of service and information disclosure in certain
+cases. It can be over-ridden by setting this parameter to true.
+
 ### `static-content`
 
 Optional. This is a list of static content to be added to the server as context handlers

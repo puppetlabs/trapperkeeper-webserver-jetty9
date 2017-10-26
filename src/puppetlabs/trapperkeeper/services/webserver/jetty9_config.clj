@@ -68,6 +68,7 @@
    "TLS_RSA_WITH_AES_128_CBC_SHA"])
 (def default-protocols ["TLSv1" "TLSv1.1" "TLSv1.2"])
 (def default-client-auth :need)
+(def default-allow-renegotiation false)
 
 ;;;
 ;;; JMX
@@ -117,7 +118,8 @@
    (schema/optional-key :gzip-enable)                schema/Bool
    (schema/optional-key :access-log-config)          schema/Str
    (schema/optional-key :shutdown-timeout-seconds)   schema/Int
-   (schema/optional-key :post-config-script)         schema/Str})
+   (schema/optional-key :post-config-script)         schema/Str
+   (schema/optional-key :allow-renegotiation)        schema/Bool})
 
 (def MultiWebserverRawConfigUnvalidated
   {schema/Keyword  WebserverRawConfig})
@@ -174,7 +176,8 @@
    :client-auth                        WebserverSslClientAuth
    (schema/optional-key :ssl-crl-path) (schema/maybe schema/Str)
    :cipher-suites                      [schema/Str]
-   :protocols                          (schema/maybe [schema/Str])})
+   :protocols                          (schema/maybe [schema/Str])
+   (schema/optional-key :allow-renegotiation)     (schema/maybe schema/Bool)})
 
 (def WebserverSslConnector
   (merge
@@ -388,7 +391,9 @@
             :cipher-suites           (get-cipher-suites-config config)
             :protocols               (get-ssl-protocols-config config)
             :client-auth             (get-client-auth! config)
-            :ssl-crl-path            (get-ssl-crl-path! config)})))
+            :ssl-crl-path            (get-ssl-crl-path! config)
+            :allow-renegotiation     (get config :allow-renegotiation 
+                                         default-allow-renegotiation)})))
 
 (schema/defn ^:always-validate
   maybe-add-http-connector :- {(schema/optional-key :http) WebserverConnector
