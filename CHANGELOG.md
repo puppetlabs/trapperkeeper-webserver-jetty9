@@ -1,3 +1,16 @@
+## 2.1.1
+
+This is a bug fix release, but contains important upgrade information.
+
+* [SERVER-1597](https://tickets.puppetlabs.com/browse/SERVER-1597) Enforce
+  disallowed content re-negotiation.
+  Previously, Jetty would allow content negotiation despite being documented
+  as defaulting to disallow. This patch explicitly disallows as a default and
+  provides users the means to allow renegotiation by using the
+  `webserver.allow-renegotiation` key.
+
+Also, a special thanks to @EdwardBetts for the documentation fix!
+
 ## 2.1.0
 
 This is a feature release.
