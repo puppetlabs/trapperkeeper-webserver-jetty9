@@ -50,6 +50,15 @@
         (format "Expected gzipped response, got this response: %s"
                 resp))))
 
+(defn validate-gzip-encoding-when-gzip-requested-on-post-requests
+  [body port]
+  ;; The client/post function asks for compression by default
+  (let [resp (http-sync/post (format "http://localhost:%d/" port))]
+    (is (= (slurp (resp :body)) body))
+    (is (= (get-in resp [:orig-content-encoding]) "gzip")
+        (format "Expected gzipped response, got this response: %s"
+                resp))))
+
 (defn validate-no-gzip-encoding-when-gzip-not-requested
   [body port]
   ;; The client/get function asks for compression by default
@@ -89,6 +98,10 @@
         (testing "a gzipped response when request wants a compressed one and
                   server not configured with a default for gzip-enable"
           (validate-gzip-encoding-when-gzip-requested body port))
+
+        (testing "a gzipped response when a post request asks for a compressed one
+                  and the server not configured with a default for gzip-enable"
+          (validate-gzip-encoding-when-gzip-requested-on-post-requests body port))
 
         (testing "an uncompressed response when request doesn't ask for a
                   compressed one and server not configured with a default for

@@ -13,7 +13,7 @@
            (java.util.concurrent TimeoutException)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
            (org.eclipse.jetty.webapp WebAppContext)
-           (org.eclipse.jetty.http MimeTypes HttpHeader HttpHeaderValue)
+           (org.eclipse.jetty.http MimeTypes HttpHeader HttpHeaderValue HttpMethod)
            (javax.servlet Servlet ServletContextListener)
            (org.eclipse.jetty.proxy ProxyServlet)
            (java.net URI)
@@ -394,7 +394,8 @@
   [handler]
   (doto (GzipHandler.)
     (.setHandler handler)
-    (.setExcludedMimeTypes (gzip-excluded-mime-types))))
+    (.setExcludedMimeTypes (gzip-excluded-mime-types))
+    (.addIncludedMethods (into-array [(.asString HttpMethod/POST)]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler Helper Functions
