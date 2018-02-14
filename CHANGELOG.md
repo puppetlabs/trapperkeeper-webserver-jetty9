@@ -1,3 +1,14 @@
+## 2.1.2
+
+This is a bug fix release.
+
+* [SERVER-2118](https://tickets.puppetlabs.com/browse/SERVER-2118) Enable
+  gzipping post request responses.
+  A jetty update requiring HTTP methods to be whitelisted before their
+  responses could be gzipped broke gzipping of POST request responses.
+  This patch updates our jetty configuration to also allow gzipping of
+  POST requests, instead of just GET requests.
+
 ## 2.1.1
 
 This is a bug fix release, but contains important upgrade information.
