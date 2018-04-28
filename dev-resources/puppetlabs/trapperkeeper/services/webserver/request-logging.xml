@@ -2,7 +2,7 @@
 
     <appender name="LIST" class="appender.TestListAppender">
         <encoder>
-            <pattern>%h %l %u %user %date "%r" %s %b</pattern>
+            <pattern>%h %l %u %user %date "%r" %s %b %mdc{mdc-test:-default-mdc-value}</pattern>
         </encoder>
     </appender>
 

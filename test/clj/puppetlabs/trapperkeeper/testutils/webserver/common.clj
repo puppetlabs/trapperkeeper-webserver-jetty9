@@ -10,6 +10,10 @@
   ([url options]
    (http-client/get url options)))
 
+(defn http-put
+  [url options]
+  (http-client/put url options))
+
 (def jetty-plaintext-config
   {:webserver {:port 8080}})
 

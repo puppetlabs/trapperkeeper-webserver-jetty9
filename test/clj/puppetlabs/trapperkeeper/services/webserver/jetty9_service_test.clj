@@ -6,8 +6,10 @@
            (java.nio.file Paths Files)
            (java.nio.file.attribute FileAttribute)
            (appender TestListAppender)
-           (javax.net.ssl SSLException))
+           (javax.net.ssl SSLException)
+           (org.slf4j MDC))
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [puppetlabs.http.client.async :as async]
             [puppetlabs.http.client.common :as http-client-common]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
@@ -30,6 +32,7 @@
             [schema.core :as schema]
             [schema.test :as schema-test]
             [puppetlabs.kitchensink.core :as ks]
+            [ring.middleware.params :as ring-params]
             [me.raynes.fs :as fs]))
 
 (use-fixtures :once
@@ -92,10 +95,23 @@
   [req]
   {:status 200 :body hello-body})
 
+(def mdc-path "/mdc")
+(defn mdc-handler
+  [req]
+  (let [mdc-key (get-in req [:params "mdc_key"])]
+    (case (:request-method req)
+      :get {:status 200
+            :body (MDC/get mdc-key)}
+      :put (do
+             (MDC/put mdc-key (slurp (:body req)))
+             {:status 201
+              :body "OK."}))))
+
 (tk-core/defservice hello-webservice
   [[:WebserverService add-ring-handler]]
   (init [this context]
         (add-ring-handler hello-handler hello-path)
+        (add-ring-handler (ring-params/wrap-params mdc-handler) mdc-path)
         context))
 
 (defn validate-ring-handler
@@ -712,7 +728,14 @@
        ; we have to sleep the thread to avoid a race condition.
        (Thread/sleep 10)
        (let [list (TestListAppender/list)]
-         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8\n" (first list))))))))
+         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8" (first list))))))
+
+    (testing "Mapped Diagnostic Context values are available to the access logger"
+      (with-test-access-logging
+        (http-put "http://localhost:8080/mdc?mdc_key=mdc-test" {:body "hello"})
+        (Thread/sleep 10)
+        (let [list (TestListAppender/list)]
+          (is (str/ends-with? (first list) "hello\n")))))))
 
 (deftest graceful-shutdown-test
   (testing "jetty9 webservers shut down gracefully by default"
