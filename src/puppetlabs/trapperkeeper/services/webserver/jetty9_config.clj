@@ -10,7 +10,8 @@
            (org.codehaus.commons.compiler CompileException)
            (java.lang.reflect InvocationTargetException)
            (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils
-             LifeCycleImplementingRequestLogImpl MDCAccessLogConverter))
+             LifeCycleImplementingRequestLogImpl
+             MDCAccessLogConverter MDCRequestLogHandler))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as str]
             [me.raynes.fs :as fs]
@@ -446,7 +447,7 @@
 (schema/defn ^:always-validate
   init-log-handler :- RequestLogHandler
   [config :- WebserverRawConfig]
-  (let [handler (RequestLogHandler.)
+  (let [handler (MDCRequestLogHandler.)
         pattern-rules (HashMap.)
         logger (LifeCycleImplementingRequestLogImpl.)]
     (doseq [pattern ["X" "mdc"]]
