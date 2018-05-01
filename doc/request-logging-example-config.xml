@@ -3,7 +3,9 @@
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
         <file>./dev-resources/access.log</file>
         <encoder>
-            <pattern>%h %l %u %user %date "%r" %s %b</pattern>
+            <!-- Logback pattern for Apache Combined Log format
+                 See: https://httpd.apache.org/docs/2.4/logs.html#combined -->
+            <pattern>%h %l %u [%t] "%r" %s %b "%i{Referer}" "%i{User-Agent}"<pattern>
         </encoder>
     </appender>
 

@@ -367,12 +367,20 @@ information about any HTTP requests Jetty receives according to the logging conf
 as long as the XML file pointed to exists and is valid. Information on configuring the
 `Logback-access` module is available [here](http://logback.qos.ch/access.html#configuration).
 
-
 An example configuration file can be found [here](request-logging-example-config.xml). This
 example configures a `FileAppender` that outputs to a file, `access.log`, in the `dev-resources`
-directory. It will log the remote host making the request, the log name, the remote user making
-the request, the date/time of the request, the URL and method of the request, the status of
-the response, and the size in bytes of the response.
+directory. The `pattern` element configures the output format to match the [Apache Combined Log Format](https://httpd.apache.org/docs/2.4/logs.html#combined).
+See the [Logback access layout documentation](https://logback.qos.ch/manual/layouts.html#logback-access)
+for a list of other items that can be added to the `pattern` element.
+
+TrapperKeeper configures the `Logback-access` library with additional support
+for the SLF4J [Mapped Diagnostic Context](https://logback.qos.ch/manual/mdc.html) (MDC).
+This support allows the `%X` and `%mdc` conversion words to be used in the `Logback-access`
+`pattern` which behave as described in the [docs for Logback-classic](https://logback.qos.ch/manual/layouts.html#mdc).
+Jetty is configured to clear any items added to the MDC at the end of each request
+so that incorrect data won't show up in subsequent requests that are handled by
+the same worker thread.
+
 
 ### `shutdown-timeout-seconds`
 
