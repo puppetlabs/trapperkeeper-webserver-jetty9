@@ -699,23 +699,20 @@
         (Files/delete link)))))
 
 (deftest request-logging-test
-  (try
+  (with-app-with-config
+   app
+   [jetty9-service hello-webservice]
+   {:webserver {:port 8080
+                :access-log-config
+                "./dev-resources/puppetlabs/trapperkeeper/services/webserver/request-logging.xml"}}
     (testing "request logging occurs when :access-log-config is configured"
-      (with-app-with-config
-       app
-       [jetty9-service
-        hello-webservice]
-       {:webserver {:port 8080
-                    :access-log-config
-                    "./dev-resources/puppetlabs/trapperkeeper/services/webserver/request-logging.xml"}}
+      (with-test-access-logging
        (http-get "http://localhost:8080/hi_world/")
        ; Logging is done in a separate thread from Jetty and this test. As a result,
        ; we have to sleep the thread to avoid a race condition.
        (Thread/sleep 10)
        (let [list (TestListAppender/list)]
-         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8\n" (first list))))))
-    (finally
-      (.clear (TestListAppender/list)))))
+         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8\n" (first list))))))))
 
 (deftest graceful-shutdown-test
   (testing "jetty9 webservers shut down gracefully by default"
