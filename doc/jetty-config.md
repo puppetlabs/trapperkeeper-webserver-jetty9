@@ -26,11 +26,8 @@ virtual cores on the host divided by 8, with a minimum of 1 and maximum of 4.
 
 This sets the number of selectors that the webserver will dedicate to
 processing events on connected sockets for unencrypted HTTPS traffic. Defaults
-to the number of virtual cores on the host divided by 2, with a minimum of 1
-and maximum of 4. The number of selector threads actually used by Jetty is
-twice the number of selectors requested. For example, if a value of 3 is
-specified for the `selector-threads` setting, Jetty will actually use 6
-selector threads.
+to the minimum of: virtual cores on the host divided by 2 or `max-threads`
+divided by 16, with a minimum of 1.
 
 ### `max-threads`
 
@@ -44,17 +41,23 @@ properly.  The minimum number is calculated as:
 ~~~~
 (number of "acceptor-threads" for each port) +
 (number of "selector-threads" for each port) +
-1 "worker" thread
+(number of "reserved-threads" for each port) +
+2 "worker" threads
 ~~~~
 
-For example, if an _unencrypted_ port with 2 `acceptor-threads` and 3
-`selector-threads` and an _encrypted_ port with 4 `acceptor-threads` and 5
-`selector-threads` were configured with the webserver, the webserver would
-require that a minimum value of 15 (2 + 3 + 4 + 5 + 1) be used for the
-`max-threads` setting.  If the configured value for `max-threads` is less
+Reserved threads are unconfigurable and default to the minimum of the number
+of virtual cores or `max-threads` divided by 10, with a minimum of one thread
+allocated.
+
+Because reserved threads (and if not explicitly configured, selector threads)
+scale with max-threads, lowering the max-threads will cause fewer resources to
+be allocated to handling reqeusts on each port down to a threshold
+calculable by the forumalas above.
+
+If the configured value for `max-threads` is less
 than the minimum required value, server startup will fail with an
 `IllegalStateException`, with a message containing the words
-"insufficient threads".
+"Insufficient configured threads".
 
 Note that each web request must be processed on a "worker" thread which is
 separate from the acceptor and selector threads.  "1" is the minimum number of

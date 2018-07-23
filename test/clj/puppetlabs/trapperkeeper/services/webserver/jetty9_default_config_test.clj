@@ -90,19 +90,20 @@ react accordingly."
 
 (defn selector-thread-count
   [max-threads]
-  "The number of selectors and selecto threads that should be allocated per
-  connector.
+  "The number of selector threads that should be allocated per connector.
    https://github.com/eclipse/jetty.project/blob/jetty-9.4.11.v20180605/jetty-io/src/main/java/org/eclipse/jetty/io/SelectorManager.java#L70-L74"
   (max 1
        (min (int (/ max-threads 16))
             (int (/ (ks/num-cpus) 2)))))
 
 (def acceptor-thread-count
-  "The number of acceptor threads that should be allocated per connector.  See:
+  "The number of acceptor threads that should be allocated per connector. See:
    https://github.com/eclipse/jetty.project/blob/jetty-9.4.11.v20180605/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L202"
   (max 1 (min 4 (int (/ (ks/num-cpus) 8)))))
 
 (defn reserved-thread-count
+  "Jetty will reserve threads for future connector work on start. See
+  https://github.com/eclipse/jetty.project/blob/jetty-9.4.11.v20180605/jetty-util/src/main/java/org/eclipse/jetty/util/thread/ReservedThreadExecutor.java#L104"
   [max-threads]
   (max 1
        (min (ks/num-cpus)
@@ -150,9 +151,14 @@ react accordingly."
                                  (get-server-thread-pool-queue server)))
         "Unexpected default for 'queue-max-size'")))
 
-(defn required-threads-for-sized-threadpool
+(defn required-threads-for-sized-threadpool-per-connector
   [threadpool-size]
-  "The total number of threads needed per attached connector."
+  "The total number of threads needed per attached connector. This scales
+  with the threadpool size and acceptor threads are not allocated until after
+  reserved and selector threads have be allocated. For an overview see:
+  https://support.sonatype.com/hc/en-us/articles/360000744687-Understanding-Eclipse-Jetty-9-4-8-Thread-Allocation
+  This is unused below so we can configure the needed threads in a trivial
+  case without referencing the max threads. Left for documentation."
   (+ (reserved-thread-count threadpool-size)
      (selector-thread-count threadpool-size)
      acceptor-thread-count))
@@ -162,8 +168,11 @@ react accordingly."
   size of the machine it runs on and the number of threads in its thread pool.
   The smaller we shrink the thread pool the fewer threads it will request.
   This logic doesn't scale as the thread pool grows beyond 10 threads but
-  allows us to come up with a number that works for the max threads that isn't
-  self referential."
+  allows us to come up with a number that works for max threads that isn't
+  self referential.
+
+  (Note this works out to two overall worker threads and a selector and reserved
+  thread per connector)"
   [num-connectors]
   (+ 2 (* num-connectors 2)))
 
@@ -183,7 +192,7 @@ react accordingly."
                 (.addConnector server (ServerConnector. server)))
               server))]
     (dotimes [x 2]
-      (let [num-connectors  (inc x)
+      (let [num-connectors (inc x)
             required-threads (calculate-minimum-required-threads num-connectors)]
         (testing (str "server with too few threads for " num-connectors " connector(s) "
                       "fail(s) to start with expected error")
