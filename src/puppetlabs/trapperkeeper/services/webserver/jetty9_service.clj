@@ -1,5 +1,4 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service
-  (:import (org.eclipse.jetty.jmx MBeanContainer))
   (:require
     [clojure.tools.logging :as log]
 
@@ -70,8 +69,6 @@
         (doseq [key (keys (:jetty9-servers context))]
           (if-let [server (key (:jetty9-servers context))]
             (core/shutdown server)))
-        ;; this class leaks MBean names if this method is not called
-        (MBeanContainer/resetUnique)
         context)
 
   (add-context-handler [this base-path context-path]

@@ -88,18 +88,26 @@ react accordingly."
           "Unexpected default for proxy 'idle-timeout'")
       (.stop client))))
 
-(def selector-thread-count
-  "The number of selector threads that should be allocated per connector.  See:
-   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L223
-   and
-   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L403-L408
-   The number of selectors is twice the number of selector threads."
-  (* 2 (max 1 (min 4 (int (/ (ks/num-cpus) 2))))))
+(defn selector-thread-count
+  [max-threads]
+  "The number of selector threads that should be allocated per connector.
+   https://github.com/eclipse/jetty.project/blob/jetty-9.4.11.v20180605/jetty-io/src/main/java/org/eclipse/jetty/io/SelectorManager.java#L70-L74"
+  (max 1
+       (min (int (/ max-threads 16))
+            (int (/ (ks/num-cpus) 2)))))
 
 (def acceptor-thread-count
-  "The number of acceptor threads that should be allocated per connector.  See:
-   https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L194"
+  "The number of acceptor threads that should be allocated per connector. See:
+   https://github.com/eclipse/jetty.project/blob/jetty-9.4.11.v20180605/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L202"
   (max 1 (min 4 (int (/ (ks/num-cpus) 8)))))
+
+(defn reserved-thread-count
+  "Jetty will reserve threads for future connector work on start. See
+  https://github.com/eclipse/jetty.project/blob/jetty-9.4.11.v20180605/jetty-util/src/main/java/org/eclipse/jetty/util/thread/ReservedThreadExecutor.java#L104"
+  [max-threads]
+  (max 1
+       (min (ks/num-cpus)
+            (int (/ max-threads 10)))))
 
 (deftest default-connector-settings-test
   (let [connector (ServerConnector. (Server.))]
@@ -111,8 +119,8 @@ react accordingly."
         "Unexpected default for 'idle-timeout-milliseconds'")
     (is (= acceptor-thread-count (.getAcceptors connector))
         "Unexpected default for 'acceptor-threads' and 'ssl-acceptor-threads'")
-    (is (= selector-thread-count
-           (* 2 (.getSelectorCount (.getSelectorManager connector))))
+    (is (= (selector-thread-count (-> connector .getExecutor .getMaxThreads))
+           (.getSelectorCount (.getSelectorManager connector)))
         "Unexpected default for 'selector-threads' and 'ssl-selector-threads'")))
 
 (defn get-max-threads-for-server
@@ -143,15 +151,30 @@ react accordingly."
                                  (get-server-thread-pool-queue server)))
         "Unexpected default for 'queue-max-size'")))
 
-(def threads-per-connector
-  "The total number of threads needed per attached connector."
-  (+ acceptor-thread-count selector-thread-count))
+(defn required-threads-for-sized-threadpool-per-connector
+  [threadpool-size]
+  "The total number of threads needed per attached connector. This scales
+  with the threadpool size and acceptor threads are not allocated until after
+  reserved and selector threads have be allocated. For an overview see:
+  https://support.sonatype.com/hc/en-us/articles/360000744687-Understanding-Eclipse-Jetty-9-4-8-Thread-Allocation
+  This is unused below so we can configure the needed threads in a trivial
+  case without referencing the max threads. Left for documentation."
+  (+ (reserved-thread-count threadpool-size)
+     (selector-thread-count threadpool-size)
+     acceptor-thread-count))
 
 (defn calculate-minimum-required-threads
-  "Calculate the minimum number threads that a single Jetty Server instance
-  needs.  See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/Server.java#L384-L414"
-  [connectors]
-  (+ 1 (* connectors threads-per-connector)))
+  "Jetty calculates the minimum number of required threads based on the the
+  size of the machine it runs on and the number of threads in its thread pool.
+  The smaller we shrink the thread pool the fewer threads it will request.
+  This logic doesn't scale as the thread pool grows beyond 10 threads but
+  allows us to come up with a number that works for max threads that isn't
+  self referential.
+
+  (Note this works out to two overall worker threads and a selector and reserved
+  thread per connector)"
+  [num-connectors]
+  (+ 2 (* num-connectors 2)))
 
 (deftest default-min-threads-settings-test
   ;; This test just exists to validate the advice we give for the bare
@@ -163,37 +186,28 @@ react accordingly."
   ;; at most one encrypted port connector.  Because of this, the test only
   ;; validates the min-threads behavior for a server that has either one or
   ;; two connectors.
-  (letfn [(get-server [max-threads connectors]
+  (letfn [(get-server [max-threads connector-count]
             (let [server (Server. (QueuedThreadPool. max-threads))]
-              (dotimes [_ connectors]
+              (dotimes [_ connector-count]
                 (.addConnector server (ServerConnector. server)))
-              server))
-          (insufficient-threads-msg [server]
-            (let [connectors (count (.getConnectors server))]
-              (re-pattern (str "Insufficient threads: max="
-                               (get-max-threads-for-server server)
-                               " < needed\\(acceptors="
-                               (* acceptor-thread-count connectors)
-                               " \\+ selectors="
-                               (* selector-thread-count connectors)
-                               " \\+ request=1\\)"))))]
+              server))]
     (dotimes [x 2]
-      (let [connectors       (inc x)
-            required-threads (calculate-minimum-required-threads connectors)]
-        (testing (str "server with too few threads for " connectors " connector(s) "
+      (let [num-connectors (inc x)
+            required-threads (calculate-minimum-required-threads num-connectors)]
+        (testing (str "server with too few threads for " num-connectors " connector(s) "
                       "fail(s) to start with expected error")
           (let [server (-> required-threads
                            dec
-                           (get-server connectors))]
+                           (get-server num-connectors))]
             (is (thrown-with-msg? IllegalStateException
-                                  (insufficient-threads-msg server)
-                                  (tk-log-testutils/with-test-logging
-                                   (.start server))))))
-        (testing (str "server with minimum required threads for " connectors
+                                  #"Insufficient configured threads"
+                                   (tk-log-testutils/with-test-logging
+                                     (.start server))))))
+        (testing (str "server with minimum required threads for " num-connectors
                       "connector(s) start(s) successfully")
-          (let [server (get-server required-threads connectors)]
+          (let [server (get-server required-threads num-connectors)]
             (try
-              (.start server)
+              (tk-log-testutils/with-test-logging (.start server))
               (is (.isStarted server))
               (finally
                 (.stop server)))))))))
