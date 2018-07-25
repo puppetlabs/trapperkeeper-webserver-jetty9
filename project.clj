@@ -1,6 +1,6 @@
 (def jetty-version "9.4.11.v20180605")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "2.1.3-SNAPSHOT"
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "2.2.0-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
   :url "https://github.com/puppetlabs/trapperkeeper-webserver-jetty9"
   :license {:name "Apache License, Version 2.0"
