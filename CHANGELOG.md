@@ -1,3 +1,17 @@
+## 2.2.0
+
+This is a dependency update release that should be transparent to users
+but may have upgrade risks.
+
+* [SERVER-2213](https://tickets.puppetlabs.com/browse/SERVER-2118) Upgrade
+  Jetty to latest
+  This upgrades from Jetty 9.4.4.v20170414 to Jetty 9.4.11.v20180605. The
+  only thing of note noticed in testing is that minimum threads allocated
+  per connection has changed, now scaling up and down with the size
+  of the server's threadpool. This change has not been noticed to cause
+  issue with any default setup, though with a version bump of this size
+  there may be yet uncaught regressions.
+
 ## 2.1.2
 
 This is a bug fix release.
