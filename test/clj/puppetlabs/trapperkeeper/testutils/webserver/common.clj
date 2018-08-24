@@ -1,11 +1,18 @@
 (ns puppetlabs.trapperkeeper.testutils.webserver.common
-  (:require [puppetlabs.http.client.sync :as http-client]))
+  (:require
+    [puppetlabs.http.client.sync :as http-client])
+  (:import
+    (appender TestListAppender)))
 
 (defn http-get
   ([url]
    (http-get url {:as :text}))
   ([url options]
    (http-client/get url options)))
+
+(defn http-put
+  [url options]
+  (http-client/put url options))
 
 (def jetty-plaintext-config
   {:webserver {:port 8080}})
@@ -55,3 +62,15 @@
   (apply str (repeat 8192 "a")))
 
 (def dev-resources-dir        "./dev-resources/")
+
+
+(defmacro with-test-access-logging
+  "Executes a test block and clears any messages saved to the TestListAppender
+  before and afterwards."
+  [& body]
+  `(do
+     (.clear (TestListAppender/list))
+     (try
+       (do ~@body)
+       (finally
+         (.clear (TestListAppender/list))))))

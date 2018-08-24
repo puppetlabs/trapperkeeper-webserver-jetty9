@@ -1,12 +1,17 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config
-  (:import [java.security KeyStore]
+  (:import (java.security KeyStore)
            (java.io FileInputStream)
+           (java.util HashMap)
+           (ch.qos.logback.access PatternLayout)
+           (ch.qos.logback.core CoreConstants)
            (org.eclipse.jetty.server.handler RequestLogHandler)
            (org.eclipse.jetty.server Server)
            (org.codehaus.janino ScriptEvaluator)
            (org.codehaus.commons.compiler CompileException)
            (java.lang.reflect InvocationTargetException)
-           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils LifeCycleImplementingRequestLogImpl))
+           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils
+             LifeCycleImplementingRequestLogImpl
+             MDCAccessLogConverter MDCRequestLogHandler))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as str]
             [me.raynes.fs :as fs]
@@ -442,8 +447,14 @@
 (schema/defn ^:always-validate
   init-log-handler :- RequestLogHandler
   [config :- WebserverRawConfig]
-  (let [handler (RequestLogHandler.)
+  (let [handler (MDCRequestLogHandler.)
+        pattern-rules (HashMap.)
         logger (LifeCycleImplementingRequestLogImpl.)]
+    (doseq [pattern ["X" "mdc"]]
+      (.put pattern-rules
+            pattern
+            (.getName MDCAccessLogConverter)))
+    (.putObject logger CoreConstants/PATTERN_RULE_REGISTRY pattern-rules)
     (.setFileName logger (:access-log-config config))
     (.setQuiet logger true)
     (.setRequestLog handler logger)

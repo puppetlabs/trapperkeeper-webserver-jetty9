@@ -4,8 +4,7 @@
     (java.security KeyStore)
     (java.net SocketTimeoutException Socket)
     (java.io InputStreamReader BufferedReader PrintWriter)
-    (org.eclipse.jetty.server Server ServerConnector)
-    (appender TestListAppender))
+    (org.eclipse.jetty.server Server ServerConnector))
   (:require [clojure.test :refer :all]
             [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
@@ -128,7 +127,6 @@
                    gzip-enable"
            (validate-no-gzip-encoding-when-gzip-not-requested body port)))
 
-      (try
         (with-test-webserver-and-config
          app
          port {:gzip-enable true
@@ -138,9 +136,7 @@
          (testing "(TK-429) a gzipped response when request wants a compressed one
                  and server configured with a true value for gzip-enable and an
                  access-log-config"
-           (validate-gzip-encoding-when-gzip-requested body port)))
-        (finally
-          (.clear (TestListAppender/list)))))))
+           (validate-gzip-encoding-when-gzip-requested body port))))))
 
 (deftest jmx
   (testing "by default Jetty JMX support is enabled"

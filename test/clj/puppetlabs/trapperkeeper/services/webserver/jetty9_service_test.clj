@@ -6,8 +6,10 @@
            (java.nio.file Paths Files)
            (java.nio.file.attribute FileAttribute)
            (appender TestListAppender)
-           (javax.net.ssl SSLException))
+           (javax.net.ssl SSLException)
+           (org.slf4j MDC))
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [puppetlabs.http.client.async :as async]
             [puppetlabs.http.client.common :as http-client-common]
             [puppetlabs.kitchensink.testutils.fixtures :as ks-test-fixtures]
@@ -30,6 +32,7 @@
             [schema.core :as schema]
             [schema.test :as schema-test]
             [puppetlabs.kitchensink.core :as ks]
+            [ring.middleware.params :as ring-params]
             [me.raynes.fs :as fs]))
 
 (use-fixtures :once
@@ -92,10 +95,23 @@
   [req]
   {:status 200 :body hello-body})
 
+(def mdc-path "/mdc")
+(defn mdc-handler
+  [req]
+  (let [mdc-key (get-in req [:params "mdc_key"])]
+    (case (:request-method req)
+      :get {:status 200
+            :body (MDC/get mdc-key)}
+      :put (do
+             (MDC/put mdc-key (slurp (:body req)))
+             {:status 201
+              :body "OK."}))))
+
 (tk-core/defservice hello-webservice
   [[:WebserverService add-ring-handler]]
   (init [this context]
         (add-ring-handler hello-handler hello-path)
+        (add-ring-handler (ring-params/wrap-params mdc-handler) mdc-path)
         context))
 
 (defn validate-ring-handler
@@ -699,23 +715,40 @@
         (Files/delete link)))))
 
 (deftest request-logging-test
-  (try
+  (with-app-with-config
+   app
+   [jetty9-service hello-webservice]
+   {:webserver {:port 8080
+                ;; Restrict the number of threads available to the webserver
+                ;; so we can easily test whether thread-local values in the
+                ;; MDC are cleaned up.
+                :acceptor-threads 1
+                :selector-threads 1 ; You actually end up with 2 threads.
+                :max-threads 4
+                :access-log-config "./dev-resources/puppetlabs/trapperkeeper/services/webserver/request-logging.xml"}}
     (testing "request logging occurs when :access-log-config is configured"
-      (with-app-with-config
-       app
-       [jetty9-service
-        hello-webservice]
-       {:webserver {:port 8080
-                    :access-log-config
-                    "./dev-resources/puppetlabs/trapperkeeper/services/webserver/request-logging.xml"}}
+      (with-test-access-logging
        (http-get "http://localhost:8080/hi_world/")
        ; Logging is done in a separate thread from Jetty and this test. As a result,
        ; we have to sleep the thread to avoid a race condition.
        (Thread/sleep 10)
        (let [list (TestListAppender/list)]
-         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8\n" (first list))))))
-    (finally
-      (.clear (TestListAppender/list)))))
+         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8" (first list))))))
+
+    (testing "Mapped Diagnostic Context values are available to the access logger"
+      (with-test-access-logging
+        (http-put "http://localhost:8080/mdc?mdc_key=mdc-test" {:body "hello"})
+        (Thread/sleep 10)
+        (let [list (TestListAppender/list)]
+          (is (str/ends-with? (first list) "hello\n")))))
+
+    (testing "Mapped Diagnostic Context values are cleared after each request"
+      (http-put "http://localhost:8080/mdc?mdc_key=mdc-persist" {:body "foo"})
+
+      ;; Loop to ensure we hit all threads.
+      (let [responses (for [n (range 0 10)]
+                        (http-get "http://localhost:8080/mdc?mdc_key=mdc-persist"))]
+        (is (every? #(not= "foo" %) (map :body responses)))))))
 
 (deftest graceful-shutdown-test
   (testing "jetty9 webservers shut down gracefully by default"
