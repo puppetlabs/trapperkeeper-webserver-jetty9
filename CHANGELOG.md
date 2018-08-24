@@ -1,3 +1,16 @@
+## 2.3.0
+
+This is a feature release.
+
+* [TK-470](https://tickets.puppetlabs.com/browse/TK-470) Add MDC support
+  This release adds the ability to use the MDC (Mapped Diagnostic
+  Context) to save per thread diagnostic information about requests. That
+  information may then be output in request logs as desired. For more
+  information see https://logback.qos.ch/manual/mdc.html.
+* (maint) Update version dependencies
+  This moves us to using clj-parent 2.x (adds improved support for Java 11
+  and Clojure 1.9)
+
 ## 2.2.0
 
 This is a dependency update release that should be transparent to users
