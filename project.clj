@@ -8,7 +8,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "1.7.5"]
+  :parent-project {:coords [puppetlabs/clj-parent "2.2.0"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -18,6 +18,7 @@
   :dependencies [[org.clojure/clojure]
                  [org.clojure/java.jmx]
                  [org.clojure/tools.logging]
+                 [org.clojure/tools.nrepl "0.2.13"]
 
                  [org.codehaus.janino/janino]
 
