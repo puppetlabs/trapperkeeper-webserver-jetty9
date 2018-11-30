@@ -242,7 +242,8 @@
 (defn- http-configuration
   [request-header-size]
   (let [http-config (doto (HttpConfiguration.)
-                      (.setSendDateHeader true))]
+                      (.setSendDateHeader true)
+                      (.setSendServerVersion false))]
     (if request-header-size
       (.setRequestHeaderSize http-config request-header-size))
     http-config))
