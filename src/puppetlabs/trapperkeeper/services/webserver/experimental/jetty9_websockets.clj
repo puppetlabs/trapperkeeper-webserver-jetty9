@@ -44,6 +44,8 @@
      (.. this (getSession) (close)))
     ([this code reason]
      (.. this (getSession) (close code reason))))
+  (disconnect [this]
+     (.. this (getSession) (disconnect)))
   (remote-addr [this]
     (.. this (getSession) (getRemoteAddress)))
   (ssl? [this]
