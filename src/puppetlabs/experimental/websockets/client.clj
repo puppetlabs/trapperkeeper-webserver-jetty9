@@ -10,6 +10,8 @@
     "Send a message to the websocket client")
   (close! [this] [this code reason]
     "Close the websocket session.")
+  (disconnect [this]
+    "Disconnect the websocket connection")
   (remote-addr [this]
     "Find the remote address of a websocket client")
   (ssl? [this]
