@@ -1,3 +1,17 @@
+## 2.4.0
+
+* [PCP-862](https://tickets.puppetlabs.com/browse/PCP-862) Add disconnect
+  function to allow disconnecting from websocket connections rather than
+  closing them
+* (maint) Renew expired SSL certificates
+  This renews expired SSL certificates `certs/ca.pem`, `certs/localhost.pem`,
+  and `certs/localhost.p12`, which were causing tests to fail unexpectedly.
+
+## 2.3.1
+
+* [TK-473](https://tickets.puppetlabs.com/browse/TK-473) Stop reporting jetty
+  version in responses 
+
 ## 2.3.0
 
 This is a feature release.
