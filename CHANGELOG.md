@@ -1,3 +1,8 @@
+## 2.4.1
+
+* [PCP-862](https://tickets.puppetlabs.com/browse/PCP-862) Only disconnect if
+  the session has not already been closed.
+
 ## 2.4.0
 
 * [PCP-862](https://tickets.puppetlabs.com/browse/PCP-862) Add disconnect
