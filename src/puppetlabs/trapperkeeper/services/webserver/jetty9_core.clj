@@ -277,8 +277,6 @@
                             (connection-factories request-size ssl-ctxt-factory))
                       (.setPort (:port config))
                       (.setHost (:host config)))]
-    (when-let [linger-millis (:so-linger-milliseconds config)]
-      (.setSoLingerTime connector linger-millis))
     (when-let [idle-timeout (:idle-timeout-milliseconds config)]
       (.setIdleTimeout connector idle-timeout))
     connector))

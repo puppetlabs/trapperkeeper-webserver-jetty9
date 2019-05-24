@@ -120,7 +120,6 @@
    (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
    (schema/optional-key :request-body-max-size)      schema/Int
-   (schema/optional-key :so-linger-seconds)          schema/Int
    (schema/optional-key :idle-timeout-milliseconds)  schema/Int
    (schema/optional-key :ssl-port)                   schema/Int
    (schema/optional-key :ssl-host)                   schema/Str
@@ -187,7 +186,6 @@
 
 (def WebserverConnectorCommon
   {:request-header-max-size   (schema/maybe schema/Int)
-   :so-linger-milliseconds    (schema/maybe schema/Int)
    :idle-timeout-milliseconds (schema/maybe schema/Int)})
 
 (def WebserverConnector
@@ -377,16 +375,9 @@
   (contains-keys? config #{:port :host}))
 
 (schema/defn ^:always-validate
-  so-linger-in-milliseconds :- (schema/maybe schema/Int)
-  [config :- WebserverRawConfig]
-  (when-let [linger-from-config (:so-linger-seconds config)]
-    (* 1000 linger-from-config)))
-
-(schema/defn ^:always-validate
   common-connector-config :- WebserverConnectorCommon
   [config :- WebserverRawConfig]
   {:request-header-max-size   (:request-header-max-size config)
-   :so-linger-milliseconds    (so-linger-in-milliseconds config)
    :idle-timeout-milliseconds (:idle-timeout-milliseconds config)})
 
 (schema/defn ^:always-validate
