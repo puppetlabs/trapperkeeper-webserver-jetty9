@@ -58,19 +58,9 @@
 ;;; risky for our downstream apps, thus it was decided that it makes sense to
 ;;; keep these overrides.
 (def acceptable-ciphers
-  ["TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA"
-   "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
-   "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"
-
+  ["TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
    "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256"
-   "TLS_DHE_RSA_WITH_AES_256_CBC_SHA"
-   "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
-   "TLS_DHE_RSA_WITH_AES_128_CBC_SHA"
-
-   "TLS_RSA_WITH_AES_256_CBC_SHA256"
-   "TLS_RSA_WITH_AES_256_CBC_SHA"
-   "TLS_RSA_WITH_AES_128_CBC_SHA256"
-   "TLS_RSA_WITH_AES_128_CBC_SHA"])
+   "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"])
 (def default-protocols ["TLSv1" "TLSv1.1" "TLSv1.2"])
 (def default-client-auth :need)
 (def default-allow-renegotiation false)
