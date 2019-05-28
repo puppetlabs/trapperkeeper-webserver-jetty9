@@ -6,9 +6,9 @@
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
-  :min-lein-version "2.7.1"
+  :min-lein-version "2.8.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "2.2.0"]
+  :parent-project {:coords [puppetlabs/clj-parent "2.6.6"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -18,9 +18,9 @@
   :dependencies [[org.clojure/clojure]
                  [org.clojure/java.jmx]
                  [org.clojure/tools.logging]
-                 [org.clojure/tools.nrepl "0.2.13"]
 
                  [org.codehaus.janino/janino]
+                 [org.flatland/ordered "1.5.7"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
                  ;; Jetty Webserver
@@ -75,7 +75,7 @@
                                   [puppetlabs/trapperkeeper nil :classifier "test"]
                                   [org.clojure/tools.namespace]
                                   [compojure]
-                                  [stylefruits/gniazdo "0.4.0" :exclusions [org.eclipse.jetty.websocket/websocket-api
+                                  [stylefruits/gniazdo "1.1.1" :exclusions [org.eclipse.jetty.websocket/websocket-api
                                                                             org.eclipse.jetty.websocket/websocket-client
                                                                             org.eclipse.jetty/jetty-util]]
                                   [ring/ring-core]]
