@@ -942,8 +942,10 @@
       app
       [jetty9-service
        hello-webservice]
-      (assoc-in jetty-ssl-pem-config [:webserver :ssl-protocols] ["SSLv3"])
-       (let [response (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
-                                                                         {:ssl-protocols ["SSLv3"]}))]
-         (is (= (:status response) 200))
-         (is (= (:body response) "Hi World")))))))
+      (-> jetty-ssl-pem-config
+        (assoc-in [:webserver :ssl-protocols] ["SSLv3"])
+        (assoc-in [:webserver :cipher-suites] ["TLS_RSA_WITH_AES_128_CBC_SHA"]))
+      (let [response (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
+                                                                        {:ssl-protocols ["SSLv3"]}))]
+        (is (= (:status response) 200))
+        (is (= (:body response) "Hi World")))))))
