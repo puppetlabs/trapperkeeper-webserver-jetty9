@@ -2,6 +2,7 @@ language: clojure
 lein: 2.7.1
 jdk:
   - openjdk8
+  - openjdk11
 script: ./ext/travisci/test.sh
 notifications:
   email: false
