@@ -1,13 +1,8 @@
 language: clojure
-lein: 2.7.1
+lein: 2.8.1
 jdk:
   - openjdk8
+  - openjdk11
 script: ./ext/travisci/test.sh
 notifications:
   email: false
-
-# workaround for buffer overflow issue, ref https://github.com/travis-ci/travis-ci/issues/5227
-addons:
-  hosts:
-    - myshorthost
-  hostname: myshorthost

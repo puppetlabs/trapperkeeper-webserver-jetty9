@@ -13,7 +13,7 @@ import java.util.List;
  * Created by Preben Ingvaldsen on 9/17/14.
  */
 public class TestListAppender<E> extends AppenderBase<E> {
-    public static List list = new ArrayList();
+    public static List<String> list = new ArrayList<String>();
     protected PatternLayoutEncoder encoder;
     protected void append(E e) {
         PatternLayout layout = (PatternLayout)encoder.getLayout();
