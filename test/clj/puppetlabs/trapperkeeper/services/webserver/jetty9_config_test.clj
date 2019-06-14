@@ -43,7 +43,6 @@
       (update-in [:queue-max-size] identity)
       (update-in [:jmx-enable] (fnil ks/parse-bool default-jmx-enable))
       (update-in [scheme :request-header-max-size] identity)
-      (update-in [scheme :so-linger-milliseconds] identity)
       (update-in [scheme :idle-timeout-milliseconds] identity)
       (update-in [scheme :acceptor-threads] identity)
       (update-in [scheme :selector-threads] identity)))
@@ -90,13 +89,6 @@
              {:http {:host                    default-host
                      :port                    8000
                      :request-header-max-size 16192}})))
-
-    (is (= (munge-actual-http-config
-             {:port 8000 :so-linger-seconds 7})
-           (munge-expected-http-config
-             {:http {:host                   default-host
-                     :port                   8000
-                     :so-linger-milliseconds 7000}})))
 
     (is (= (munge-actual-http-config
              {:port 8000 :max-threads 500})
@@ -163,16 +155,6 @@
              {:https {:host                    "foo.local"
                       :port                    8001
                       :request-header-max-size 16192}})))
-
-    (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
-                    {:ssl-host          "foo.local"
-                     :ssl-port          8001
-                     :so-linger-seconds 22}))
-           (munge-expected-https-config
-             {:https {:host                   "foo.local"
-                      :port                   8001
-                      :so-linger-milliseconds 22000}})))
 
     (is (= (munge-actual-https-config
              (merge valid-ssl-pem-config
@@ -342,7 +324,6 @@
              {:http  {:host                      default-host
                       :port                      8000
                       :request-header-max-size   nil
-                      :so-linger-milliseconds    nil
                       :idle-timeout-milliseconds nil
                       :acceptor-threads          nil
                       :selector-threads          nil}

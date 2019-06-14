@@ -111,9 +111,6 @@ react accordingly."
 
 (deftest default-connector-settings-test
   (let [connector (ServerConnector. (Server.))]
-    ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/ServerConnector.java#L87
-    (is (= -1 (.getSoLingerTime connector))
-        "Unexpected default for 'so-linger-seconds'")
     ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-server/src/main/java/org/eclipse/jetty/server/AbstractConnector.java#L150
     (is (= 30000 (.getIdleTimeout connector))
         "Unexpected default for 'idle-timeout-milliseconds'")

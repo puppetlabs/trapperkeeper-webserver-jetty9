@@ -197,6 +197,7 @@
                   (.setKeyStore (:keystore keystore-config))
                   (.setKeyStorePassword (:key-password keystore-config))
                   (.setTrustStore (:truststore keystore-config))
+                  (.setEndpointIdentificationAlgorithm nil)
                   ;; Need to clear out the default cipher suite exclude list so
                   ;; that Jetty doesn't potentially remove one or more ciphers
                   ;; that we want to be included.
@@ -277,8 +278,6 @@
                             (connection-factories request-size ssl-ctxt-factory))
                       (.setPort (:port config))
                       (.setHost (:host config)))]
-    (when-let [linger-millis (:so-linger-milliseconds config)]
-      (.setSoLingerTime connector linger-millis))
     (when-let [idle-timeout (:idle-timeout-milliseconds config)]
       (.setIdleTimeout connector idle-timeout))
     connector))

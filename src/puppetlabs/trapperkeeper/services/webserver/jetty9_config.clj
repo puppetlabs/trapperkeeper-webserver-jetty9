@@ -58,19 +58,40 @@
 ;;; risky for our downstream apps, thus it was decided that it makes sense to
 ;;; keep these overrides.
 (def acceptable-ciphers
-  ["TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA"
-   "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
-   "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"
-
-   "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256"
-   "TLS_DHE_RSA_WITH_AES_256_CBC_SHA"
+  ["SSL_CK_DES_192_EDE3_CBC_WITH_SHA"
+   "TLS_DHE_DSS_WITH_AES_128_CBC_SHA256"
+   "TLS_DHE_DSS_WITH_AES_128_GCM_SHA256"
+   "TLS_DHE_DSS_WITH_AES_256_CBC_SHA256"
+   "TLS_DHE_DSS_WITH_AES_256_GCM_SHA384"
    "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
-   "TLS_DHE_RSA_WITH_AES_128_CBC_SHA"
+   "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+   "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256"
+   "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384"
+   "TLS_DH_DSS_WITH_AES_128_CBC_SHA256"
+   "TLS_DH_DSS_WITH_AES_128_GCM_SHA256"
+   "TLS_DH_DSS_WITH_AES_256_CBC_SHA256"
+   "TLS_DH_DSS_WITH_AES_256_GCM_SHA384"
+   "TLS_DH_RSA_WITH_AES_128_CBC_SHA256"
+   "TLS_DH_RSA_WITH_AES_128_GCM_SHA256"
+   "TLS_DH_RSA_WITH_AES_256_CBC_SHA256"
+   "TLS_DH_RSA_WITH_AES_256_GCM_SHA384"
+   "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+   "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384"
+   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+   "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
+   "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+   "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384"
+   "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+   "TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256"
+   "TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256"
+   "TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384"
+   "TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384"
+   "TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256"
+   "TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256"
+   "TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384"
+   "TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384"
+   "TLS_SRP_SHA_DSS_WITH_AES_256_CBC_SHA"])
 
-   "TLS_RSA_WITH_AES_256_CBC_SHA256"
-   "TLS_RSA_WITH_AES_256_CBC_SHA"
-   "TLS_RSA_WITH_AES_128_CBC_SHA256"
-   "TLS_RSA_WITH_AES_128_CBC_SHA"])
 (def default-protocols ["TLSv1" "TLSv1.1" "TLSv1.2"])
 (def default-client-auth :need)
 (def default-allow-renegotiation false)
@@ -99,7 +120,6 @@
    (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
    (schema/optional-key :request-body-max-size)      schema/Int
-   (schema/optional-key :so-linger-seconds)          schema/Int
    (schema/optional-key :idle-timeout-milliseconds)  schema/Int
    (schema/optional-key :ssl-port)                   schema/Int
    (schema/optional-key :ssl-host)                   schema/Str
@@ -166,7 +186,6 @@
 
 (def WebserverConnectorCommon
   {:request-header-max-size   (schema/maybe schema/Int)
-   :so-linger-milliseconds    (schema/maybe schema/Int)
    :idle-timeout-milliseconds (schema/maybe schema/Int)})
 
 (def WebserverConnector
@@ -356,16 +375,9 @@
   (contains-keys? config #{:port :host}))
 
 (schema/defn ^:always-validate
-  so-linger-in-milliseconds :- (schema/maybe schema/Int)
-  [config :- WebserverRawConfig]
-  (when-let [linger-from-config (:so-linger-seconds config)]
-    (* 1000 linger-from-config)))
-
-(schema/defn ^:always-validate
   common-connector-config :- WebserverConnectorCommon
   [config :- WebserverRawConfig]
   {:request-header-max-size   (:request-header-max-size config)
-   :so-linger-milliseconds    (so-linger-in-milliseconds config)
    :idle-timeout-milliseconds (:idle-timeout-milliseconds config)})
 
 (schema/defn ^:always-validate

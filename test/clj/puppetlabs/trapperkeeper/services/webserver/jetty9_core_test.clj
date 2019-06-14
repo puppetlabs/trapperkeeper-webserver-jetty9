@@ -237,7 +237,6 @@
       (update-in [connector-keyword :request-header-max-size] identity)
       (update-in [connector-keyword :acceptor-threads] identity)
       (update-in [connector-keyword :selector-threads] identity)
-      (update-in [connector-keyword :so-linger-milliseconds] identity)
       (update-in [connector-keyword :idle-timeout-milliseconds] identity)))
 
 (defn munge-http-connector-config
@@ -339,33 +338,6 @@
         (is (= queue-max-size
                (.getCapacity (get-queue-for-partial-http-config
                                {:queue-max-size queue-max-size}))))))))
-
-(deftest create-server-so-linger-test
-  (testing "so-linger-time configured properly for http connector"
-    (let [server     (create-server-with-partial-http-config
-                       {:http {:so-linger-milliseconds 500}})
-          connectors (.getConnectors server)]
-      (is (= 1 (count connectors))
-          "Unexpected number of connectors for server")
-      (is (= 500 (.getSoLingerTime (first connectors)))
-          "Unexpected so linger time for connector")))
-  (testing "so-linger-time configured properly for multiple connectors"
-    (let [server (create-server-with-partial-http-and-https-config
-                   {:http  {:port 25
-                            :so-linger-milliseconds 41}
-                    :https {:port 92
-                            :so-linger-milliseconds 42}})
-          connectors (.getConnectors server)]
-      (is (= 2 (count connectors))
-          "Unexpected number of connectors for server")
-      (is (= 25 (.getPort (first connectors)))
-          "Unexpected port for first connector")
-      (is (= 41 (.getSoLingerTime (first connectors)))
-          "Unexpected so linger time for first connector")
-      (is (= 92 (.getPort (second connectors)))
-          "Unexpected port for second connector")
-      (is (= 42 (.getSoLingerTime (second connectors)))
-          "Unexpected so linger time for second connector"))))
 
 (deftest create-server-idle-timeout-test
   (testing "idle-timeout configured properly for http connector"

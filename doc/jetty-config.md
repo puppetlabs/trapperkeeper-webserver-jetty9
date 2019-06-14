@@ -94,13 +94,16 @@ header is being sent in an HTTP Request.
 
 ### `so-linger-seconds`
 
-This sets the TCP SO_LINGER time, in seconds, that the webserver uses for
-underlying socket connections.  Values less than 0 result in SO_LINGER
-being disabled.  Defaults to -1, i.e., "disabled".  For a more detailed
-description of what it means to have SO_LINGER disabled vs. enabled for some
-number of seconds, see http://man7.org/linux/man-pages/man7/socket.7.html.  Note
-that the effect of setting this option may vary depending upon the operating
-system's underlying implementation.
+This setting has been removed. The option used in Jetty no longer attempts to
+set the SO_LINGER for the socket as of v9.4.12.
+
+The Jetty maintainers discovered this option has undefined behavior on
+non-blocking connections (and all underlying connections became non-blocking
+in Jetty 9.0).
+
+The actual behavior, though undefined by the Java spec, also changes between
+Java versions (so a user on Java 8 will see different behavior on Java 11) and
+has been reported to the Jetty community as a source of bugs on some platforms.
 
 ### `idle-timeout-milliseconds`
 
