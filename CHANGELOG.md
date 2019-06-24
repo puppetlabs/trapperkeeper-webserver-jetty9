@@ -1,3 +1,14 @@
+## 3.0.0
+
+This is a feature release with backwards breaking changes.
+
+* Java 11 support. This library should now be runnable and compilable on Java 11.
+* Jetty version bump from v9.4.11 to v9.4.18. This version bump resolves many issues with Jetty and enables the above Java 11 support. It also breaks several existing configurations.
+    * `so-linger-seconds` option removed. Jetty maintainers realized this option had undefined behavior and removed the underlying option.
+    * `IOException` thrown when failure to bind to port. Previously, this library tested that `BindException` was thrown and treated it as an API. This was invalid from the Jetty maintainers standpoint (they only test that the more general `IOException` is thrown).
+    * Default Cipher Suite refresh. Only three of the existing default ciphers were still considered by Jetty to be secure enough not to cause warnings on startup. These three cipher suites remain and many additional modern cipher suites have been added.
+
+
 ## 2.4.1
 
 * [PCP-862](https://tickets.puppetlabs.com/browse/PCP-862) Only disconnect if
