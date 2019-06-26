@@ -120,6 +120,7 @@
    (schema/optional-key :queue-max-size)             schema/Int
    (schema/optional-key :request-header-max-size)    schema/Int
    (schema/optional-key :request-body-max-size)      schema/Int
+   (schema/optional-key :so-linger-seconds)          schema/Int
    (schema/optional-key :idle-timeout-milliseconds)  schema/Int
    (schema/optional-key :ssl-port)                   schema/Int
    (schema/optional-key :ssl-host)                   schema/Str
@@ -224,6 +225,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Conversion functions (raw config -> schema)
+
+(schema/defn ^:always-validate
+  warn-if-so-linger-set
+  [config :- (schema/maybe WebserverRawConfig)]
+  (when (and config (:so-linger-seconds config))
+    (log/warn
+      (i18n/trs
+        "The so-linger-seconds setting was found to cause undefined behavior and was removed. The current value will be ignored."))))
 
 (schema/defn ^:always-validate
   maybe-get-pem-config! :- (schema/maybe WebserverSslPemConfig)
@@ -443,6 +452,7 @@
 (schema/defn ^:always-validate
   process-config :- WebserverConfig
   [config :- WebserverRawConfig]
+  (warn-if-so-linger-set config)
   (let [result (-> {}
                    (maybe-add-http-connector config)
                    (maybe-add-https-connector config)
