@@ -5,9 +5,3 @@ jdk:
 script: ./ext/travisci/test.sh
 notifications:
   email: false
-
-# workaround for buffer overflow issue, ref https://github.com/travis-ci/travis-ci/issues/5227
-addons:
-  hosts:
-    - myshorthost
-  hostname: myshorthost
