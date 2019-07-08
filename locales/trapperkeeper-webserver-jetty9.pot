@@ -1,12 +1,13 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR Puppet <docs@puppet.com>
-# This file is distributed under the same license as the puppetlabs.trapperkeeper_webserver_jetty9 package.
+# This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.trapperkeeper_webserver_jetty9 \n"
+"X-Git-Ref: 28395c14aefeb239ed234297284bc42fd04905aa\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -31,6 +32,12 @@ msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/experimental/jetty9_websockets.clj
 msgid "No handler defined for websocket event ''{0}'' with args: ''{1}''"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
+msgid ""
+"The so-linger-seconds setting was found to cause undefined behavior and was "
+"removed. The current value will be ignored."
 msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_config.clj
