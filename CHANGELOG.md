@@ -1,3 +1,12 @@
+## 3.0.1
+
+This is a bug fix release
+
+With this release we no longer fail to start if so-linger-seconds is set,
+only warn the user that the seeting will be ignored. This should allow
+easier upgrade paths.
+
+
 ## 3.0.0
 
 This is a feature release with backwards breaking changes.
