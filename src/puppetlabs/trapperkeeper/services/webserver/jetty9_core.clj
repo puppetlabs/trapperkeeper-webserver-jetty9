@@ -738,6 +738,7 @@
         (normalized-uri-helpers/handler-maybe-wrapped-with-normalized-uri
          (ring-handler handler)
          normalize-request-uri?)
+        path (if (= "" path) "/" path)
         ctxt-handler (doto (ContextHandler. path)
                        (.setHandler handler))]
     (add-handler webserver-context ctxt-handler enable-trailing-slash-redirect?)))
