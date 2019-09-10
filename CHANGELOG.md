@@ -1,3 +1,16 @@
+## 4.0.0
+
+Further restrict cipher-suites and protocols to current best practices.
+See documentation for configuring Jetty for additional details.
+
+## 3.0.3
+
+This was released but had no code changes
+
+## 3.0.2
+
+Suppress warning about empty contextPath
+
 ## 3.0.1
 
 This is a bug fix release
