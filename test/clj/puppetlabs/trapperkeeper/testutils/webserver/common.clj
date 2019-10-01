@@ -2,7 +2,8 @@
   (:require
     [puppetlabs.http.client.sync :as http-client])
   (:import
-    (appender TestListAppender)))
+   (appender TestListAppender)
+   (com.puppetlabs.ssl_utils SSLUtils)))
 
 (defn http-get
   ([url]
@@ -26,14 +27,15 @@
                :bar            {:port           8080
                                 :default-server true}}})
 
-(def jetty-ssl-jks-config
-  {:webserver {:port            8080
-               :ssl-host        "0.0.0.0"
-               :ssl-port        8081
-               :keystore        "./dev-resources/config/jetty/ssl/keystore.jks"
-               :truststore      "./dev-resources/config/jetty/ssl/truststore.jks"
-               :key-password    "Kq8lG9LkISky9cDIYysiadxRx"
-               :trust-password  "Kq8lG9LkISky9cDIYysiadxRx"}})
+(defn jetty-ssl-jks-config
+  []
+  {:webserver {:port 8080
+               :ssl-host "0.0.0.0"
+               :ssl-port 8081
+               :keystore (str "./dev-resources/config/jetty/ssl/keystore." (if (SSLUtils/isFIPS) "bcfks" "jks"))
+               :truststore (str "./dev-resources/config/jetty/ssl/truststore." (if (SSLUtils/isFIPS) "bcfks" "jks"))
+               :key-password "Kq8lG9LkISky9cDIYysiadxRx"
+               :trust-password "Kq8lG9LkISky9cDIYysiadxRx"}})
 
 (def jetty-ssl-pem-config
   {:webserver {:port        8080

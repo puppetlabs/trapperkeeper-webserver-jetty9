@@ -7,7 +7,8 @@
            (java.nio.file.attribute FileAttribute)
            (appender TestListAppender)
            (javax.net.ssl SSLException)
-           (org.slf4j MDC))
+           (org.slf4j MDC)
+           (com.puppetlabs.ssl_utils SSLUtils))
   (:require [clojure.test :refer :all]
             [clojure.string :as str]
             [puppetlabs.http.client.async :as async]
@@ -223,7 +224,7 @@
     ; should default to 'need' to validate the client certificate.  In this
     ; case, the validation should be successful because the client is
     ; providing a certificate which the CA can validate.
-    (doseq [config [jetty-ssl-jks-config jetty-ssl-pem-config]]
+    (doseq [config [(jetty-ssl-jks-config) jetty-ssl-pem-config]]
         (validate-ring-handler
           "https://localhost:8081"
           config
@@ -368,18 +369,21 @@
               "./dev-resources/config/jetty/ssl/crls/crls_localhost_revoked.pem")
             default-options-for-https-client))))
 
-  (testing (str "jetty throws startup exception if non-CRL PEM is specified "
-                "as ssl-crl-path")
-    (tk-log-testutils/with-test-logging
+  ;; the Bouncy Castle FIPS provider does not throw an exception for this use-case
+  ;; whereas the SunX509 provider does.
+  (when-not (SSLUtils/isFIPS)
+   (testing (str "jetty throws startup exception if non-CRL PEM is specified "
+                 "as ssl-crl-path")
+     (tk-log-testutils/with-test-logging
       (is (thrown?
-            CRLException
-            (with-app-with-config
-              app
-              [jetty9-service]
-              (assoc-in
-                jetty-ssl-client-need-config
-                [:webserver :ssl-crl-path]
-                "./dev-resources/config/jetty/ssl/certs/ca.pem"))))))
+           CRLException
+           (with-app-with-config
+            app
+            [jetty9-service]
+            (assoc-in
+             jetty-ssl-client-need-config
+             [:webserver :ssl-crl-path]
+             "./dev-resources/config/jetty/ssl/certs/ca.pem")))))))
 
   (testing (str "jetty throws startup exception if ssl-crl-path refers to a "
                 "non-existent file")
@@ -932,11 +936,12 @@
       [jetty9-service
        hello-webservice]
       jetty-ssl-pem-config
-      (is (thrown?
-           SSLException
-           (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
-                                                              {:ssl-protocols ["SSLv3"]}))))))
-  (testing "SSLv3 is supported when configured"
+      (let [test-fn (fn [] (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
+                                                                             {:ssl-protocols ["SSLv3"]})) )]
+       (if (SSLUtils/isFIPS)
+         (is (thrown? IllegalArgumentException (test-fn)))
+         (is (thrown? SSLException (test-fn)))))))
+  (testing "SSLv3 is not supported even when configured"
     (tk-log-testutils/with-test-logging
      (with-app-with-config
       app
@@ -945,7 +950,10 @@
       (-> jetty-ssl-pem-config
         (assoc-in [:webserver :ssl-protocols] ["SSLv3"])
         (assoc-in [:webserver :cipher-suites] ["TLS_RSA_WITH_AES_128_CBC_SHA"]))
-      (let [response (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
-                                                                        {:ssl-protocols ["SSLv3"]}))]
-        (is (= (:status response) 200))
-        (is (= (:body response) "Hi World")))))))
+      (is (logged? #"contains SSLv3, a protocol with known vulnerabilities; ignoring"))
+      (is (logged? #"When `ssl-protocols` is empty, a default of"))
+      (let [test-fn (fn [] (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
+                                                                              {:ssl-protocols ["SSLv3"]})) )]
+        (if (SSLUtils/isFIPS)
+          (is (thrown? IllegalArgumentException (test-fn)))
+          (is (thrown? SSLException (test-fn)))))))))

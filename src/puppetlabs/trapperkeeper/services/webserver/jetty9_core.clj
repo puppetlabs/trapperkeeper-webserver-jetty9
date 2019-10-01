@@ -24,7 +24,8 @@
            (org.eclipse.jetty.jmx MBeanContainer)
            (org.eclipse.jetty.util URIUtil BlockingArrayQueue)
            (java.io IOException)
-           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils InternalSslContextFactory))
+           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils InternalSslContextFactory)
+           (com.puppetlabs.ssl_utils SSLUtils))
 
   (:require [ring.util.servlet :as servlet]
             [ring.util.codec :as codec]
@@ -58,6 +59,15 @@
     (catch ClassNotFoundException e)
     (catch Throwable e
       (log/error e (i18n/trs "Could not remove security providers; HTTPS may not work!")))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Bouncy Castle logs via java.util.logging, and is noisy during our
+;;; requests. Redirect this logging into SL4J, which lets us control
+;;; it via logback.
+(if-let [logging-resource (clojure.java.io/resource "logging-router.properties")]
+  (-> (java.util.logging.LogManager/getLogManager)
+      (.readConfiguration (.openStream logging-resource)))
+  (log/error (i18n/trs "logging-router.properties not found, extra logging will occur")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -191,7 +201,7 @@
   [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols allow-renegotiation]}
    :- config/WebserverSslContextFactory]
   (if (some #(= "sslv3" %) (map str/lower-case protocols))
-    (log/warn (i18n/trs "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we recommend removing it from the `ssl-protocols` list")))
+    (log/warn (i18n/trs "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; ignoring")))
 
   (let [context (doto (InternalSslContextFactory.)
                   (.setKeyStore (:keystore keystore-config))
@@ -207,7 +217,17 @@
                   ;; that Jetty doesn't potentially remove one or more protocols
                   ;; that we want to be included.
                   (.setExcludeProtocols (into-array String []))
-                  (.setIncludeProtocols (into-array String protocols)))]
+                  (.setIncludeProtocols (into-array String (filter #(not= "sslv3" (str/lower-case %)) protocols))))]
+    (when (empty? (.getIncludeProtocols context))
+      (log/warn (i18n/trs "When `ssl-protocols` is empty, a default of {0} is assumed" SSLUtils/TLS_PROTOCOL))
+      (.setIncludeProtocols context (into-array String [SSLUtils/TLS_PROTOCOL])))
+    (when (SSLUtils/isFIPS)
+      (doto context
+        (.setKeyStoreType SSLUtils/BOUNCYCASTLE_FIPS_KEYSTORE)
+        (.setTrustStoreType SSLUtils/BOUNCYCASTLE_FIPS_KEYSTORE)
+        (.setProvider SSLUtils/BOUNCYCASTLE_JSSE_PROVIDER)
+        (.setKeyManagerFactoryAlgorithm SSLUtils/PKIX_KEYMANAGER_ALGO)
+        (.setTrustManagerFactoryAlgorithm SSLUtils/PKIX_KEYMANAGER_ALGO)))
     (if (:trust-password keystore-config)
       (.setTrustStorePassword context (:trust-password keystore-config)))
     (case client-auth
