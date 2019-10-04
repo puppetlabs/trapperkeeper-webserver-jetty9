@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.trapperkeeper_webserver_jetty9 \n"
-"X-Git-Ref: 28395c14aefeb239ed234297284bc42fd04905aa\n"
+"X-Git-Ref: febbde781f04fe3ebf782cf2ceaf32ae8da7e3f8\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -110,13 +110,21 @@ msgid "Could not remove security providers; HTTPS may not work!"
 msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "logging-router.properties not found, extra logging will occur"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
 msgid "webserver config overridden for key ''{0}''"
 msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
 msgid ""
-"`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; we "
-"recommend removing it from the `ssl-protocols` list"
+"`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; "
+"ignoring"
+msgstr ""
+
+#: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
+msgid "When `ssl-protocols` is empty, a default of {0} is assumed"
 msgstr ""
 
 #: src/puppetlabs/trapperkeeper/services/webserver/jetty9_core.clj
