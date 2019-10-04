@@ -9,21 +9,21 @@ jobs:
       # in the Travis CI web page
       env:
         - FIPS=false
-    #- # still jdk8
-    #  script: lein with-profile fips test
-    #  jdk: openjdk8
-    #  env:
-    #    - FIPS=true
+    - # still jdk8
+      script: lein with-profile fips test
+      jdk: openjdk8
+      env:
+        - FIPS=true
 
     - stage: jdk11
       script: lein with-profile dev test
       jdk: openjdk11
       env:
         - FIPS=false
-    #- # still jdk11
-    #  script: lein with-profile fips test
-    #  jdk: openjdk11
-    #  env:
-    #    - FIPS=true
+    - # still jdk11
+      script: lein with-profile fips test
+      jdk: openjdk11
+      env:
+        - FIPS=true
 notifications:
   email: false
