@@ -287,13 +287,13 @@
   (when (some nil? [truststore keystore key-password trust-password])
     (throw (IllegalArgumentException.
              (i18n/trs "Missing some SSL configuration; must provide either :ssl-cert, :ssl-key, and :ssl-ca-cert, OR :truststore, :trust-password, :keystore, and :key-password."))))
-  {:keystore       (doto (ssl/keystore)
-                     (.load (FileInputStream. keystore)
-                            (.toCharArray key-password)))
-   :truststore     (doto (ssl/keystore)
-                     (.load (FileInputStream. truststore)
-                            (.toCharArray trust-password)))
-   :key-password   key-password
+  {:keystore (doto (ssl/keystore)
+               (.load (FileInputStream. keystore)
+                      (.toCharArray key-password)))
+   :truststore (doto (ssl/keystore)
+                 (.load (FileInputStream. truststore)
+                        (.toCharArray trust-password)))
+   :key-password key-password
    :trust-password trust-password})
 
 (schema/defn ^:always-validate
@@ -391,7 +391,7 @@
             :protocols               (get-ssl-protocols-config config)
             :client-auth             (get-client-auth! config)
             :ssl-crl-path            (get-ssl-crl-path! config)
-            :allow-renegotiation     (get config :allow-renegotiation 
+            :allow-renegotiation     (get config :allow-renegotiation
                                          default-allow-renegotiation)})))
 
 (schema/defn ^:always-validate

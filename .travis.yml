@@ -1,8 +1,29 @@
 language: clojure
-lein: 2.8.1
-jdk:
-  - openjdk8
-  - openjdk11
-script: ./ext/travisci/test.sh
+lein: 2.9.1
+jobs:
+  include:
+    - stage: jdk8
+      script: lein with-profile dev test
+      jdk: openjdk8
+      # this env var isn't actually used, but helps with readability
+      # in the Travis CI web page
+      env:
+        - FIPS=false
+    #- # still jdk8
+    #  script: lein with-profile fips test
+    #  jdk: openjdk8
+    #  env:
+    #    - FIPS=true
+
+    - stage: jdk11
+      script: lein with-profile dev test
+      jdk: openjdk11
+      env:
+        - FIPS=false
+    #- # still jdk11
+    #  script: lein with-profile fips test
+    #  jdk: openjdk11
+    #  env:
+    #    - FIPS=true
 notifications:
   email: false

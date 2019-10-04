@@ -1,10 +1,11 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-core-test
   (:import
-    (org.eclipse.jetty.server.handler ContextHandlerCollection)
-    (java.security KeyStore)
-    (java.net SocketTimeoutException Socket)
-    (java.io InputStreamReader BufferedReader PrintWriter)
-    (org.eclipse.jetty.server Server ServerConnector))
+   (org.eclipse.jetty.server.handler ContextHandlerCollection)
+   (java.security KeyStore)
+   (java.net SocketTimeoutException Socket)
+   (java.io InputStreamReader BufferedReader PrintWriter)
+   (org.eclipse.jetty.server Server ServerConnector)
+   (com.puppetlabs.ssl_utils SSLUtils))
   (:require [clojure.test :refer :all]
             [clojure.java.jmx :as jmx]
             [ring.util.response :as rr]
@@ -247,6 +248,13 @@
       (update-in [:jmx-enable] ks/parse-bool)
       (munge-common-connector-config :http)))
 
+(defn get-keystore-instance
+  []
+  (if (SSLUtils/isFIPS)
+    (KeyStore/getInstance SSLUtils/BOUNCYCASTLE_FIPS_KEYSTORE)
+    (-> (KeyStore/getDefaultType)
+        (KeyStore/getInstance))))
+
 (defn munge-http-and-https-connector-config
   [config]
   (-> config
@@ -257,11 +265,9 @@
       (update-in [:https :client-auth] (fnil identity :none))
       (update-in [:https :keystore-config]
                  (fnil identity
-                       {:truststore (-> (KeyStore/getDefaultType)
-                                        (KeyStore/getInstance))
+                       {:truststore (get-keystore-instance)
                         :key-password "hello"
-                        :keystore (-> (KeyStore/getDefaultType)
-                                      (KeyStore/getInstance))}))))
+                        :keystore (get-keystore-instance)}))))
 
 (defn create-server-with-config
   [config]

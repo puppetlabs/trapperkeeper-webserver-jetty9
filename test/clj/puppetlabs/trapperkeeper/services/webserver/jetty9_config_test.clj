@@ -1,6 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-config-test
   (:import (clojure.lang ExceptionInfo)
-           (java.util Arrays))
+           (java.util Arrays)
+           (com.puppetlabs.ssl_utils SSLUtils))
   (:require [clojure.test :refer :all]
             [clojure.java.io :refer [resource]]
             [me.raynes.fs :as fs]
@@ -21,16 +22,18 @@
   schema-test/validate-schemas
   testutils/assert-clean-shutdown)
 
-(def valid-ssl-pem-config
+(defn valid-ssl-pem-config
+  []
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"
    :ssl-key     "./dev-resources/config/jetty/ssl/private_keys/localhost.pem"
    :ssl-ca-cert "./dev-resources/config/jetty/ssl/certs/ca.pem"})
 
-(def valid-ssl-keystore-config
-  {:keystore        "./dev-resources/config/jetty/ssl/keystore.jks"
-   :truststore      "./dev-resources/config/jetty/ssl/truststore.jks"
-   :key-password    "Kq8lG9LkISky9cDIYysiadxRx"
-   :trust-password  "Kq8lG9LkISky9cDIYysiadxRx"})
+(defn valid-ssl-keystore-config
+  []
+  {:keystore (str "./dev-resources/config/jetty/ssl/keystore." (if (SSLUtils/isFIPS) "bcfks" "jks"))
+   :truststore (str "./dev-resources/config/jetty/ssl/truststore." (if (SSLUtils/isFIPS) "bcfks" "jks"))
+   :key-password "Kq8lG9LkISky9cDIYysiadxRx"
+   :trust-password "Kq8lG9LkISky9cDIYysiadxRx"})
 
 (defn munge-actual-http-config
   [config]
@@ -126,28 +129,28 @@
 (deftest process-config-https-test
   (testing "process-config successfully builds a WebserverConfig for ssl connector"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host "foo.local"}))
            (munge-expected-https-config
              {:https {:host "foo.local"
                       :port default-https-port}})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-port 8001}))
            (munge-expected-https-config
              {:https {:host default-host
                       :port 8001}}))) 
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host "foo.local" :ssl-port 8001}))
            (munge-expected-https-config
              {:https {:host "foo.local"
                       :port 8001}})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host                "foo.local"
                      :ssl-port                8001
                      :request-header-max-size 16192}))
@@ -157,7 +160,7 @@
                       :request-header-max-size 16192}})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host    "foo.local"
                      :ssl-port    8001
                      :max-threads 93}))
@@ -167,7 +170,7 @@
               :max-threads 93})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host       "foo.local"
                      :ssl-port       8001
                      :queue-max-size 99}))
@@ -177,7 +180,7 @@
               :queue-max-size 99})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host                  "foo.local"
                      :ssl-port                  8001
                      :idle-timeout-milliseconds 4200}))
@@ -187,7 +190,7 @@
                       :idle-timeout-milliseconds 4200}})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host            "foo.local"
                      :ssl-port             8001
                      :ssl-selector-threads 4242}))
@@ -197,7 +200,7 @@
                       :selector-threads 4242}})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host             "foo.local"
                      :ssl-port             8001
                      :allow-renegotiation true}))
@@ -207,7 +210,7 @@
                       :allow-renegotiation true}})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host             "foo.local"
                      :ssl-port             8001
                      :allow-renegotiation false}))
@@ -217,7 +220,7 @@
                       :allow-renegotiation false}})))
 
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host             "foo.local"
                      :ssl-port             8001
                      :ssl-acceptor-threads 9193}))
@@ -230,7 +233,7 @@
 (deftest process-config-jks-test
   (testing "jks ssl config"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-keystore-config
+             (merge (valid-ssl-keystore-config)
                     {:ssl-port 8001}))
            (munge-expected-https-config
              {:https {:host default-host
@@ -239,7 +242,7 @@
 (deftest process-config-ciphers-test
   (testing "cipher suites"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-port 8001 :cipher-suites ["FOO" "BAR"]}))
            (munge-expected-https-config
              {:https
@@ -249,7 +252,7 @@
 
   (testing "cipher suites as a comma and space-separated string"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-port 8001 :cipher-suites "FOO, BAR"}))
            (munge-expected-https-config
              {:https
@@ -260,7 +263,7 @@
 (deftest process-config-protocols-test
   (testing "protocols"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-port 8001 :ssl-protocols ["FOO" "BAR"]}))
            (munge-expected-https-config
              {:https
@@ -270,7 +273,7 @@
 
   (testing "protocols as a comma and space-separated string"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-port 8001 :ssl-protocols "FOO, BAR"}))
            (munge-expected-https-config
              {:https
@@ -281,7 +284,7 @@
 (deftest process-config-crl-test
   (testing "ssl-crl-path"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-port 8001
                      :ssl-crl-path
                                "./dev-resources/config/jetty/ssl/certs/ca.pem"}))
@@ -295,7 +298,7 @@
   (testing "client auth"
     (letfn [(get-client-auth [config]
                              (-> config
-                                 (merge valid-ssl-pem-config)
+                                 (merge (valid-ssl-pem-config))
                                  process-config
                                  (get-in [:https :client-auth])))]
       (testing "configure-web-server should set client-auth to a value of :need
@@ -318,7 +321,7 @@
 (deftest process-config-http-plus-https-test
   (testing "process-config successfully builds a WebserverConfig for plaintext+ssl"
     (is (= (munge-actual-https-config
-             (merge valid-ssl-pem-config
+             (merge (valid-ssl-pem-config)
                     {:ssl-host "foo.local" :port 8000}))
            (munge-expected-https-config
              {:http  {:host                      default-host
@@ -346,15 +349,15 @@
       {:ssl-port 8001}
       {:ssl-port 8001 :ssl-host "foo.local"}
       {:ssl-host "foo.local"}
-      valid-ssl-pem-config
-      (merge {:ssl-port 8001} (dissoc valid-ssl-pem-config :ssl-key))
-      (merge {:ssl-port 8001} (dissoc valid-ssl-keystore-config :keystore))))
+      (valid-ssl-pem-config)
+      (merge {:ssl-port 8001} (dissoc (valid-ssl-pem-config) :ssl-key))
+      (merge {:ssl-port 8001} (dissoc (valid-ssl-keystore-config) :keystore))))
 
   (testing "should warn if both keystore-based and PEM-based SSL settings are found"
     (with-test-logging
       (process-config (merge {:ssl-port 8001}
-                             valid-ssl-pem-config
-                             valid-ssl-keystore-config))
+                             (valid-ssl-pem-config)
+                             (valid-ssl-keystore-config)))
       (is (logged? #"Found settings for both keystore-based and PEM-based SSL")))))
 
 (defn- validate-cert-lists-equal
