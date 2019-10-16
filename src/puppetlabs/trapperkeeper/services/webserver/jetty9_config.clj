@@ -10,8 +10,9 @@
            (org.codehaus.commons.compiler CompileException)
            (java.lang.reflect InvocationTargetException)
            (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils
-             LifeCycleImplementingRequestLogImpl
-             MDCAccessLogConverter MDCRequestLogHandler))
+            LifeCycleImplementingRequestLogImpl
+            MDCAccessLogConverter MDCRequestLogHandler)
+           (com.puppetlabs.ssl_utils SSLUtils))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as str]
             [me.raynes.fs :as fs]
@@ -64,6 +65,11 @@
    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"])
+
+(def acceptable-ciphers-fips
+  ["TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+   "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"])
 
 (def default-protocols ["TLSv1.2"])
 (def default-client-auth :need)
@@ -342,7 +348,9 @@
      :else default)))
 
 (defn get-cipher-suites-config [config]
-  (get-or-parse-sequential-config-value config :cipher-suites acceptable-ciphers))
+  (get-or-parse-sequential-config-value config :cipher-suites (if (SSLUtils/isFIPS)
+                                                                acceptable-ciphers-fips
+                                                                acceptable-ciphers)))
 
 (defn get-ssl-protocols-config [config]
   (get-or-parse-sequential-config-value config :ssl-protocols default-protocols))
