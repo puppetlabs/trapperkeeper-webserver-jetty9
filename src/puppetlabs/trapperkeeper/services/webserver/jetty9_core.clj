@@ -225,7 +225,8 @@
       (doto context
         (.setKeyStoreType SSLUtils/BOUNCYCASTLE_FIPS_KEYSTORE)
         (.setTrustStoreType SSLUtils/BOUNCYCASTLE_FIPS_KEYSTORE)
-        (.setProvider SSLUtils/BOUNCYCASTLE_JSSE_PROVIDER)
+        (.setKeyStoreProvider SSLUtils/FIPS_PROVIDER_CLASS)
+        (.setTrustStoreProvider SSLUtils/FIPS_PROVIDER_CLASS)
         (.setKeyManagerFactoryAlgorithm SSLUtils/PKIX_KEYMANAGER_ALGO)
         (.setTrustManagerFactoryAlgorithm SSLUtils/PKIX_KEYMANAGER_ALGO)))
     (if (:trust-password keystore-config)
@@ -252,7 +253,9 @@
                          (config/pem-ssl-config->keystore-ssl-config
                            ssl-config)
                         :client-auth :none
-                        :cipher-suites (or (:cipher-suites ssl-config) config/acceptable-ciphers)
+                        :cipher-suites (or (:cipher-suites ssl-config) (if (SSLUtils/isFIPS)
+                                                                         config/acceptable-ciphers-fips
+                                                                         config/acceptable-ciphers))
                         :protocols     (or (:protocols ssl-config) config/default-protocols)
                         :allow-renegotiation  (or (:allow-renegotiation ssl-config)
                                                   config/default-allow-renegotiation)}))

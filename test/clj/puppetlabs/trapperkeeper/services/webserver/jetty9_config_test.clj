@@ -63,7 +63,9 @@
 (defn munge-expected-https-config
   [expected]
   (-> (munge-expected-common-config expected :https)
-      (update-in [:https :cipher-suites] (fnil identity acceptable-ciphers))
+      (update-in [:https :cipher-suites] (fnil identity (if (SSLUtils/isFIPS)
+                                                          acceptable-ciphers-fips
+                                                          acceptable-ciphers)))
       (update-in [:https :protocols] (fnil identity default-protocols))
       (update-in [:https :client-auth] (fnil identity default-client-auth))
       (update-in [:https :allow-renegotiation] (fnil identity default-allow-renegotiation))
