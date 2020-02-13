@@ -737,7 +737,7 @@
          follow-links? (:follow-links? options)
          enable-trailing-slash-redirect? (:enable-trailing-slash-redirect? options)
          normalize-request-uri? (:normalize-request-uri? options)]
-     (.setBaseResource handler (Resource/newResource base-path))
+     (.setBaseResource handler (Resource/newResource ^String base-path))
      (if follow-links?
        (.setAliasChecks handler [(AllowSymLinkAliasChecker.)])
        (.clearAliasChecks handler))
