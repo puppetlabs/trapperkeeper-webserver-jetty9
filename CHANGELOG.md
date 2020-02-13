@@ -1,3 +1,15 @@
+## 4.0.3
+
+Fix ambiguous type inference when running under Java 11
+
+## 4.0.2
+
+Further FIPS updates and cleanup
+
+## 4.0.1
+
+Add a FIPS profile and remove SSLv3 support.
+
 ## 4.0.0
 
 Further restrict cipher-suites and protocols to current best practices.
