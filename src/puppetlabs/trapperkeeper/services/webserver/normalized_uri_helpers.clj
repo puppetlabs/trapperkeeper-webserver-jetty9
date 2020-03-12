@@ -1,6 +1,6 @@
 (ns puppetlabs.trapperkeeper.services.webserver.normalized-uri-helpers
   (:import (javax.servlet.http HttpServletRequest HttpServletResponse)
-           (org.eclipse.jetty.util URIUtil)
+           (org.eclipse.jetty.util OldURIUtil URIUtil)
            (org.eclipse.jetty.server Request)
            (org.eclipse.jetty.server.handler HandlerWrapper AbstractHandler)
            (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils
@@ -35,7 +35,7 @@
   [request :- HttpServletRequest]
   (let [percent-decoded-uri-path (-> request
                                      (.getRequestURI)
-                                     (URIUtil/decodePath))
+                                     (OldURIUtil/decodePath))
         canonicalized-uri-path (URIUtil/canonicalPath percent-decoded-uri-path)]
     (if (or (nil? canonicalized-uri-path)
             (not= (.length percent-decoded-uri-path)

@@ -8,7 +8,7 @@
            (org.eclipse.jetty.server.handler.gzip GzipHandler)
            (org.eclipse.jetty.util.resource Resource)
            (org.eclipse.jetty.util.thread QueuedThreadPool)
-           (org.eclipse.jetty.util.ssl SslContextFactory)
+           (org.eclipse.jetty.util.ssl SslContextFactory$Server SslContextFactory$Client)
            (javax.servlet.http HttpServletResponse)
            (java.util.concurrent TimeoutException)
            (org.eclipse.jetty.servlet ServletContextHandler ServletHolder DefaultServlet)
@@ -24,7 +24,7 @@
            (org.eclipse.jetty.jmx MBeanContainer)
            (org.eclipse.jetty.util URIUtil BlockingArrayQueue)
            (java.io IOException)
-           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils InternalSslContextFactory)
+           (com.puppetlabs.trapperkeeper.services.webserver.jetty9.utils InternalSslContextFactory$Server InternalSslContextFactory$Client)
            (com.puppetlabs.ssl_utils SSLUtils))
 
   (:require [ring.util.servlet :as servlet]
@@ -152,7 +152,7 @@
    :overrides-read-by-webserver schema/Bool
    :overrides (schema/maybe {schema/Keyword schema/Any})
    :endpoints RegisteredEndpoints
-   :ssl-context-factory (schema/maybe InternalSslContextFactory)})
+   :ssl-context-factory (schema/maybe InternalSslContextFactory$Server)})
 
 (def ServerContext
   {:state     (schema/atom ServerContextState)
@@ -195,15 +195,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Context Functions
 
-(schema/defn ^:always-validate
-  ssl-context-factory :- SslContextFactory
-  "Creates a new SslContextFactory instance from a map of SSL config options."
-  [{:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols allow-renegotiation]}
-   :- config/WebserverSslContextFactory]
+(defn ssl-context-factory
+  [factory {:keys [keystore-config client-auth ssl-crl-path cipher-suites protocols allow-renegotiation]}]
   (if (some #(= "sslv3" %) (map str/lower-case protocols))
     (log/warn (i18n/trs "`ssl-protocols` contains SSLv3, a protocol with known vulnerabilities; ignoring")))
 
-  (let [context (doto (InternalSslContextFactory.)
+  (let [context (doto factory
                   (.setKeyStore (:keystore keystore-config))
                   (.setKeyStorePassword (:key-password keystore-config))
                   (.setTrustStore (:truststore keystore-config))
@@ -247,9 +244,21 @@
     context))
 
 (schema/defn ^:always-validate
-  get-proxy-client-context-factory :- SslContextFactory
+  ssl-context-factory-server :- SslContextFactory$Server
+  "Creates a new SslContextFactory.Server instance from a map of SSL config options."
+  [config :- config/WebserverSslContextFactory]
+  (ssl-context-factory (InternalSslContextFactory$Server.) config))
+
+(schema/defn ^:always-validate
+  ssl-context-factory-client :- SslContextFactory$Client
+  "Creates a new SslContextFactory.Client instance from a map of SSL config options."
+  [config :- config/WebserverSslContextFactory]
+  (ssl-context-factory (InternalSslContextFactory$Client.) config))
+
+(schema/defn ^:always-validate
+  get-proxy-client-context-factory :- SslContextFactory$Client
   [ssl-config :- ProxySslConfig]
-  (ssl-context-factory {:keystore-config
+  (ssl-context-factory-client {:keystore-config
                          (config/pem-ssl-config->keystore-ssl-config
                            ssl-config)
                         :client-auth :none
@@ -291,7 +300,7 @@
   [server :- Server
    config :- (merge config/WebserverConnector
                     {schema/Keyword schema/Any})
-   ssl-ctxt-factory :- (schema/maybe SslContextFactory)]
+   ssl-ctxt-factory :- (schema/maybe SslContextFactory$Server)]
   (let [request-size (:request-header-max-size config)
         connector   (doto (ServerConnector.
                             server
@@ -309,7 +318,7 @@
   ssl-connector  :- ServerConnector
   "Creates a ssl ServerConnector instance."
   [server            :- Server
-   ssl-ctxt-factory  :- SslContextFactory
+   ssl-ctxt-factory  :- SslContextFactory$Server
    config :- config/WebserverSslConnector]
   (connector* server config ssl-ctxt-factory))
 
@@ -385,7 +394,7 @@
       (let [connector (plaintext-connector server (:http config))]
         (.addConnector server connector)))
     (when-let [https (:https config)]
-      (let [ssl-ctxt-factory (ssl-context-factory
+      (let [ssl-ctxt-factory (ssl-context-factory-server
                                (select-keys https
                                             [:keystore-config :client-auth
                                              :ssl-crl-path :cipher-suites
@@ -993,7 +1002,7 @@
 (schema/defn ^:always-validate reload-crl-on-change!
   "Reload the CRL file used by the supplied ssl-context-factory whenever any
   changes to the file occur."
-  [ssl-context-factory :- InternalSslContextFactory
+  [ssl-context-factory :- InternalSslContextFactory$Server
    watcher :- (schema/protocol watch-protocol/Watcher)]
   (when-let [crl-path (.getCrlPath ssl-context-factory)]
     (let [normalized-crl-path (.getCanonicalPath (fs/file crl-path))]
