@@ -792,7 +792,7 @@
                      ; because the ring handler didn't understand the request, which
                      ; would have a different message in the body. The request shouldn't
                      ; get as far as the hello-goodbye-count-ring-handler
-                     (is (re-find #"Problem accessing /hello-proxy" (:body response))))))
+                     (is (re-find #"HTTP ERROR 404 Not Found" (:body response))))))
           ; Counter should still be at 0
           (is (= 0 (deref goodbye-counter))))
         (testing "counter is working correctly"

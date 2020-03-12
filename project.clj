@@ -1,4 +1,4 @@
-(def jetty-version "9.4.18.v20190429")
+(def jetty-version "9.4.27.v20200227")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "4.0.4-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."

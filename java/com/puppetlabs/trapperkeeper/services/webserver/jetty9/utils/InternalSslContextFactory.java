@@ -14,71 +14,117 @@ public class InternalSslContextFactory extends SslContextFactory {
 
     private static int maxTries = 25;
     private static int sleepInMillisecondsBetweenTries = 100;
-    private static final Logger LOG =
-            Log.getLogger(InternalSslContextFactory.class);
     private static Consumer<SslContextFactory> consumer = sslContextFactory
             -> {};
 
-    private Collection<? extends CRL> _crls;
+    private static final Logger SERVER_LOG =
+            Log.getLogger(InternalSslContextFactory.Server.class);
+    private static final Logger CLIENT_LOG =
+            Log.getLogger(InternalSslContextFactory.Client.class);
 
-    @Override
-    protected Collection<? extends CRL> loadCRL(String crlPath) throws Exception {
-        Collection<? extends CRL> crls;
+    private static class CRLCollection {
 
-        synchronized (this) {
-            if (_crls == null) {
-                crls = super.loadCRL(crlPath);
-            } else {
-                crls = _crls;
-            }
-        }
+	private SslContextFactory factory;
+	private final Logger log;
+	private Collection<? extends CRL> _crls;
 
-        return crls;
+	CRLCollection(SslContextFactory factory, Logger log) {
+	    this.factory = factory;
+	    this.log = log;
+	}
+
+	Collection<? extends CRL> loadCRL(String crlPath) throws Exception {
+	    Collection<? extends CRL> crls;
+
+	    synchronized (factory) {
+		if (_crls == null) {
+		    crls = CertificateUtils.loadCRL(crlPath);
+		} else {
+		    crls = _crls;
+		}
+	    }
+
+	    return crls;
+	}
+
+	void reload() throws Exception {
+	    synchronized (factory) {
+		Exception reloadEx = null;
+		int tries = maxTries;
+		String crlPath = factory.getCrlPath();
+
+		if (crlPath != null) {
+		    File crlPathAsFile = new File(crlPath);
+		    long crlLastModified = crlPathAsFile.lastModified();
+
+		    // Try to parse CRLs from the crlPath until it is successful
+		    // or a hard-coded number of failed attempts have been made.
+		    do {
+			reloadEx = null;
+			try {
+			    _crls = CertificateUtils.loadCRL(crlPath);
+			} catch (Exception e) {
+			    reloadEx = e;
+
+			    // If the CRL file has been updated since the last reload
+			    // attempt, reset the retry counter.
+			    if (crlPathAsFile != null &&
+                                crlLastModified != crlPathAsFile.lastModified()) {
+				crlLastModified = crlPathAsFile.lastModified();
+				tries = maxTries;
+			    } else {
+				tries--;
+			    }
+
+			    if (tries == 0) {
+				log.warn("Failed ssl context reload after " +
+					 maxTries + " tries.  CRL file is: " +
+					 crlPath, reloadEx);
+			    } else {
+				Thread.sleep(sleepInMillisecondsBetweenTries);
+			    }
+			}
+		    } while (reloadEx != null && tries > 0);
+		}
+
+		if (reloadEx == null) {
+		    factory.reload(consumer);
+		}
+	    }
+	}
     }
 
-    public void reload() throws Exception {
-        synchronized (this) {
-            Exception reloadEx = null;
-            int tries = maxTries;
-            String crlPath = getCrlPath();
+    public static class Server extends SslContextFactory.Server {
+	private CRLCollection _crls;
 
-            if (crlPath != null) {
-                File crlPathAsFile = new File(crlPath);
-                long crlLastModified = crlPathAsFile.lastModified();
+	public Server() {
+	    this._crls = new CRLCollection(this, SERVER_LOG);
+	}
 
-                // Try to parse CRLs from the crlPath until it is successful
-                // or a hard-coded number of failed attempts have been made.
-                do {
-                    reloadEx = null;
-                    try {
-                        _crls = CertificateUtils.loadCRL(crlPath);
-                    } catch (Exception e) {
-                        reloadEx = e;
+	@Override
+	protected Collection<? extends CRL> loadCRL(String crlPath) throws Exception {
+	    return _crls.loadCRL(crlPath);
+	}
 
-                        // If the CRL file has been updated since the last reload
-                        // attempt, reset the retry counter.
-                        if (crlPathAsFile != null &&
-                                crlLastModified != crlPathAsFile.lastModified()) {
-                            crlLastModified = crlPathAsFile.lastModified();
-                            tries = maxTries;
-                        } else {
-                            tries--;
-                        }
+	public void reload() throws Exception {
+	    _crls.reload();
+	}
+    }
 
-                        if (tries == 0) {
-                            LOG.warn("Failed ssl context reload after " +
-                                    maxTries + " tries.  CRL file is: " +
-                                    crlPath, reloadEx);
-                        } else {
-                            Thread.sleep(sleepInMillisecondsBetweenTries);
-                        }
-                    }
-                } while (reloadEx != null && tries > 0);
-            }
+    public static class Client extends SslContextFactory.Client {
+	private CRLCollection _crls;
 
-            if (reloadEx == null) {
-                reload(consumer);
-            }
-        }
+	public Client() {
+	    this._crls = new CRLCollection(this, CLIENT_LOG);
+	}
+
+	@Override
+	protected Collection<? extends CRL> loadCRL(String crlPath) throws Exception {
+	    return _crls.loadCRL(crlPath);
+	}
+
+	public void reload() throws Exception {
+	    _crls.reload();
+	}
     }
 }
