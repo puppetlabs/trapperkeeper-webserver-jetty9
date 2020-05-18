@@ -1,3 +1,7 @@
+## 4.1.0
+
+Update jetty version to 9.4.28. This is a maintenance update.
+
 ## 4.0.3
 
 Fix ambiguous type inference when running under Java 11
