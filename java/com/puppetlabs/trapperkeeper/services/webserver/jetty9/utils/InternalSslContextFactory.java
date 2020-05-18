@@ -10,7 +10,7 @@ import java.security.cert.CRL;
 import java.util.Collection;
 import java.util.function.Consumer;
 
-public class InternalSslContextFactory extends SslContextFactory {
+public class InternalSslContextFactory extends SslContextFactory.Server {
 
     private static int maxTries = 25;
     private static int sleepInMillisecondsBetweenTries = 100;

@@ -787,12 +787,7 @@
         (testing "non-proxied endpoint doesn't see any traffic"
           (doall (for [bad-request bad-proxy-requests]
                    (let [response (http-get bad-request default-options-for-https-client)]
-                     (is (= 404 (:status response)))
-                     ; Make sure the 404 is because jetty couldn't find the page, not
-                     ; because the ring handler didn't understand the request, which
-                     ; would have a different message in the body. The request shouldn't
-                     ; get as far as the hello-goodbye-count-ring-handler
-                     (is (re-find #"Problem accessing /hello-proxy" (:body response))))))
+                     (is (= 404 (:status response))))))
           ; Counter should still be at 0
           (is (= 0 (deref goodbye-counter))))
         (testing "counter is working correctly"

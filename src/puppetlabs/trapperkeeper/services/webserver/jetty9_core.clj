@@ -207,7 +207,6 @@
                   (.setKeyStore (:keystore keystore-config))
                   (.setKeyStorePassword (:key-password keystore-config))
                   (.setTrustStore (:truststore keystore-config))
-                  (.setEndpointIdentificationAlgorithm nil)
                   ;; Need to clear out the default cipher suite exclude list so
                   ;; that Jetty doesn't potentially remove one or more ciphers
                   ;; that we want to be included.
