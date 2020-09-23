@@ -14,9 +14,11 @@
   testutils/assert-clean-shutdown)
 
 (defprotocol DummyService1
+  :extend-via-metadata true
   (dummy1 [this]))
 
 (defprotocol DummyService2
+  :extend-via-metadata true
   (dummy2 [this]))
 
 (tk-services/defservice dummy-service1

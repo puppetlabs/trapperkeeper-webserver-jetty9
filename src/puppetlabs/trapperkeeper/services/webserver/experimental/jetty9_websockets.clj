@@ -20,6 +20,7 @@
    (schema/optional-key :on-bytes) IFn})
 
 (defprotocol WebSocketSend
+  :extend-via-metadata true
   (-send! [x ws] "How to encode content sent to the WebSocket clients"))
 
 (extend-protocol WebSocketSend

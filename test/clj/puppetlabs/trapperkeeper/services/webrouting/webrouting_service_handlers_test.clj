@@ -19,6 +19,7 @@
 (def dev-resources-dir        "./dev-resources/")
 
 (defprotocol TestDummy
+  :extend-via-metadata true
   (dummy [this]))
 
 (tk-services/defservice test-dummy
@@ -211,5 +212,3 @@
           (log-registered-endpoints)
           (is (logged? #"^\{\"\/foo\" \[\{:type :ring}\]\}$"))
           (is (logged? #"^\{\"\/foo\" \[\{:type :ring}\]\}$" :info)))))))
-
-

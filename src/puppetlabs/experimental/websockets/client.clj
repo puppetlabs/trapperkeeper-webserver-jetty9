@@ -2,6 +2,7 @@
 
 (defprotocol WebSocketProtocol
   "Functions to manage the lifecycle of a websocket session"
+  :extend-via-metadata true
   (idle-timeout! [this ms]
     "Set the idle timeout for the session, in milliseconds")
   (connected? [this]

@@ -19,6 +19,7 @@
     (new-hit-counts endpoint)))
 
 (defprotocol CountService
+  :extend-via-metadata true
   (inc-and-get [this endpoint]))
 
 (defservice count-service

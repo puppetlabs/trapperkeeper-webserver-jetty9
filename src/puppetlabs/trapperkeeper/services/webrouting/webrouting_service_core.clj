@@ -1,6 +1,7 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-core
   (:require [schema.core :as schema]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as jetty9-core]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service.utils :refer [protocol]]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.i18n.core :as i18n]))
 
@@ -103,7 +104,7 @@
 
 (schema/defn ^:always-validate get-server :- (schema/maybe schema/Str)
   [context
-   svc :- (schema/protocol tk-services/Service)
+   svc :- (protocol tk-services/Service)
    route-id]
   (let [svc-id              (keyword (tk-services/service-symbol svc))
         endpoint-and-server (get-endpoint-and-server-from-config context
@@ -113,7 +114,7 @@
 
 (schema/defn ^:always-validate add-context-handler!
   [context webserver-service
-   svc :- (schema/protocol tk-services/Service)
+   svc :- (protocol tk-services/Service)
    base-path
    options :- ContextHandlerOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
@@ -122,7 +123,7 @@
 
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
-   svc :- (schema/protocol tk-services/Service)
+   svc :- (protocol tk-services/Service)
    handler options :- CommonOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-ring-handler    (:add-ring-handler webserver-service)]
@@ -130,7 +131,7 @@
 
 (schema/defn ^:always-validate add-servlet-handler!
   [context webserver-service
-   svc :- (schema/protocol tk-services/Service)
+   svc :- (protocol tk-services/Service)
    servlet options :- ServletHandlerOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-servlet-handler (:add-servlet-handler webserver-service)]
@@ -138,7 +139,7 @@
 
 (schema/defn ^:always-validate add-websocket-handler!
   [context webserver-service
-   svc :- (schema/protocol tk-services/Service)
+   svc :- (protocol tk-services/Service)
    handlers options :- CommonOptions]
   (let [{:keys [path opts]}   (compute-common-elements context svc options)
         add-websocket-handler (:add-websocket-handler webserver-service)]
@@ -146,7 +147,7 @@
 
 (schema/defn ^:always-validate add-war-handler!
   [context webserver-service
-   svc :- (schema/protocol tk-services/Service)
+   svc :- (protocol tk-services/Service)
    war options :- RouteOption]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-war-handler     (:add-war-handler webserver-service)]
@@ -154,7 +155,7 @@
 
 (schema/defn ^:always-validate add-proxy-route!
   [context webserver-service
-   svc :- (schema/protocol tk-services/Service)
+   svc :- (protocol tk-services/Service)
    target options :- ProxyRouteOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-proxy-route     (:add-proxy-route webserver-service)]

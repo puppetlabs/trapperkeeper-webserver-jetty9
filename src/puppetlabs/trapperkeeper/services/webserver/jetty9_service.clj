@@ -17,6 +17,7 @@
 ;; TODO: this should probably be moved to a separate jar that can be used as
 ;; a dependency for all webserver service implementations
 (defprotocol WebserverService
+  :extend-via-metadata true
   (add-context-handler [this base-path context-path] [this base-path context-path options])
   (add-ring-handler [this handler path] [this handler path options])
   (add-websocket-handler [this handlers path] [this handler path options])

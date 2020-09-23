@@ -20,6 +20,7 @@
 (def dev-resources-config-dir (str dev-resources-dir "config/jetty/"))
 
 (defprotocol TestDummy
+  :extend-via-metadata true
   (dummy [this]))
 
 (tk-services/defservice test-dummy

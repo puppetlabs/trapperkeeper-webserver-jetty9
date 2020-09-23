@@ -31,6 +31,7 @@
             [ring.util.codec :as codec]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service.utils :refer [protocol]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [puppetlabs.trapperkeeper.services.webserver.experimental.jetty9-websockets :as websockets]
             [puppetlabs.trapperkeeper.services.webserver.normalized-uri-helpers
@@ -993,7 +994,7 @@
   "Reload the CRL file used by the supplied ssl-context-factory whenever any
   changes to the file occur."
   [ssl-context-factory :- InternalSslContextFactory
-   watcher :- (schema/protocol watch-protocol/Watcher)]
+   watcher :- (protocol watch-protocol/Watcher)]
   (when-let [crl-path (.getCrlPath ssl-context-factory)]
     (let [normalized-crl-path (.getCanonicalPath (fs/file crl-path))]
       (watch-protocol/add-watch-dir! watcher (fs/parent crl-path))

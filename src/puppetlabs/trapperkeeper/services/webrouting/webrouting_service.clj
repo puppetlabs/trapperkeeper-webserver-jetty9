@@ -8,6 +8,7 @@
     [schema.core :as schema]))
 
 (defprotocol WebroutingService
+  :extend-via-metadata true
   (get-route [this svc] [this svc route-id])
   (get-server [this svc] [this svc route-id])
   (add-context-handler [this svc context-path] [this svc context-path options])

@@ -27,13 +27,17 @@
   testutils/assert-clean-shutdown)
 
 (defprotocol TestService
+  :extend-via-metadata true
   (hello [this]))
 
-(defprotocol TestService2)
+(defprotocol TestService2
+  :extend-via-metadata true)
 
-(defprotocol TestService3)
+(defprotocol TestService3
+  :extend-via-metadata true)
 
 (defprotocol NotReal
+  :extend-via-metadata true
   (dummy [this]))
 
 (tk-services/defservice test-service

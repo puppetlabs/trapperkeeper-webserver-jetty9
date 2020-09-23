@@ -75,7 +75,8 @@
     {:status 200
      :body   "This should have timed out."}))
 
-(defprotocol TkProxyService)
+(defprotocol TkProxyService
+  :extend-via-metadata true)
 
 (defn proxy-service
   [proxy-config proxy-opts proxy-path]
