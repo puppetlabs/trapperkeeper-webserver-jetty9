@@ -1,6 +1,6 @@
 (def jetty-version "9.4.28.v20200408")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "4.1.1-SNAPSHOT"
+(defproject threatgrid/trapperkeeper-webserver-jetty9 "4.2.0"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
   :url "https://github.com/puppetlabs/trapperkeeper-webserver-jetty9"
   :license {:name "Apache License, Version 2.0"
