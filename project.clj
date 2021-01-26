@@ -6,9 +6,9 @@
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
 
-  :min-lein-version "2.8.1"
+  :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.2.4"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.6.11"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in

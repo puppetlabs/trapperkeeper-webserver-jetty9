@@ -1,3 +1,7 @@
+## 4.1.1
+
+Update jetty version to 9.4.36. This is a maintenance update.
+
 ## 4.1.0
 
 Update jetty version to 9.4.28. This is a maintenance update.
