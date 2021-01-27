@@ -8,7 +8,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.6.11"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.6.13"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -20,7 +20,7 @@
                  [org.clojure/tools.logging]
 
                  [org.codehaus.janino/janino]
-                 [org.flatland/ordered "1.5.7"]
+                 [org.flatland/ordered "1.5.9"]
 
                  [javax.servlet/javax.servlet-api "3.1.0"]
                  ;; Jetty Webserver
