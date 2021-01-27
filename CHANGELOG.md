@@ -1,3 +1,11 @@
+## 4.1.3
+
+Update flatland/ordered to 1.5.9, to avoid conflicting with other libs.
+
+## 4.1.2
+
+Ship artifacts with Java 8 builds.
+
 ## 4.1.1
 
 Update jetty version to 9.4.36. This is a maintenance update.
