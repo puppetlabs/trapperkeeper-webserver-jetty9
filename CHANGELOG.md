@@ -1,3 +1,15 @@
+## 4.1.5
+
+Update jetty to 9.4.39.v20210325 to resolve CVEs:
+
+- CVE-2021-28165 - #6072 - jetty server high CPU when client send data length > 17408
+- CVE-2021-28164 - #6101 - Normalize ambiguous URIs
+- CVE-2021-28163 - #6102 - Exclude webapps directory from deployment scan
+
+## 4.1.4
+
+Update clj-kitchensink to 3.1.3 via an update of clj-parent to 4.6.18
+
 ## 4.1.3
 
 Update flatland/ordered to 1.5.9, to avoid conflicting with other libs.
@@ -76,7 +88,7 @@ This is a feature release with backwards breaking changes.
 ## 2.3.1
 
 * [TK-473](https://tickets.puppetlabs.com/browse/TK-473) Stop reporting jetty
-  version in responses 
+  version in responses
 
 ## 2.3.0
 
