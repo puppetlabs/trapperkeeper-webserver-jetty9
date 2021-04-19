@@ -1,3 +1,7 @@
+## 4.1.6
+
+Update jetty to 9.4.40 to attempt to avoid a connection reset bug.
+
 ## 4.1.5
 
 Update jetty to 9.4.39.v20210325 to resolve CVEs:
