@@ -1,3 +1,7 @@
+## 4.1.7
+
+Update Jetty to 9.4.42 to resolve CVE-2021-28169
+
 ## 4.1.6
 
 Update jetty to 9.4.40 to attempt to avoid a connection reset bug.
