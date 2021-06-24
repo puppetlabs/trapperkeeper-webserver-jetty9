@@ -451,7 +451,7 @@
             (testing "scripted changes are executed properly"
               (add-ring-handler ring-handler path)
               (let [response (http-get
-                               (format "http://localhost:10000/%s" path))]
+                               (format "http://localhost:10000%s" path))]
                 (is (= (:status response) 200))
                 (is (= (:body response) body)))))))))
 
