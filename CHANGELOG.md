@@ -1,7 +1,6 @@
 ## 4.1.8
 
-Update Jetty to 9.4.42 to resolve CVE-2021-34429
-
+Update Jetty to 9.4.43 to resolve CVE-2021-34429
 
 ## 4.1.7
 
