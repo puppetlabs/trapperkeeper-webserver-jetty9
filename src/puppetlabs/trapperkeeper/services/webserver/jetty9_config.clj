@@ -58,7 +58,12 @@
 ;;; their implicit defaults reflect the security issue.  The latter is far more
 ;;; risky for our downstream apps, thus it was decided that it makes sense to
 ;;; keep these overrides.
-(def acceptable-ciphers
+(def tls-1-dot-3-ciphers
+  ["TLS_AES_128_GCM_SHA256"
+   "TLS_AES_256_GCM_SHA384"
+   "TLS_CHACHA20_POLY1305_SHA256"])
+
+(def tls-1-dot-2-ciphers
   ["TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
@@ -66,12 +71,15 @@
    "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
    "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384"])
 
+(def acceptable-ciphers
+  (into [] (concat tls-1-dot-3-ciphers tls-1-dot-2-ciphers)))
+
 (def acceptable-ciphers-fips
   ["TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"])
 
-(def default-protocols ["TLSv1.2"])
+(def default-protocols ["TLSv1.3" "TLSv1.2"])
 (def default-client-auth :need)
 (def default-allow-renegotiation false)
 
