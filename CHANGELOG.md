@@ -1,3 +1,7 @@
+## 4.2.0
+
+[TK-494](https://tickets.puppetlabs.com/browse/TK-494) Enable TLS 1.3 by default.
+
 ## 4.1.8
 
 Update Jetty to 9.4.43 to resolve CVE-2021-34429
