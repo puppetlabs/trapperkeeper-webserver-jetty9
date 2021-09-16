@@ -74,10 +74,13 @@
 (def acceptable-ciphers
   (into [] (concat tls-1-dot-3-ciphers tls-1-dot-2-ciphers)))
 
-(def acceptable-ciphers-fips
+(def fips-tls-1-dot-2-ciphers
   ["TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"])
+
+(def acceptable-ciphers-fips
+  (into [] (concat tls-1-dot-3-ciphers fips-tls-1-dot-2-ciphers)))
 
 (def default-protocols ["TLSv1.3" "TLSv1.2"])
 (def default-client-auth :need)

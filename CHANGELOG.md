@@ -1,3 +1,7 @@
+## 4.2.1
+
+(maint) Enable TLS 1.3 by default for FIPS [#232](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/pull/232)
+
 ## 4.2.0
 
 [TK-494](https://tickets.puppetlabs.com/browse/TK-494) Enable TLS 1.3 by default.
