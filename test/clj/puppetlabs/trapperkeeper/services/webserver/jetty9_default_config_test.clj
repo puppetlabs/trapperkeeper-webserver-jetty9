@@ -46,7 +46,7 @@ react accordingly."
             [puppetlabs.trapperkeeper.services :refer [service-context]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-core :as core]
             [puppetlabs.trapperkeeper.testutils.webserver :as testutils]
-            [puppetlabs.trapperkeeper.testutils.logging :as tk-log-testutils])
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]])
   (:import (org.eclipse.jetty.server HttpConfiguration ServerConnector Server)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
@@ -61,32 +61,33 @@ react accordingly."
         "Unexpected default for 'request-header-max-size'")))
 
 (deftest default-proxy-http-client-settings-test
-  (with-app-with-config app
-    [jetty9-service]
-    {:webserver {:host "localhost" :port 8080}}
-    (let [s (get-service app :WebserverService)
-          server-context (get-in (service-context s) [:jetty9-servers :default])
-          proxy-servlet (core/proxy-servlet
-                          server-context
-                          {:host "localhost"
-                           :path "/foo"
-                           :port 8080}
-                          {})
-          _             (core/add-servlet-handler
-                          server-context
-                          proxy-servlet
-                          "/proxy"
-                          {}
-                          true
-                          false)
-          client        (.createHttpClient proxy-servlet)]
-      ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-client/src/main/java/org/eclipse/jetty/client/HttpClient.java#L135
-      (is (= 4096 (.getRequestBufferSize client))
-          "Unexpected default for proxy 'request-buffer-size'")
-      ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L304-L307
-      (is (= 30000 (.getIdleTimeout client))
-          "Unexpected default for proxy 'idle-timeout'")
-      (.stop client))))
+  (with-test-logging
+    (with-app-with-config app
+      [jetty9-service]
+      {:webserver {:host "localhost" :port 8080}}
+      (let [s (get-service app :WebserverService)
+            server-context (get-in (service-context s) [:jetty9-servers :default])
+            proxy-servlet (core/proxy-servlet
+                            server-context
+                            {:host "localhost"
+                             :path "/foo"
+                             :port 8080}
+                            {})
+            _             (core/add-servlet-handler
+                            server-context
+                            proxy-servlet
+                            "/proxy"
+                            {}
+                            true
+                            false)
+            client        (.createHttpClient proxy-servlet)]
+        ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-client/src/main/java/org/eclipse/jetty/client/HttpClient.java#L135
+        (is (= 4096 (.getRequestBufferSize client))
+            "Unexpected default for proxy 'request-buffer-size'")
+        ;; See: https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L304-L307
+        (is (= 30000 (.getIdleTimeout client))
+            "Unexpected default for proxy 'idle-timeout'")
+        (.stop client)))))
 
 (defn selector-thread-count
   [max-threads]

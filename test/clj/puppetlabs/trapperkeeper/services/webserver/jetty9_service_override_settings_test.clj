@@ -153,40 +153,42 @@
                                             (override-webserver-settings!
                                               overrides))
                                     context))]
-        (with-app-with-config
-          app
-          [jetty9-service service1]
-          jetty-ssl-no-certs-config
-          (let [s                (get-service app :WebserverService)
-                add-ring-handler (partial add-ring-handler s)
-                body             "Hi World"
-                path             "/hi_world"
-                ring-handler     (fn [req] {:status 200 :body body})]
-            (add-ring-handler ring-handler path)
-            (let [response (http-get
-                             (format "https://localhost:%d%s/" ssl-port path)
-                             default-options-for-https-client)]
-              (is (= (:status response) 200)
-                  "Unsuccessful http response code ring handler response.")
-              (is (= (:body response) body)
-                  "Unexpected body in ring handler response."))))
-        (is (= overrides @override-result)
-            "Unexpected response to override-webserver-settings! call.")))
+        (with-test-logging
+          (with-app-with-config
+            app
+            [jetty9-service service1]
+            jetty-ssl-no-certs-config
+            (let [s                (get-service app :WebserverService)
+                  add-ring-handler (partial add-ring-handler s)
+                  body             "Hi World"
+                  path             "/hi_world"
+                  ring-handler     (fn [req] {:status 200 :body body})]
+              (add-ring-handler ring-handler path)
+              (let [response (http-get
+                               (format "https://localhost:%d%s/" ssl-port path)
+                               default-options-for-https-client)]
+                (is (= (:status response) 200)
+                    "Unsuccessful http response code ring handler response.")
+                (is (= (:body response) body)
+                    "Unexpected body in ring handler response."))))
+          (is (= overrides @override-result)
+              "Unexpected response to override-webserver-settings! call."))))
     (testing "attempt to override SSL settings fails when override call made
               after webserver has already started"
       (let [override-result (atom nil)
             service1        (tk-services/service [])]
-        (with-app-with-config
-          app
-          [jetty9-service service1]
-          jetty-plaintext-config
-          (let [s                            (get-service app :WebserverService)
-                override-webserver-settings! (partial
-                                               override-webserver-settings!
-                                               s)]
-            (is (thrown-with-msg? java.lang.IllegalStateException
-                                  #"overrides cannot be set because webserver has already processed the config"
-                                  (override-webserver-settings! overrides)))))))
+        (with-test-logging
+          (with-app-with-config
+            app
+            [jetty9-service service1]
+            jetty-plaintext-config
+            (let [s                            (get-service app :WebserverService)
+                  override-webserver-settings! (partial
+                                                 override-webserver-settings!
+                                                 s)]
+              (is (thrown-with-msg? java.lang.IllegalStateException
+                                    #"overrides cannot be set because webserver has already processed the config"
+                                    (override-webserver-settings! overrides))))))))
     (testing "second attempt to override SSL settings fails"
       (let [second-override-result (atom nil)
             service1                (tk-services/service
@@ -204,22 +206,23 @@
                                                   (override-webserver-settings!
                                                     overrides))))
                                             context))]
-        (with-app-with-config
-          app
-          [jetty9-service service1]
-          jetty-plaintext-config
-          (let [s                (get-service app :WebserverService)
-                add-ring-handler (partial add-ring-handler s)
-                body             "Hi World"
-                path             "/hi_world"
-                ring-handler     (fn [req] {:status 200 :body body})]
-            (add-ring-handler ring-handler path)
-            (let [response (http-get
-                             (format "https://localhost:%d%s/" ssl-port path)
-                             default-options-for-https-client)]
-              (is (= (:status response) 200)
-                  "Unsuccessful http response code ring handler response.")
-              (is (= (:body response) body)
-                  "Unexpected body in ring handler response."))))
-        (is (instance? IllegalStateException @second-override-result)
-            "Second call to setting overrides did not throw expected exception.")))))
+        (with-test-logging
+          (with-app-with-config
+            app
+            [jetty9-service service1]
+            jetty-plaintext-config
+            (let [s                (get-service app :WebserverService)
+                  add-ring-handler (partial add-ring-handler s)
+                  body             "Hi World"
+                  path             "/hi_world"
+                  ring-handler     (fn [req] {:status 200 :body body})]
+              (add-ring-handler ring-handler path)
+              (let [response (http-get
+                               (format "https://localhost:%d%s/" ssl-port path)
+                               default-options-for-https-client)]
+                (is (= (:status response) 200)
+                    "Unsuccessful http response code ring handler response.")
+                (is (= (:body response) body)
+                    "Unexpected body in ring handler response."))))
+          (is (instance? IllegalStateException @second-override-result)
+              "Second call to setting overrides did not throw expected exception."))))))

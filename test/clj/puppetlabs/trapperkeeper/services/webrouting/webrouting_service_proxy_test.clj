@@ -5,6 +5,7 @@
             [puppetlabs.trapperkeeper.testutils.webrouting.common :refer :all]
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [schema.test :as schema-test]
             [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
@@ -33,36 +34,37 @@
 
 (defmacro with-target-and-proxy-servers
   [{:keys [target proxy proxy-config proxy-opts]} & body]
-  `(with-app-with-config proxy-target-app#
-     [jetty9-service
-      webrouting-service
-      dummy-service1]
-     {:webserver ~target
-      :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy-service1 "/hello"}}
-     (let [target-webserver# (get-service proxy-target-app# :WebroutingService)
-           svc#              (get-service proxy-target-app# :DummyService1)]
-       (add-ring-handler
-         target-webserver#
-         svc#
-         (fn [req#]
-           (if (= "/hello/world" (:uri req#))
-             {:status 200 :body (str "Hello, World!"
-                                     ((:headers req#) "x-fancy-proxy-header"))}
-             {:status 404 :body "D'oh"}))))
-     (with-app-with-config proxy-app#
+  `(with-test-logging
+     (with-app-with-config proxy-target-app#
        [jetty9-service
         webrouting-service
-        dummy-service2]
-       {:webserver ~proxy
-        :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy-service2
-                                                         {:bar   "/hello-proxy"
-                                                          :foo   "/goodbye-proxy"}}}
-       (let [proxy-webserver# (get-service proxy-app# :WebroutingService)
-             svc#             (get-service proxy-app# :DummyService2)]
-         (if ~proxy-opts
-           (add-proxy-route proxy-webserver# svc#  ~proxy-config ~proxy-opts)
-           (add-proxy-route proxy-webserver# svc#  ~proxy-config {:route-id :bar})))
-       ~@body)))
+        dummy-service1]
+       {:webserver ~target
+        :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy-service1 "/hello"}}
+       (let [target-webserver# (get-service proxy-target-app# :WebroutingService)
+             svc#              (get-service proxy-target-app# :DummyService1)]
+         (add-ring-handler
+           target-webserver#
+           svc#
+           (fn [req#]
+             (if (= "/hello/world" (:uri req#))
+               {:status 200 :body (str "Hello, World!"
+                                       ((:headers req#) "x-fancy-proxy-header"))}
+               {:status 404 :body "D'oh"}))))
+       (with-app-with-config proxy-app#
+         [jetty9-service
+          webrouting-service
+          dummy-service2]
+         {:webserver ~proxy
+          :web-router-service {:puppetlabs.trapperkeeper.services.webrouting.webrouting-service-proxy-test/dummy-service2
+                                                           {:bar   "/hello-proxy"
+                                                            :foo   "/goodbye-proxy"}}}
+         (let [proxy-webserver# (get-service proxy-app# :WebroutingService)
+               svc#             (get-service proxy-app# :DummyService2)]
+           (if ~proxy-opts
+             (add-proxy-route proxy-webserver# svc#  ~proxy-config ~proxy-opts)
+             (add-proxy-route proxy-webserver# svc#  ~proxy-config {:route-id :bar})))
+         ~@body))))
 
 (deftest proxy-test-web-routing
   (testing "proxy support with web routing"

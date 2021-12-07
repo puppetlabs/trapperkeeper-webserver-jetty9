@@ -6,6 +6,7 @@
             [puppetlabs.trapperkeeper.app :refer [get-service]]
             [puppetlabs.trapperkeeper.services :refer [service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [ring.middleware.params :as ring-params]
             [schema.test :as schema-test]
             [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
@@ -94,39 +95,40 @@
   [{:keys [target proxy proxy-config proxy-opts ring-handler
            register-proxy-route-before-server-start?]} & body]
   (let [proxy-path "/hello-proxy"]
-    `(with-app-with-config proxy-target-app#
-      [jetty9-service]
-      {:webserver ~target}
-      (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
-        (add-ring-handler
-          target-webserver#
-          ~ring-handler
-          "/hello")
-        (add-ring-handler
-          target-webserver#
-          ~ring-handler
-          "/goodbye"))
-      (if ~register-proxy-route-before-server-start?
-        (let [proxy-service# (proxy-service ~proxy-config
-                                            ~proxy-opts
-                                            ~proxy-path)]
+    `(with-test-logging
+      (with-app-with-config proxy-target-app#
+        [jetty9-service]
+        {:webserver ~target}
+        (let [target-webserver# (get-service proxy-target-app# :WebserverService)]
+          (add-ring-handler
+            target-webserver#
+            ~ring-handler
+            "/hello")
+          (add-ring-handler
+            target-webserver#
+            ~ring-handler
+            "/goodbye"))
+        (if ~register-proxy-route-before-server-start?
+          (let [proxy-service# (proxy-service ~proxy-config
+                                              ~proxy-opts
+                                              ~proxy-path)]
+            (with-app-with-config proxy-app#
+              [jetty9-service proxy-service#]
+              {:webserver ~proxy}
+              ~@body))
           (with-app-with-config proxy-app#
-            [jetty9-service proxy-service#]
+            [jetty9-service]
             {:webserver ~proxy}
-            ~@body))
-        (with-app-with-config proxy-app#
-          [jetty9-service]
-          {:webserver ~proxy}
-          (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
-            (if ~proxy-opts
-              (add-proxy-route proxy-webserver#
-                               ~proxy-config
-                               ~proxy-path
-                               ~proxy-opts)
-              (add-proxy-route proxy-webserver#
-                               ~proxy-config
-                               ~proxy-path)))
-          ~@body)))))
+            (let [proxy-webserver# (get-service proxy-app# :WebserverService)]
+              (if ~proxy-opts
+                (add-proxy-route proxy-webserver#
+                                 ~proxy-config
+                                 ~proxy-path
+                                 ~proxy-opts)
+                (add-proxy-route proxy-webserver#
+                                 ~proxy-config
+                                 ~proxy-path)))
+            ~@body))))))
 
 (def common-ssl-config
   {:ssl-cert    "./dev-resources/config/jetty/ssl/certs/localhost.pem"

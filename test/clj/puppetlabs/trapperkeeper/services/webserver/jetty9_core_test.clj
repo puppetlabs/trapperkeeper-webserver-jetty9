@@ -22,8 +22,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
             [schema.test :as schema-test]
-            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]
-            [puppetlabs.trapperkeeper.testutils.logging :as tk-log-testutils]))
+            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
 
 (use-fixtures :once
   schema-test/validate-schemas
@@ -83,80 +82,82 @@
                 resp))))
 
 (deftest compression
-  (testing "should return"
-    ;; Jetty may not Gzip encode a response body if the size of the response
-    ;; is less than 256 bytes, so returning a larger body to ensure that Gzip
-    ;; encoding is used where desired for these tests
-    (let [body (apply str (repeat 1000 "f"))
-          app  (fn [req]
-                 (-> body
-                     (rr/response)
-                     (rr/status 200)
-                     (rr/content-type "text/plain")
-                     (rr/charset "UTF-8")))]
-      (with-test-webserver app port
-        (testing "a gzipped response when request wants a compressed one and
-                  server not configured with a default for gzip-enable"
-          (validate-gzip-encoding-when-gzip-requested body port))
+  (with-test-logging
+    (testing "should return"
+      ;; Jetty may not Gzip encode a response body if the size of the response
+      ;; is less than 256 bytes, so returning a larger body to ensure that Gzip
+      ;; encoding is used where desired for these tests
+      (let [body (apply str (repeat 1000 "f"))
+            app  (fn [req]
+                   (-> body
+                       (rr/response)
+                       (rr/status 200)
+                       (rr/content-type "text/plain")
+                       (rr/charset "UTF-8")))]
+        (with-test-webserver app port
+          (testing "a gzipped response when request wants a compressed one and
+                    server not configured with a default for gzip-enable"
+            (validate-gzip-encoding-when-gzip-requested body port))
 
-        (testing "a gzipped response when a post request asks for a compressed one
-                  and the server not configured with a default for gzip-enable"
-          (validate-gzip-encoding-when-gzip-requested-on-post-requests body port))
+          (testing "a gzipped response when a post request asks for a compressed one
+                    and the server not configured with a default for gzip-enable"
+            (validate-gzip-encoding-when-gzip-requested-on-post-requests body port))
 
-        (testing "an uncompressed response when request doesn't ask for a
-                  compressed one and server not configured with a default for
-                  gzip-enable"
-          (validate-no-gzip-encoding-when-gzip-not-requested body port)))
+          (testing "an uncompressed response when request doesn't ask for a
+                    compressed one and server not configured with a default for
+                    gzip-enable"
+            (validate-no-gzip-encoding-when-gzip-not-requested body port)))
 
-      (with-test-webserver-and-config app port {:gzip-enable true}
-         (testing "a gzipped response when request wants a compressed one and
-                   server configured with a true value for gzip-enable"
-           (validate-gzip-encoding-when-gzip-requested body port))
+        (with-test-webserver-and-config app port {:gzip-enable true}
+           (testing "a gzipped response when request wants a compressed one and
+                     server configured with a true value for gzip-enable"
+             (validate-gzip-encoding-when-gzip-requested body port))
 
-         (testing "an uncompressed response when request doesn't ask for a
-                   compressed one and server configured with a true value for
-                   gzip-enable"
-           (validate-no-gzip-encoding-when-gzip-not-requested body port)))
+           (testing "an uncompressed response when request doesn't ask for a
+                     compressed one and server configured with a true value for
+                     gzip-enable"
+             (validate-no-gzip-encoding-when-gzip-not-requested body port)))
 
-      (with-test-webserver-and-config app port {:gzip-enable false}
-         (testing "an uncompressed response when request wants a compressed one
-                   but server configured with a false value for gzip-enable"
-           (validate-no-gzip-encoding-even-though-gzip-requested body port))
+        (with-test-webserver-and-config app port {:gzip-enable false}
+           (testing "an uncompressed response when request wants a compressed one
+                     but server configured with a false value for gzip-enable"
+             (validate-no-gzip-encoding-even-though-gzip-requested body port))
 
-         (testing "an uncompressed response when request doesn't ask for a
-                   compressed one and server configured with a false value for
-                   gzip-enable"
-           (validate-no-gzip-encoding-when-gzip-not-requested body port)))
+           (testing "an uncompressed response when request doesn't ask for a
+                     compressed one and server configured with a false value for
+                     gzip-enable"
+             (validate-no-gzip-encoding-when-gzip-not-requested body port)))
 
-        (with-test-webserver-and-config
-         app
-         port {:gzip-enable true
-               :access-log-config
-               (str "./dev-resources/puppetlabs/trapperkeeper/services/webserver/"
-                    "request-logging.xml")}
-         (testing "(TK-429) a gzipped response when request wants a compressed one
-                 and server configured with a true value for gzip-enable and an
-                 access-log-config"
-           (validate-gzip-encoding-when-gzip-requested body port))))))
+          (with-test-webserver-and-config
+           app
+           port {:gzip-enable true
+                 :access-log-config
+                 (str "./dev-resources/puppetlabs/trapperkeeper/services/webserver/"
+                      "request-logging.xml")}
+           (testing "(TK-429) a gzipped response when request wants a compressed one
+                   and server configured with a true value for gzip-enable and an
+                   access-log-config"
+             (validate-gzip-encoding-when-gzip-requested body port)))))))
 
 (deftest jmx
-  (testing "by default Jetty JMX support is enabled"
-    (with-test-webserver #() _
-      (testing "and should return a valid Jetty MBeans object"
-        (let [mbeans (jmx/mbean-names "org.eclipse.jetty.jmx:*")]
-          (is (not (empty? mbeans)))))
+  (with-test-logging
+    (testing "by default Jetty JMX support is enabled"
+      (with-test-webserver #() _
+        (testing "and should return a valid Jetty MBeans object"
+          (let [mbeans (jmx/mbean-names "org.eclipse.jetty.jmx:*")]
+            (is (not (empty? mbeans)))))
 
-      (testing "and should not return data when we query for something unexpected"
-        (let [mbeans (jmx/mbean-names "foobarbaz:*")]
-          (is (empty? mbeans))))))
+        (testing "and should not return data when we query for something unexpected"
+          (let [mbeans (jmx/mbean-names "foobarbaz:*")]
+            (is (empty? mbeans))))))
 
-  (testing "server starts up and shuts down cleanly when jmx is disabled"
-    (let [config {:webserver {:port 9000
-                              :host "localhost"
-                              :jmx-enable "false"}}]
-      (with-app-with-config app
-        [jetty9-service]
-        config))))
+    (testing "server starts up and shuts down cleanly when jmx is disabled"
+      (let [config {:webserver {:port 9000
+                                :host "localhost"
+                                :jmx-enable "false"}}]
+        (with-app-with-config app
+          [jetty9-service]
+          config)))))
 
 (deftest override-webserver-settings!-tests
   (let [default-state {:mbean-container nil
@@ -304,151 +305,153 @@
              {:max-threads 9042, :queue-max-size nil})))))
 
 (deftest create-server-queue-max-size-test
-  (let [get-queue-for-partial-http-config (fn [config]
-                                            (get-server-thread-pool-queue
-                                              (create-server-with-config
-                                                (munge-http-connector-config
-                                                  config))))
-        default-server-min-threads        (.getMinThreads
-                                            get-thread-pool-for-default-server)]
-    (testing "default queue max size passed through to thread pool queue"
-      (is (= (.getMaxCapacity (get-server-thread-pool-queue (Server.)))
-             (.getMaxCapacity (get-queue-for-partial-http-config
-                                {:queue-max-size nil})))))
-    (testing "custom default queue max size passed through to thread pool queue"
-      (is (= 393
-             (.getMaxCapacity (get-queue-for-partial-http-config
-                                {:queue-max-size 393})))))
-    (testing (str "default max threads passed through to thread pool when "
-                  "queue-max-size set")
-      (is (= default-server-max-threads
-             (get-max-threads-for-partial-http-config
-               {:max-threads nil, :queue-max-size 1}))))
-    (testing "min threads passed through to thread pool when queue-max-size set"
-      (is (= default-server-min-threads
-             (.getMinThreads (get-thread-pool-for-partial-http-config
-                               {:queue-max-size 1})))))
-    (testing "idle timeout passed through to thread pool when queue-max-size set"
-      (is (= (.getIdleTimeout get-thread-pool-for-default-server)
-             (.getIdleTimeout (get-thread-pool-for-partial-http-config
-                                {:queue-max-size 1})))))
-    (testing (str "queue min size set on thread pool queue equal to min threads "
-                  "when queue max size greater than min threads")
-      (is (= default-server-min-threads
-             (.getCapacity (get-queue-for-partial-http-config
-                             {:queue-max-size
-                              (inc default-server-min-threads)})))))
-    (testing (str "queue min size set on thread pool queue equal to queue max "
-                  "size when queue max size less than min threads")
-      (let [queue-max-size (dec default-server-min-threads)]
-        (is (= queue-max-size
+  (with-test-logging
+    (let [get-queue-for-partial-http-config (fn [config]
+                                              (get-server-thread-pool-queue
+                                                (create-server-with-config
+                                                  (munge-http-connector-config
+                                                    config))))
+          default-server-min-threads        (.getMinThreads
+                                              get-thread-pool-for-default-server)]
+      (testing "default queue max size passed through to thread pool queue"
+        (is (= (.getMaxCapacity (get-server-thread-pool-queue (Server.)))
+               (.getMaxCapacity (get-queue-for-partial-http-config
+                                  {:queue-max-size nil})))))
+      (testing "custom default queue max size passed through to thread pool queue"
+        (is (= 393
+               (.getMaxCapacity (get-queue-for-partial-http-config
+                                  {:queue-max-size 393})))))
+      (testing (str "default max threads passed through to thread pool when "
+                    "queue-max-size set")
+        (is (= default-server-max-threads
+               (get-max-threads-for-partial-http-config
+                 {:max-threads nil, :queue-max-size 1}))))
+      (testing "min threads passed through to thread pool when queue-max-size set"
+        (is (= default-server-min-threads
+               (.getMinThreads (get-thread-pool-for-partial-http-config
+                                 {:queue-max-size 1})))))
+      (testing "idle timeout passed through to thread pool when queue-max-size set"
+        (is (= (.getIdleTimeout get-thread-pool-for-default-server)
+               (.getIdleTimeout (get-thread-pool-for-partial-http-config
+                                  {:queue-max-size 1})))))
+      (testing (str "queue min size set on thread pool queue equal to min threads "
+                    "when queue max size greater than min threads")
+        (is (= default-server-min-threads
                (.getCapacity (get-queue-for-partial-http-config
-                               {:queue-max-size queue-max-size}))))))))
+                               {:queue-max-size
+                                (inc default-server-min-threads)})))))
+      (testing (str "queue min size set on thread pool queue equal to queue max "
+                    "size when queue max size less than min threads")
+        (let [queue-max-size (dec default-server-min-threads)]
+          (is (= queue-max-size
+                 (.getCapacity (get-queue-for-partial-http-config
+                                 {:queue-max-size queue-max-size})))))))))
 
 (deftest create-server-idle-timeout-test
-  (testing "idle-timeout configured properly for http connector"
-    (let [server (create-server-with-partial-http-config
-                   {:http {:idle-timeout-milliseconds 3000}})
-          connectors (.getConnectors server)]
-      (is (= 1 (count connectors))
-          "Unexpected number of connectors for server")
-      (is (= 3000 (.getIdleTimeout (first connectors)))
-          "Unexpected idle time for connector")))
-  (testing "idle-timeout configured properly for multiple connectors"
-    (let [server     (create-server-with-partial-http-and-https-config
-                       {:http  {:port 25
-                                :idle-timeout-milliseconds 9001}
-                        :https {:port 92
-                                :idle-timeout-milliseconds 9002}})
-          connectors (.getConnectors server)]
-      (is (= 2 (count connectors))
-          "Unexpected number of connectors for server")
-      (is (= 25 (.getPort (first connectors)))
-          "Unexpected port for first connector")
-      (is (= 9001 (.getIdleTimeout (first connectors)))
-          "Unexpected idle timeout for first connector")
-      (is (= 92 (.getPort (second connectors)))
-          "Unexpected port for second connector")
-      (is (= 9002 (.getIdleTimeout (second connectors)))
-          "Unexpected idle time for second connector"))))
-
-(deftest create-server-acceptor-threads-test
-  (testing "nil acceptors configured properly for http connector"
-    (let [server     (create-server-with-partial-http-config
-                       {:http {:acceptor-threads nil}})
-          connectors (.getConnectors server)]
-      (is (= 1 (count connectors))
-          "Unexpected number of connectors for server")
-      (is (= (.getAcceptors (ServerConnector. (Server.)))
-             (.getAcceptors (first connectors)))
-          "Unexpected number of acceptor threads for connector")))
-  (testing "non-nil acceptors configured properly for http connector"
-    (let [server (tk-log-testutils/with-test-logging
-                  (create-server-with-partial-http-config
-                   {:http {:acceptor-threads 42}}))
-          connectors (.getConnectors server)]
-      (is (= 1 (count connectors))
-          "Unexpected number of connectors for server")
-      (is (= 42 (.getAcceptors (first connectors)))
-          "Unexpected number of acceptor threads for connector")))
-  (testing "non-nil acceptors configured properly for multiple connectors"
-    (let [server (tk-log-testutils/with-test-logging
-                  (create-server-with-partial-http-and-https-config
-                   {:http {:port 25
-                           :acceptor-threads 91}
-                    :https {:port 92
-                            :acceptor-threads 63}}))
-          connectors (.getConnectors server)]
-      (is (= 2 (count connectors))
-          "Unexpected number of connectors for server")
-      (is (= 25 (.getPort (first connectors)))
-          "Unexpected port for first connector")
-      (is (= 91 (.getAcceptors (first connectors)))
-          "Unexpected number of acceptor threads for first connector")
-      (is (= 92 (.getPort (second connectors)))
-          "Unexpected port for second connector")
-      (is (= 63 (.getAcceptors (second connectors)))
-          "Unexpected number of acceptor threads for second connector"))))
-
-(deftest create-server-selector-threads-test
-  (letfn [(selector-threads [connector]
-                              (-> connector
-                                  (.getSelectorManager)
-                                  (.getSelectorCount)))]
-    (testing "nil selectors configured properly for http connector"
+  (with-test-logging
+    (testing "idle-timeout configured properly for http connector"
       (let [server (create-server-with-partial-http-config
-                     {:http {:selector-threads nil}})
+                     {:http {:idle-timeout-milliseconds 3000}})
             connectors (.getConnectors server)]
         (is (= 1 (count connectors))
             "Unexpected number of connectors for server")
-        (is (= (selector-threads (ServerConnector. (Server.)))
-               (selector-threads (first connectors)))
-            "Unexpected number of selectors for connector")))
-    (testing "non-nil selectors configured properly for http connector"
-      (let [server     (create-server-with-partial-http-config
-                         {:http {:selector-threads 42}})
-            connectors (.getConnectors server)]
-        (is (= 1 (count connectors))
-            "Unexpected number of connectors for server")
-        (is (= 42 (selector-threads (first connectors)))
-            "Unexpected number of selector threads for connector")))
-    (testing "non-nil selectors configured properly for multiple connectors"
-      (let [server (create-server-with-partial-http-and-https-config
-                     {:http  {:port 25
-                              :selector-threads 91}
-                      :https {:port 92
-                              :selector-threads 63}})
+        (is (= 3000 (.getIdleTimeout (first connectors)))
+            "Unexpected idle time for connector")))
+    (testing "idle-timeout configured properly for multiple connectors"
+      (let [server     (create-server-with-partial-http-and-https-config
+                         {:http  {:port 25
+                                  :idle-timeout-milliseconds 9001}
+                          :https {:port 92
+                                  :idle-timeout-milliseconds 9002}})
             connectors (.getConnectors server)]
         (is (= 2 (count connectors))
             "Unexpected number of connectors for server")
         (is (= 25 (.getPort (first connectors)))
             "Unexpected port for first connector")
-        (is (= 91 (selector-threads (first connectors)))
-            "Unexpected number of selector threads for first connector")
+        (is (= 9001 (.getIdleTimeout (first connectors)))
+            "Unexpected idle timeout for first connector")
         (is (= 92 (.getPort (second connectors)))
             "Unexpected port for second connector")
-        (is (= 63 (selector-threads (second connectors)))
-            "Unexpected number of selector threads for second connector")))))
+        (is (= 9002 (.getIdleTimeout (second connectors)))
+            "Unexpected idle time for second connector")))))
+
+(deftest create-server-acceptor-threads-test
+  (with-test-logging
+    (testing "nil acceptors configured properly for http connector"
+      (let [server (create-server-with-partial-http-config
+                    {:http {:acceptor-threads nil}})
+            connectors (.getConnectors server)]
+        (is (= 1 (count connectors))
+            "Unexpected number of connectors for server")
+        (is (= (.getAcceptors (ServerConnector. (Server.)))
+               (.getAcceptors (first connectors)))
+            "Unexpected number of acceptor threads for connector")))
+    (testing "non-nil acceptors configured properly for http connector"
+      (let [server (create-server-with-partial-http-config
+                    {:http {:acceptor-threads 42}})
+            connectors (.getConnectors server)]
+        (is (= 1 (count connectors))
+            "Unexpected number of connectors for server")
+        (is (= 42 (.getAcceptors (first connectors)))
+            "Unexpected number of acceptor threads for connector")))
+    (testing "non-nil acceptors configured properly for multiple connectors"
+      (let [server (create-server-with-partial-http-and-https-config
+                    {:http {:port 25
+                            :acceptor-threads 91}
+                     :https {:port 92
+                             :acceptor-threads 63}})
+            connectors (.getConnectors server)]
+        (is (= 2 (count connectors))
+            "Unexpected number of connectors for server")
+        (is (= 25 (.getPort (first connectors)))
+            "Unexpected port for first connector")
+        (is (= 91 (.getAcceptors (first connectors)))
+            "Unexpected number of acceptor threads for first connector")
+        (is (= 92 (.getPort (second connectors)))
+            "Unexpected port for second connector")
+        (is (= 63 (.getAcceptors (second connectors)))
+            "Unexpected number of acceptor threads for second connector")))))
+
+(deftest create-server-selector-threads-test
+  (with-test-logging
+    (letfn [(selector-threads [connector]
+                                (-> connector
+                                    (.getSelectorManager)
+                                    (.getSelectorCount)))]
+      (testing "nil selectors configured properly for http connector"
+        (let [server (create-server-with-partial-http-config
+                       {:http {:selector-threads nil}})
+              connectors (.getConnectors server)]
+          (is (= 1 (count connectors))
+              "Unexpected number of connectors for server")
+          (is (= (selector-threads (ServerConnector. (Server.)))
+                 (selector-threads (first connectors)))
+              "Unexpected number of selectors for connector")))
+      (testing "non-nil selectors configured properly for http connector"
+        (let [server (create-server-with-partial-http-config
+                      {:http {:selector-threads 42}})
+              connectors (.getConnectors server)]
+          (is (= 1 (count connectors))
+              "Unexpected number of connectors for server")
+          (is (= 42 (selector-threads (first connectors)))
+              "Unexpected number of selector threads for connector")))
+      (testing "non-nil selectors configured properly for multiple connectors"
+        (let [server (create-server-with-partial-http-and-https-config
+                       {:http  {:port 25
+                                :selector-threads 91}
+                        :https {:port 92
+                                :selector-threads 63}})
+              connectors (.getConnectors server)]
+          (is (= 2 (count connectors))
+              "Unexpected number of connectors for server")
+          (is (= 25 (.getPort (first connectors)))
+              "Unexpected port for first connector")
+          (is (= 91 (selector-threads (first connectors)))
+              "Unexpected number of selector threads for first connector")
+          (is (= 92 (.getPort (second connectors)))
+              "Unexpected port for second connector")
+          (is (= 63 (selector-threads (second connectors)))
+              "Unexpected number of selector threads for second connector"))))))
 
 (deftest test-idle-timeout
   (let [read-lines (fn [r]
@@ -501,40 +504,41 @@
                              resp))))))))))
 
 (deftest request-body-max-size
-  (let [bigger-post-data (apply str (repeat 21 "f"))
-        smaller-post-data (apply str (repeat 20 "f"))
-        no-request-body-response "no request body"
-        get-request (fn [port]
-                      (http-sync/get (format "http://localhost:%d/" port)
-                                     {:as :text}))
-        post-request (fn [port body]
-                       (http-sync/post (format "http://localhost:%d/" port)
-                                       {:headers
-                                        {"content-type" "text/plain"}
-                                        :body body
-                                        :as :text}))
-        app (fn [req]
-              (let [body (slurp (:body req))]
-                (-> (if (empty? body)
-                      no-request-body-response
-                      body)
-                    (rr/response)
-                    (rr/status 200)
-                    (rr/content-type "text/plain")
-                    (rr/charset "UTF-8"))))]
-    (with-test-webserver-and-config
-     app
-     port
-     {:request-body-max-size 20}
-     (testing "posting data larger than the configured limit fails with 413"
-       (let [response (post-request port bigger-post-data)]
-         (is (= 413 (:status response)))
-         (is (= "" (:body response)))))
-     (testing "posting data within the configured limit succeeds"
-       (let [response (post-request port smaller-post-data)]
-         (is (= 200 (:status response)))
-         (is (= smaller-post-data (:body response)))))
-     (testing "request with no content-length succeeds when limit configured"
-       (let [response (get-request port)]
-         (is (= 200 (:status response)))
-         (is (= no-request-body-response (:body response))))))))
+  (with-test-logging
+    (let [bigger-post-data (apply str (repeat 21 "f"))
+          smaller-post-data (apply str (repeat 20 "f"))
+          no-request-body-response "no request body"
+          get-request (fn [port]
+                        (http-sync/get (format "http://localhost:%d/" port)
+                                       {:as :text}))
+          post-request (fn [port body]
+                         (http-sync/post (format "http://localhost:%d/" port)
+                                         {:headers
+                                          {"content-type" "text/plain"}
+                                          :body body
+                                          :as :text}))
+          app (fn [req]
+                (let [body (slurp (:body req))]
+                  (-> (if (empty? body)
+                        no-request-body-response
+                        body)
+                      (rr/response)
+                      (rr/status 200)
+                      (rr/content-type "text/plain")
+                      (rr/charset "UTF-8"))))]
+      (with-test-webserver-and-config
+       app
+       port
+       {:request-body-max-size 20}
+       (testing "posting data larger than the configured limit fails with 413"
+         (let [response (post-request port bigger-post-data)]
+           (is (= 413 (:status response)))
+           (is (= "" (:body response)))))
+       (testing "posting data within the configured limit succeeds"
+         (let [response (post-request port smaller-post-data)]
+           (is (= 200 (:status response)))
+           (is (= smaller-post-data (:body response)))))
+       (testing "request with no content-length succeeds when limit configured"
+         (let [response (get-request port)]
+           (is (= 200 (:status response)))
+           (is (= no-request-body-response (:body response)))))))))

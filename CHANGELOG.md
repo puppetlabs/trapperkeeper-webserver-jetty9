@@ -1,3 +1,12 @@
+## 4.3.0
+
+(maint) Update to Jetty 9.4.44 for small bug fixes and dependency bumps
+(PE-32764) Update default ciphers:
+  - Remove the TLS_CHACHA20_POLY1305_SHA256 cipher
+  - Add TLS_DHE_RSA* ciphers
+  - Add the RSA ECDHE AES 256 cipher to the FIPS list
+  - Rearrange the cipher list to be in the preferred order
+
 ## 4.2.1
 
 (maint) Enable TLS 1.3 by default for FIPS [#232](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/pull/232)
