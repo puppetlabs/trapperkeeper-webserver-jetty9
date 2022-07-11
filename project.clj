@@ -1,4 +1,4 @@
-(def jetty-version "9.4.44.v20210927")
+(def jetty-version "9.4.48.v20220622")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "4.3.1-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
@@ -117,5 +117,5 @@
   :main puppetlabs.trapperkeeper.main
 
   :repositories [["puppet-releases" "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-releases__local/"]
-                 ["puppet-snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-snapshots__local/"]]
-  )
+                 ["puppet-snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-snapshots__local/"]])
+

@@ -1,3 +1,6 @@
+## 4.3.1
+* update to Jetty 9.4.48 for additional bug fixes
+
 ## 4.3.0
 
 (maint) Update to Jetty 9.4.44 for small bug fixes and dependency bumps
