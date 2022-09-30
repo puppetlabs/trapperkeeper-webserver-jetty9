@@ -1,6 +1,6 @@
 (def jetty-version "9.4.48.v20220622")
 
-(defproject puppetlabs/trapperkeeper-webserver-jetty9 "4.3.2-SNAPSHOT"
+(defproject puppetlabs/trapperkeeper-webserver-jetty9 "4.4.0-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
   :url "https://github.com/puppetlabs/trapperkeeper-webserver-jetty9"
   :license {:name "Apache License, Version 2.0"
@@ -8,7 +8,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.9.4"]
+  :parent-project {:coords [puppetlabs/clj-parent "5.2.6"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -84,18 +84,18 @@
                         :jvm-opts ["-Djava.util.logging.config.file=dev-resources/logging.properties"]}
 
              :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]}]
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}]
 
              ;; per https://github.com/technomancy/leiningen/issues/1907
              ;; the provided profile is necessary for lein jar / lein install
-             :provided {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]
+             :provided {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]
                         :resource-paths ["dev-resources"]}
 
              :fips [:defaults ; merge in the dev profile
                     {:dependencies [[org.bouncycastle/bcpkix-fips]
                                     [org.bouncycastle/bc-fips]
                                     [org.bouncycastle/bctls-fips]]
-                     :exclusions [[org.bouncycastle/bcpkix-jdk15on]]
+                     :exclusions [[org.bouncycastle/bcpkix-jdk18on]]
                      ;; this only ensures that we run with the proper profiles
                      ;; during testing. This JVM opt will be set in the puppet module
                      ;; that sets up the JVM classpaths during installation.

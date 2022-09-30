@@ -1,3 +1,6 @@
+## 4.4.0
+* update clj-parent which moves to the `18on` series of bouncy castle from the `15on` series.
+
 ## 4.3.1
 * update to Jetty 9.4.48 for additional bug fixes
 
