@@ -938,9 +938,8 @@
       jetty-ssl-pem-config
       (let [test-fn (fn [] (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
                                                                              {:ssl-protocols ["SSLv3"]})) )]
-       (if (SSLUtils/isFIPS)
-         (is (thrown? IllegalArgumentException (test-fn)))
-         (is (thrown? SSLException (test-fn)))))))
+
+        (is (thrown? SSLException (test-fn))))))
   (testing "SSLv3 is not supported even when configured"
     (tk-log-testutils/with-test-logging
      (with-app-with-config
@@ -954,6 +953,4 @@
       (is (logged? #"When `ssl-protocols` is empty, a default of"))
       (let [test-fn (fn [] (http-get "https://localhost:8081/hi_world" (merge default-options-for-https-client
                                                                               {:ssl-protocols ["SSLv3"]})) )]
-        (if (SSLUtils/isFIPS)
-          (is (thrown? IllegalArgumentException (test-fn)))
-          (is (thrown? SSLException (test-fn)))))))))
+        (is (thrown? SSLException (test-fn))))))))
