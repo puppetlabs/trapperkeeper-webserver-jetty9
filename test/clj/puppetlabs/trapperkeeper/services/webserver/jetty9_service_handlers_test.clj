@@ -1,11 +1,12 @@
 (ns puppetlabs.trapperkeeper.services.webserver.jetty9-service-handlers-test
-  (:import (servlet SimpleServlet)
+  (:import (java.nio HeapCharBuffer)
+           (servlet SimpleServlet)
            (javax.servlet ServletContextListener)
            (java.nio.file Paths Files)
            (java.nio.file.attribute FileAttribute)
            (javax.servlet.http HttpServlet HttpServletRequest HttpServletResponse))
   (:require [clojure.test :refer :all]
-            [gniazdo.core :as ws-client]
+            [hato.websocket :as ws]
             [puppetlabs.experimental.websockets.client :as ws-session]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer :all]
@@ -219,21 +220,25 @@
                                                     (reset! closed-request-path (ws-session/request-path ws))
                                                     (deliver closed true))}]
           (add-websocket-handler handlers path)
-          (let [socket (ws-client/connect (str "ws://localhost:8080" path "/foo")
-                                          :on-receive (fn [text] (swap! client-messages conj text))
-                                          :on-binary  (fn [bytes offset len]
-                                                        (let [as-vec (vec bytes)]
-                                                          (swap! client-binary-messages conj as-vec)
-                                                          (deliver binary-client-message true))))]
-            (ws-client/send-msg socket "Hello websocket handler")
-            (ws-client/send-msg socket "You look dandy")
-            (ws-client/send-msg socket (byte-array [2 1 2 3 3]))
+          (let [socket @(ws/websocket (str "ws://localhost:8080" path "/foo")
+                                      {:on-message (fn [_ws msg _last?]
+                                                     ;; look at the type of msg to determine how to handle it.
+                                                     (if (= HeapCharBuffer (type msg))
+                                                       (swap! client-messages conj (str msg))
+                                                       ;; must be a java.nio.HeapByteBuffer because of test flow
+                                                       (let [arr (byte-array (.limit msg))]
+                                                         (.get msg arr 0 (count arr))
+                                                         (swap! client-binary-messages conj (vec arr))
+                                                         (deliver binary-client-message true))))})]
+            (ws/send! socket "Hello websocket handler")
+            (ws/send! socket "You look dandy")
+            (ws/send! socket (byte-array [2 1 2 3 3]))
             (deref binary-client-message)
             (is (= @connected 1))
             (is (= @client-request-path "/foo"))
             (is (re-matches #"/127\.0\.0\.1:\d+" @client-remote-addr))
             (is (= @client-is-ssl false))
-            (ws-client/close socket)
+            (ws/close! socket)
             (deref closed)
             (is (= @closed-request-path "/foo"))
             (is (= @connected 0))
@@ -254,8 +259,8 @@
               closed                 (promise)
               handlers               {:on-connect (fn [ws] (ws-session/close! ws))}]
           (add-websocket-handler handlers path)
-          (let [socket (ws-client/connect (str "ws://localhost:8080" path)
-                                          :on-close (fn [code reason] (deliver closed code)))]
+          (let [socket @(ws/websocket (str "ws://localhost:8080" path)
+                                      {:on-close (fn [_ws code _reason] (deliver closed code))})]
             ;; 1000 is for normal closure https://tools.ietf.org/html/rfc6455#section-7.4.1
             (is (= 1000 @closed))))))
     (testing "can close with reason"
@@ -268,8 +273,8 @@
               closed                 (promise)
               handlers               {:on-connect (fn [ws] (ws-session/close! ws 4000 "Bye"))}]
           (add-websocket-handler handlers path)
-          (let [socket (ws-client/connect (str "ws://localhost:8080" path)
-                                          :on-close (fn [code reason] (deliver closed [code reason])))]
+          (let [_socket @(ws/websocket (str "ws://localhost:8080" path)
+                                       {:on-close (fn [_ws code reason] (deliver closed [code reason]))})]
             (is (= [4000 "Bye"] @closed))))))))
 
 (deftest war-test
