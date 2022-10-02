@@ -8,7 +8,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "5.2.6"]
+  :parent-project {:coords [puppetlabs/clj-parent "5.2.9"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -76,9 +76,9 @@
                                        [puppetlabs/trapperkeeper nil :classifier "test"]
                                        [org.clojure/tools.namespace]
                                        [compojure]
-                                       [stylefruits/gniazdo "1.1.1" :exclusions [org.eclipse.jetty.websocket/websocket-api
-                                                                                 org.eclipse.jetty.websocket/websocket-client
-                                                                                 org.eclipse.jetty/jetty-util]]
+                                       [stylefruits/gniazdo nil :exclusions [org.eclipse.jetty.websocket/websocket-api
+                                                                             org.eclipse.jetty.websocket/websocket-client
+                                                                             org.eclipse.jetty/jetty-util]]
                                        [ring/ring-core]]
                         :resource-paths ["dev-resources"]
                         :jvm-opts ["-Djava.util.logging.config.file=dev-resources/logging.properties"]}
