@@ -10,7 +10,7 @@ jobs:
       env:
         - FIPS=false
     - # still jdk8
-      script: lein with-profile fips test
+      script: lein with-profile pseudo-dev,fips test
       jdk: openjdk8
       env:
         - FIPS=true
@@ -21,7 +21,7 @@ jobs:
       env:
         - FIPS=false
     - # still jdk11
-      script: lein with-profile fips test
+      script: lein with-profile pseudo-dev,fips test
       jdk: openjdk11
       env:
         - FIPS=true
