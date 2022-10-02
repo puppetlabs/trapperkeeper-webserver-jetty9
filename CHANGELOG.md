@@ -1,3 +1,6 @@
+## 4.4.1
+* update clj-parent to 5.2.9, which includes the stylefruits/gniazdo dependency.
+
 ## 4.4.0
 * update clj-parent which moves to the `18on` series of bouncy castle from the `15on` series.
 
