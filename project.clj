@@ -76,15 +76,13 @@
                                        [puppetlabs/trapperkeeper nil :classifier "test"]
                                        [org.clojure/tools.namespace]
                                        [compojure]
-                                       [stylefruits/gniazdo nil :exclusions [org.eclipse.jetty.websocket/websocket-api
-                                                                             org.eclipse.jetty.websocket/websocket-client
-                                                                             org.eclipse.jetty/jetty-util]]
                                        [ring/ring-core]]
                         :resource-paths ["dev-resources"]
                         :jvm-opts ["-Djava.util.logging.config.file=dev-resources/logging.properties"]}
 
              :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}]
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
+                                   [hato "0.8.2"]]}]
 
              ;; per https://github.com/technomancy/leiningen/issues/1907
              ;; the provided profile is necessary for lein jar / lein install
@@ -118,4 +116,3 @@
 
   :repositories [["puppet-releases" "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-releases__local/"]
                  ["puppet-snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-snapshots__local/"]])
-
