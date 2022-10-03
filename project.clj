@@ -76,22 +76,26 @@
                                        [puppetlabs/trapperkeeper nil :classifier "test"]
                                        [org.clojure/tools.namespace]
                                        [compojure]
-                                       [stylefruits/gniazdo nil :exclusions [org.eclipse.jetty.websocket/websocket-api
-                                                                             org.eclipse.jetty.websocket/websocket-client
-                                                                             org.eclipse.jetty/jetty-util]]
                                        [ring/ring-core]]
                         :resource-paths ["dev-resources"]
                         :jvm-opts ["-Djava.util.logging.config.file=dev-resources/logging.properties"]}
 
              :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}]
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
+                                   [stylefruits/gniazdo nil :exclusions [org.eclipse.jetty.websocket/websocket-api
+                                                                         org.eclipse.jetty.websocket/websocket-client
+                                                                         org.eclipse.jetty/jetty-util]]]}]
 
              ;; per https://github.com/technomancy/leiningen/issues/1907
              ;; the provided profile is necessary for lein jar / lein install
              :provided {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]
                         :resource-paths ["dev-resources"]}
-
-             :fips [:defaults ; merge in the dev profile
+             ;; a pseudo dev profile that can be combined with the FIPS profiling for testing only
+             :pseudo-dev {:dependencies [
+                                         [stylefruits/gniazdo nil :exclusions [org.eclipse.jetty.websocket/websocket-api
+                                                                               org.eclipse.jetty.websocket/websocket-client
+                                                                               org.eclipse.jetty/jetty-util]]]}
+             :fips [:defaults ; merge in the default profile
                     {:dependencies [[org.bouncycastle/bcpkix-fips]
                                     [org.bouncycastle/bc-fips]
                                     [org.bouncycastle/bctls-fips]]
