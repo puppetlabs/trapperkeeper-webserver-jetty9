@@ -105,14 +105,12 @@
                      ;; that sets up the JVM classpaths during installation.
                      :jvm-opts ~(let [version (System/getProperty "java.version")
                                       [major minor _] (clojure.string/split version #"\.")
-                                      unsupported-ex (ex-info "Unsupported major Java version. Expects 8 or 11."
+                                      unsupported-ex (ex-info "Unsupported major Java version. Expects 11 or 17."
                                                        {:major major
                                                         :minor minor})]
                                   (condp = (java.lang.Integer/parseInt major)
-                                    1 (if (= 8 (java.lang.Integer/parseInt minor))
-                                        ["-Djava.security.properties==dev-resources/jdk8-fips-security"]
-                                        (throw unsupported-ex))
                                     11 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
+                                    17 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
                                     (throw unsupported-ex)))}]
 
              :testutils {:source-paths ^:replace ["test/clj"]
