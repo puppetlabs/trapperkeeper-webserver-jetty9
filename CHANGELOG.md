@@ -1,3 +1,6 @@
+## 4.4.4
+* update jetty to 9.4.51.v20230217 to resolve CVE-2023-26048
+
 ## 4.4.1
 * update clj-parent to 5.2.9, which includes the stylefruits/gniazdo dependency.
 
