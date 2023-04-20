@@ -1,3 +1,6 @@
+## 4.4.5
+* restore jdk 8 compatibliity
+
 ## 4.4.4
 * update jetty to 9.4.51.v20230217 to resolve CVE-2023-26048
 
