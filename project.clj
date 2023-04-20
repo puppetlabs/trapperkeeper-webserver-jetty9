@@ -109,6 +109,9 @@
                                                        {:major major
                                                         :minor minor})]
                                   (condp = (java.lang.Integer/parseInt major)
+                                    1 (if (= 8 (java.lang.Integer/parseInt minor))
+                                        ["-Djava.security.properties==dev-resources/jdk8-fips-security"]
+                                        (throw unsupported-ex))
                                     11 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
                                     17 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
                                     (throw unsupported-ex)))}]
