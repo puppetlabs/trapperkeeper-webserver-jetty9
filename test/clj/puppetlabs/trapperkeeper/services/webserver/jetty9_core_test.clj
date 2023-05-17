@@ -37,6 +37,7 @@
                                          :body "I am a handler"})
                               "/"
                               true
+                              false
                               false)
       (is (= (count (.getHandlers handlers)) 1)))))
 
