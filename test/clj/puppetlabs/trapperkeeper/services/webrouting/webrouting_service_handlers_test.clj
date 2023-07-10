@@ -1,15 +1,20 @@
 (ns puppetlabs.trapperkeeper.services.webrouting.webrouting-service-handlers-test
-  (:import (servlet SimpleServlet))
-  (:require [clojure.test :refer :all]
-            [schema.test :as schema-test]
-            [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer :all]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
-            [puppetlabs.trapperkeeper.app :refer [get-service]]
-            [puppetlabs.trapperkeeper.testutils.webrouting.common :refer :all]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [puppetlabs.trapperkeeper.testutils.webserver :as testutils]))
+  (:require
+   [clojure.test :refer :all]
+   [schema.test :as schema-test]
+   [puppetlabs.trapperkeeper.services :as tk-services]
+   [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer :all]
+   [puppetlabs.trapperkeeper.services.webserver.jetty9 :as jetty9]
+   [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
+   [puppetlabs.trapperkeeper.app :refer [get-service]]
+   [puppetlabs.trapperkeeper.testutils.webrouting.common
+    :refer [default-options-for-https-client http-get webrouting-plaintext-config]]
+   [puppetlabs.trapperkeeper.testutils.bootstrap :refer [with-app-with-config]]
+   [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+   [puppetlabs.trapperkeeper.testutils.webserver :as testutils])
+  (:import
+   (org.eclipse.jetty.server Response)
+   (servlet SimpleServlet)))
 
 (use-fixtures :once
   schema-test/validate-schemas
@@ -215,4 +220,20 @@
           (is (logged? #"^\{\"\/foo\" \[\{:type :ring}\]\}$"))
           (is (logged? #"^\{\"\/foo\" \[\{:type :ring}\]\}$" :info)))))))
 
-
+(deftest ring-handler-include-response
+  (with-test-logging
+    (with-app-with-config app
+      [jetty9-service webrouting-service test-dummy]
+      webrouting-plaintext-config
+      (let [handler-args (atom nil)]
+        (add-ring-handler (get-service app :WebroutingService)
+                          (get-service app :TestDummy)
+                          (fn [& args]
+                            (reset! handler-args args)
+                            {:status 200 :body "yep"})
+                          {:include-response true})
+        (let [{:keys [status body]} (http-get "http://localhost:8080/foo")]
+          (is (= 200 status))
+          (is (= "yep" body))
+          (is (= 1 (count @handler-args)))
+          (is (instance? Response (-> @handler-args first ::jetty9/response))))))))

@@ -1,3 +1,11 @@
+## 4.5.0
+
+* Add `:include-response` option to request that the pending response
+  instance be provided to
+  [`add-ring-handler`](./README.md#add-ring-handler) as a second
+  argument.
+  [(PDB-5645)](https://tickets.puppetlabs.com/browse/PDB-5645)
+
 ## 4.4.3
 * restore jdk 8 compatibliity
 

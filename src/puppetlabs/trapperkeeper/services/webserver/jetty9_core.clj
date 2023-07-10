@@ -31,6 +31,7 @@
             [ring.util.codec :as codec]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9 :as jetty9]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-config :as config]
             [puppetlabs.trapperkeeper.services.webserver.experimental.jetty9-websockets :as websockets]
             [puppetlabs.trapperkeeper.services.webserver.normalized-uri-helpers
@@ -85,6 +86,9 @@
 (def ContextHandlerOptions
   (assoc CommonOptions (schema/optional-key :context-listeners) [ServletContextListener]
                         (schema/optional-key :follow-links) schema/Bool))
+
+(def RingHandlerOptions
+  (assoc CommonOptions (schema/optional-key :include-response) schema/Bool))
 
 (def ServletHandlerOptions
   (assoc CommonOptions (schema/optional-key :servlet-init-params) {schema/Str schema/Str}))
@@ -448,10 +452,11 @@
 
 (defn- ring-handler
   "Returns an Jetty Handler implementation for the given Ring handler."
-  [handler]
+  [handler include-response]
   (proxy [AbstractHandler] []
     (handle [_ ^Request base-request request response]
-      (let [request-map  (servlet/build-request-map request)
+      (let [request-map  (cond-> (servlet/build-request-map request)
+                           include-response (assoc ::jetty9/response response))
             response-map (handler request-map)]
         (when response-map
           (servlet/update-servlet-response response response-map)
@@ -466,7 +471,7 @@
    options :- ProxyOptions]
   (let [custom-ssl-ctxt-factory (when (map? (:ssl-config options))
                                   (get-proxy-client-context-factory
-                                    (:ssl-config options)))
+                                   (:ssl-config options)))
         {:keys [request-buffer-size idle-timeout]} options]
     (proxy [ProxyServlet] []
       (rewriteTarget [req]
@@ -497,7 +502,7 @@
         (let [client (if custom-ssl-ctxt-factory
                        (HttpClient. custom-ssl-ctxt-factory)
                        (if-let [ssl-ctxt-factory (:ssl-context-factory
-                                                   @(:state webserver-context))]
+                                                  @(:state webserver-context))]
                          (HttpClient. ssl-ctxt-factory)
                          (HttpClient.)))]
           (when request-buffer-size
@@ -519,8 +524,8 @@
 
       (sendProxyRequest [req resp proxy-req]
         (if-let [callback-fn (:callback-fn options)]
-         (callback-fn proxy-req req))
-       (proxy-super sendProxyRequest req resp proxy-req))
+          (callback-fn proxy-req req))
+        (proxy-super sendProxyRequest req resp proxy-req))
 
       ;; The implementation of onResponseFailure is duplicated heavily from:
       ;; https://github.com/eclipse/jetty.project/blob/jetty-9.4.1.v20170120/jetty-proxy/src/main/java/org/eclipse/jetty/proxy/AbstractProxyServlet.java#L624-L658
@@ -755,11 +760,11 @@
    handler :- (schema/pred ifn? 'ifn?)
    path :- schema/Str
    enable-trailing-slash-redirect? :- schema/Bool
-   normalize-request-uri? :- schema/Bool]
-  (let [handler
-        (normalized-uri-helpers/handler-maybe-wrapped-with-normalized-uri
-         (ring-handler handler)
-         normalize-request-uri?)
+   normalize-request-uri? :- schema/Bool
+   include-response :- (schema/maybe schema/Bool)]
+  (let [handler (normalized-uri-helpers/handler-maybe-wrapped-with-normalized-uri
+                 (ring-handler handler include-response)
+                 normalize-request-uri?)
         path (if (= "" path) "/" path)
         ctxt-handler (doto (ContextHandler. path)
                        (.setHandler handler))]
@@ -1060,8 +1065,8 @@
       (nil? new-config) (start-server-multiple context config))))
 
 (schema/defn ^:always-validate add-ring-handler!
-  [context handler path options :- CommonOptions]
-  (let [server-id     (:server-id options)
+  [context handler path options :- RingHandlerOptions]
+  (let [{:keys [include-response server-id]} options
         s             (get-server-context context server-id)
         state         (:state s)
         endpoint-map  {:type     :ring}
@@ -1069,7 +1074,8 @@
         enable-redirect  (get options :redirect-if-no-trailing-slash false)
         normalize-request-uri (get options :normalize-request-uri false)]
     (register-endpoint! state endpoint-map path)
-    (add-ring-handler s handler path enable-redirect normalize-request-uri)))
+    (add-ring-handler s handler path enable-redirect normalize-request-uri
+                      include-response)))
 
 (schema/defn ^:always-validate add-websocket-handler!
   [context

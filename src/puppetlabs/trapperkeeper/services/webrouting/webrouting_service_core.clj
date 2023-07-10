@@ -26,6 +26,9 @@
 (def ContextHandlerOptions
   (dissoc (merge jetty9-core/ContextHandlerOptions RouteOption) :server-id))
 
+(def RingHandlerOptions
+  (dissoc (merge jetty9-core/RingHandlerOptions RouteOption) :server-id))
+
 (def ServletHandlerOptions
   (dissoc (merge jetty9-core/ServletHandlerOptions RouteOption) :server-id))
 
@@ -123,7 +126,7 @@
 (schema/defn ^:always-validate add-ring-handler!
   [context webserver-service
    svc :- (schema/protocol tk-services/Service)
-   handler options :- CommonOptions]
+   handler options :- RingHandlerOptions]
   (let [{:keys [path opts]} (compute-common-elements context svc options)
         add-ring-handler    (:add-ring-handler webserver-service)]
     (add-ring-handler handler path opts)))

@@ -87,27 +87,41 @@ You may specify `""` as the value for `path` if you are only registering a singl
 handler and do not need to prefix the URL.
 
 There is also a three argument version of this function which takes these arguments:
-`[handler path options]`. `options` is a map containing three optional keys.
+`[handler path options]`. `options` is a map containing optional keys.
 
-The first is
-`:server-id`, which specifies which server you want to add the ring-handler to. If
-`:server-id` is specified, the ring handler will be added to the server with id
-`:server-id`. If no `:server-id` is specified, or the two argument version is called,
-the ring handler will be added to the default server. Calling the two-argument version or
-leaving out `:server-id` will not work in a multiserver set-up if no default server is specified.
+* `:server-id`
 
-The second optional argument is `:redirect-if-no-trailing-slash`. When set to `true`,
-all requests made to the endpoint at which the ring-handler was registered will, if
-no trailing slash is present, return a 302 redirect response to the same URL but with a trailing slash
-added. If the option is set to `false`, no redirect will occur, and the request will be
-routed through to the registered handler. This option defaults to `false`.
+  This option specifies which server you want to add the ring-handler
+  to. If `:server-id` is specified, the ring handler will be added to
+  the server with id `:server-id`. If no `:server-id` is specified, or
+  the two argument version is called, the ring handler will be added
+  to the default server. Calling the two-argument version or leaving
+  out `:server-id` will not work in a multiserver set-up if no default
+  server is specified.
 
-The third optional argument is `:normalize-request-uri`. When set to `true`, the
-URI made available to the ring handler request map via the `:uri` key will have
-been "normalized".  See the [Request URI Normalization]
-(#request-uri-normalization) section for more information on the
-normalization process.  When set to `false` (the default value), the raw path
-component from the HTTP request URI will be the value for the `:uri` key.
+* `:redirect-if-no-trailing-slash`
+
+  When set to `true`, all requests made to the endpoint at which the
+  ring-handler was registered will, if no trailing slash is present,
+  return a 302 redirect response to the same URL but with a trailing
+  slash added. If the option is set to `false`, no redirect will
+  occur, and the request will be routed through to the registered
+  handler. This option defaults to `false`.
+
+* `:normalize-request-uri`
+
+  When set to `true`, the URI made available to the ring handler
+  request map via the `:uri` key will have been "normalized".  See the
+  [Request URI Normalization] (#request-uri-normalization) section for
+  more information on the normalization process.  When set to `false`
+  (the default value), the raw path component from the HTTP request
+  URI will be the value for the `:uri` key.
+
+* `:include-response`
+
+  When set to `true`, the request will include the pending jetty
+  [`Response`](https://www.eclipse.org/jetty/javadoc/jetty-9/org/eclipse/jetty/server/Response.html)
+  instance as `:puppetlabs.trapperkeeper.services.webserver.jetty9/response`.
 
 Here's an example of how to use the `:WebserverService`:
 
