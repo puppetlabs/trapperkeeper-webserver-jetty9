@@ -1,3 +1,10 @@
+## 4.5.1
+* update jetty9 to 9.4.52.v20230823 to address
+  * https://github.com/advisories/GHSA-58qw-p7qm-5rvh
+  * https://github.com/advisories/GHSA-hmr7-m48g-48f6
+  * https://github.com/advisories/GHSA-3gh6-v5v9-6v9j
+  * https://github.com/advisories/GHSA-pwh8-58vv-vw48
+  
 ## 4.5.0
 
 * Add `:include-response` option to request that the pending response
@@ -7,7 +14,7 @@
   [(PDB-5645)](https://tickets.puppetlabs.com/browse/PDB-5645)
 
 ## 4.4.3
-* restore jdk 8 compatibliity
+* restore jdk 8 compatiblity
 
 ## 4.4.2
 * update jetty to 9.4.51.v20230217 to resolve CVE-2023-26048
