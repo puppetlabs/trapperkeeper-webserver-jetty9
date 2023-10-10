@@ -1,5 +1,11 @@
+## 4.5.2
+* update jetty9 to [9.4.53.v20231009](https://github.com/eclipse/jetty.project/releases/tag/jetty-9.4.53.v20231009) to address: 
+  * CVE-2023-44487
+  * CVE-2023-36478
+* update clj-parent to 5.6.3
+
 ## 4.5.1
-* update jetty9 to 9.4.52.v20230823 to address
+* update jetty9 to [9.4.52.v20230823](https://github.com/eclipse/jetty.project/releases/tag/jetty-9.4.52.v20230823) to address
   * https://github.com/advisories/GHSA-58qw-p7qm-5rvh
   * https://github.com/advisories/GHSA-hmr7-m48g-48f6
   * https://github.com/advisories/GHSA-3gh6-v5v9-6v9j
