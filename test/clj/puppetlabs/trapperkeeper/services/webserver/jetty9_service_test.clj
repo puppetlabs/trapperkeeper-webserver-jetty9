@@ -737,7 +737,7 @@
        ; we have to sleep the thread to avoid a race condition.
        (Thread/sleep 10)
        (let [list (TestListAppender/list)]
-         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 8" (first list))))))
+         (is (re-find #"\"GET /hi_world/ HTTP/1.1\" 200 28" (first list))))))
 
     (testing "Mapped Diagnostic Context values are available to the access logger"
       (with-test-access-logging

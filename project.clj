@@ -1,4 +1,4 @@
-(def jetty-version "9.4.52.v20230823")
+(def jetty-version "9.4.53.v20231009")
 
 (defproject puppetlabs/trapperkeeper-webserver-jetty9 "4.5.2-SNAPSHOT"
   :description "A jetty9-based webserver implementation for use with the puppetlabs/trapperkeeper service framework."
@@ -8,7 +8,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "5.2.9"]
+  :parent-project {:coords [puppetlabs/clj-parent "5.6.3"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
