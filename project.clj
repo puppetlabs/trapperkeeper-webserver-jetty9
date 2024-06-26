@@ -8,7 +8,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "5.6.17"]
+  :parent-project {:coords [puppetlabs/clj-parent "5.6.19"]
                    :inherit [:managed-dependencies]}
 
   ;; Abort when version ranges or version conflicts are detected in
@@ -79,12 +79,7 @@
                                        [ring/ring-core]]
                         :resource-paths ["dev-resources"]
                         :jvm-opts ["-Djava.util.logging.config.file=dev-resources/logging.properties"]}
-
-             :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
-                                   [stylefruits/gniazdo nil :exclusions [org.eclipse.jetty.websocket/websocket-api
-                                                                         org.eclipse.jetty.websocket/websocket-client
-                                                                         org.eclipse.jetty/jetty-util]]]}]
+             :dev [:defaults :pseudo-dev]
 
              ;; per https://github.com/technomancy/leiningen/issues/1907
              ;; the provided profile is necessary for lein jar / lein install
@@ -95,27 +90,26 @@
                                          [stylefruits/gniazdo nil :exclusions [org.eclipse.jetty.websocket/websocket-api
                                                                                org.eclipse.jetty.websocket/websocket-client
                                                                                org.eclipse.jetty/jetty-util]]]}
-             :fips [:defaults ; merge in the default profile
-                    {:dependencies [[org.bouncycastle/bcpkix-fips]
-                                    [org.bouncycastle/bc-fips]
-                                    [org.bouncycastle/bctls-fips]]
-                     :exclusions [[org.bouncycastle/bcpkix-jdk18on]]
-                     ;; this only ensures that we run with the proper profiles
-                     ;; during testing. This JVM opt will be set in the puppet module
-                     ;; that sets up the JVM classpaths during installation.
-                     :jvm-opts ~(let [version (System/getProperty "java.version")
-                                      [major minor _] (clojure.string/split version #"\.")
-                                      unsupported-ex (ex-info "Unsupported major Java version. Expects 11 or 17."
-                                                       {:major major
-                                                        :minor minor})]
-                                  (condp = (java.lang.Integer/parseInt major)
-                                    1 (if (= 8 (java.lang.Integer/parseInt minor))
-                                        ["-Djava.security.properties==dev-resources/jdk8-fips-security"]
-                                        (throw unsupported-ex))
-                                    11 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
-                                    17 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
-                                    (throw unsupported-ex)))}]
-
+             :fips-dependencies {:dependencies [[org.bouncycastle/bcpkix-fips]
+                                                [org.bouncycastle/bc-fips]
+                                                [org.bouncycastle/bctls-fips]]
+                                 :exclusions [[org.bouncycastle/bcpkix-jdk18on]]
+                                 ;; this only ensures that we run with the proper profiles
+                                 ;; during testing. This JVM opt will be set in the puppet module
+                                 ;; that sets up the JVM classpaths during installation.
+                                 :jvm-opts ~(let [version (System/getProperty "java.version")
+                                                  [major minor _] (clojure.string/split version #"\.")
+                                                  unsupported-ex (ex-info "Unsupported major Java version. Expects 11 or 17."
+                                                                   {:major major
+                                                                    :minor minor})]
+                                              (condp = (java.lang.Integer/parseInt major)
+                                                1 (if (= 8 (java.lang.Integer/parseInt minor))
+                                                    ["-Djava.security.properties==dev-resources/jdk8-fips-security"]
+                                                    (throw unsupported-ex))
+                                                11 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
+                                                17 ["-Djava.security.properties==dev-resources/jdk11-fips-security"]
+                                                (throw unsupported-ex)))}
+             :fips [:defaults :fips-dependencies] ; merge in the default profile
              :testutils {:source-paths ^:replace ["test/clj"]
                          :java-source-paths ^:replace ["test/java"]}}
 
